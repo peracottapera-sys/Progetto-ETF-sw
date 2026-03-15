@@ -1,0 +1,373 @@
+import React, { useState } from 'react';
+import { useApp } from '../../context/AppContext';
+
+const API = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_URL)
+  || process.env?.REACT_APP_API_URL
+  || 'http://localhost:3001';
+
+const SEMAFORO_COLOR = { VERDE: '#22c55e', GIALLO: '#f59e0b', ROSSO: '#ef4444' };
+const SEMAFORO_EMOJI = { VERDE: '🟢', GIALLO: '🟡', ROSSO: '🔴' };
+const SEM_LABELS = {
+  diversificazione: 'Diversificazione', volatilita: 'Volatilità',
+  drawdown: 'Max Drawdown', ter: 'Costi TER', azionario: 'Quota Azionaria',
+  correlazione: 'Correlazione',
+};
+
+function SemaforoRow({ k, v }) {
+  const stato = (typeof v === 'object' ? v?.stato : v) || '';
+  const commento = (typeof v === 'object' ? v?.commento : '') || '';
+  const col = SEMAFORO_COLOR[stato.toUpperCase()] || '#6b7280';
+  return (
+    <div style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 0', borderBottom:'1px solid var(--border)' }}>
+      <span style={{ fontSize:16, flexShrink:0 }}>{SEMAFORO_EMOJI[stato.toUpperCase()] || '⚪'}</span>
+      <span style={{ fontSize:12, fontWeight:700, width:130, color:'var(--text-primary)' }}>{SEM_LABELS[k] || k}</span>
+      <span style={{ fontSize:11, fontWeight:700, color:col, width:52 }}>{stato.toUpperCase()}</span>
+      <span style={{ fontSize:11, color:'var(--text-secondary)', flex:1 }}>{commento}</span>
+    </div>
+  );
+}
+
+function AIModal({ portfolio, onClose }) {
+  const { token, loadPortfoliosFromDB, currentUser } = useApp();
+  const [semafori, setSemafori] = useState(null);
+  const [puntiChiave, setPuntiChiave] = useState([]);
+  const [analisiDettagliata, setAnalisiDettagliata] = useState('');
+  const [modifiche, setModifiche] = useState([]);
+  const [approvate, setApprovate] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [applying, setApplying] = useState(false);
+  const [pdfLoading, setPdfLoading] = useState(false);
+  const [errore, setErrore] = useState('');
+  const [applicate, setApplicate] = useState(false);
+  const [showAnalisi, setShowAnalisi] = useState(false);
+  const [showModifiche, setShowModifiche] = useState(true);
+
+  const authHdr = { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) };
+
+  React.useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch(`${API}/api/ai/analisi`, {
+          method: 'POST', headers: authHdr,
+          body: JSON.stringify({ portfolio }),
+        });
+        const data = await res.json();
+        if (data.semafori || data.analisiDettagliata) {
+          setSemafori(data.semafori || null);
+          setPuntiChiave(data.puntiChiave || []);
+          setAnalisiDettagliata(data.analisiDettagliata || '');
+          setModifiche(data.modifiche || []);
+          const init = {};
+          (data.modifiche || []).forEach((_, i) => { init[i] = true; });
+          setApprovate(init);
+        } else {
+          setErrore(data.error || 'Risposta non valida dal server');
+        }
+      } catch (err) {
+        setErrore('Server non raggiungibile.');
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, []);
+
+  const handleApplica = async () => {
+    setApplying(true);
+    const oggi = new Date().toISOString().slice(0, 10);
+    const modificheApprovate = modifiche.filter((_, i) => approvate[i]);
+
+    // Step 1: applica selezioni/deseleziona/aggiungi
+    const etfsAggiornati = portfolio.etfs.map(e => ({ ...e }));
+    for (const m of modificheApprovate) {
+      if (m.azione === 'seleziona') {
+        const etf = etfsAggiornati.find(e => e.isin === m.isin);
+        if (etf) etf.selected = true;
+      } else if (m.azione === 'deseleziona') {
+        const etf = etfsAggiornati.find(e => e.isin === m.isin);
+        if (etf) { etf.selected = false; etf.acquisto = null; }
+      } else if (m.azione === 'aggiungi') {
+        // Cerca quotazione: 1) dal JSON AI, 2) tra gli ETF non selezionati del portafoglio, 3) ETF_MASTER
+        const quotazioneFallback = portfolio.etfs.find(e => e.isin === m.isin)?.quotazione || 0;
+        const quotazione = m.quotazione > 0 ? m.quotazione : quotazioneFallback;
+        if (!etfsAggiornati.find(e => e.isin === m.isin)) {
+          etfsAggiornati.push({ isin: m.isin, name: m.name || m.isin, selected: true,
+            tipo: 'consigliato', ter: m.ter || 0, quotazione,
+            categoria: m.categoria || 'Altro', valuta: 'EUR',
+            perf1m:0, perf6m:0, perf1y:0, perf5y:0, capitalizzazione:0, variabilita:0, maxDrawdown:0 });
+        } else {
+          const etf = etfsAggiornati.find(e => e.isin === m.isin);
+          if (etf) { etf.selected = true; if (quotazione > 0) etf.quotazione = quotazione; }
+        }
+      }
+    }
+
+    // Step 2: redistribuisci il capitale TOTALE proporzionalmente su tutti gli ETF selezionati finali
+    const totInvestitoOriginale = portfolio.etfs
+      .filter(e => e.selected && e.acquisto?.quantita > 0)
+      .reduce((s, e) => s + e.acquisto.quantita * e.acquisto.quotazioneAcquisto, 0);
+
+    if (totInvestitoOriginale > 0) {
+      const etfSelezionatiFinali = etfsAggiornati.filter(e => e.selected);
+      const nEtf = etfSelezionatiFinali.length;
+      if (nEtf > 0) {
+        // Calcola il "peso originale" di ogni ETF ancora selezionato
+        // ETF già esistenti: mantengono il peso relativo originale
+        // ETF nuovi (aggiunti/selezionati): ricevono peso uguale alla media
+        const totOriginaleRimasto = etfSelezionatiFinali
+          .filter(e => e.acquisto?.quantita > 0)
+          .reduce((s, e) => s + e.acquisto.quantita * e.acquisto.quotazioneAcquisto, 0);
+        const nNuovi = etfSelezionatiFinali.filter(e => !(e.acquisto?.quantita > 0)).length;
+        // Peso medio da assegnare ai nuovi: capitaleTotale / nEtf
+        const pesoMedioNuovi = totInvestitoOriginale / nEtf;
+        // Fattore di scala per gli ETF esistenti: devono coprire il rimanente dopo i nuovi
+        const capitalePerEsistenti = totInvestitoOriginale - (nNuovi * pesoMedioNuovi);
+        const scaleFactor = totOriginaleRimasto > 0 ? capitalePerEsistenti / totOriginaleRimasto : 1;
+
+        etfSelezionatiFinali.forEach(e => {
+          const prezzo = e.quotazione || e.acquisto?.quotazioneAcquisto || 0;
+          if (!prezzo) {
+            console.warn('[redistribuisci] ETF senza prezzo, skippato:', e.isin);
+            return;
+          }
+          let capitaleTarget;
+          if (e.acquisto?.quantita > 0) {
+            // ETF esistente: scala proporzionalmente
+            capitaleTarget = e.acquisto.quantita * e.acquisto.quotazioneAcquisto * scaleFactor;
+          } else {
+            // ETF nuovo: peso medio
+            capitaleTarget = pesoMedioNuovi;
+          }
+          const quantita = Math.floor(capitaleTarget / prezzo);
+          if (quantita > 0) {
+            e.acquisto = { quantita, quotazioneAcquisto: prezzo, dataAcquisto: oggi };
+          }
+        });
+      }
+    }
+
+    const etfsPayload = etfsAggiornati.map(e => ({ isin:e.isin, selected:e.selected, tipo:e.tipo||'consigliato', quotazione:e.quotazione||0 }));
+    const acquistiPayload = etfsAggiornati
+      .filter(e => e.selected && e.acquisto?.quantita > 0)
+      .map(e => ({ isin:e.isin, quantita:e.acquisto.quantita, quotazioneAcquisto:e.acquisto.quotazioneAcquisto, dataAcquisto:e.acquisto.dataAcquisto || oggi }));
+    const prezziPayload = etfsAggiornati.filter(e => (e.quotazione||0) > 0).map(e => ({ isin:e.isin, prezzo:e.quotazione }));
+
+    const totFinale = acquistiPayload.reduce((s, a) => s + a.quantita * a.quotazioneAcquisto, 0);
+    console.log(`[analisi apply] Capitale originale: €${totInvestitoOriginale.toFixed(0)} → finale: €${totFinale.toFixed(0)} (${etfsAggiornati.filter(e=>e.selected).length} ETF)`);
+
+    await fetch(`${API}/api/portfolios/${portfolio.id}/apply-ai`, {
+      method:'POST', headers:authHdr,
+      body:JSON.stringify({ etfs:etfsPayload, acquisti:acquistiPayload, prezzi:prezziPayload }),
+    }).catch(err => console.error('[analisi apply]', err));
+
+    await loadPortfoliosFromDB(token, currentUser?.id);
+    setApplicate(true);
+    setApplying(false);
+    setTimeout(() => onClose(), 1500);
+  };
+
+  const handlePDF = async () => {
+    setPdfLoading(true);
+    try {
+      const res = await fetch(`${API}/api/ai/genera-pdf`, {
+        method: 'POST', headers: authHdr,
+        body: JSON.stringify({ portfolio, semafori, puntiChiave, analisiDettagliata, modifiche }),
+      });
+      if (!res.ok) throw new Error('Errore generazione PDF');
+      const html = await res.text();
+      // Apri in nuova finestra → Ctrl+P → Salva come PDF
+      const win = window.open('', '_blank');
+      win.document.write(html);
+      win.document.close();
+      // Avvia print dialog automaticamente dopo il rendering
+      setTimeout(() => win.print(), 600);
+    } catch (e) {
+      alert('Errore generazione PDF: ' + e.message);
+    } finally {
+      setPdfLoading(false);
+    }
+  };
+
+  const nApprovate = Object.values(approvate).filter(Boolean).length;
+
+  // Calcola giudizio globale dai semafori
+  const giudizioGlobale = semafori ? (() => {
+    const stati = Object.values(semafori).map(v => (typeof v === 'object' ? v?.stato : v) || '');
+    if (stati.some(s => s.toUpperCase() === 'ROSSO')) return 'ROSSO';
+    if (stati.some(s => s.toUpperCase() === 'GIALLO')) return 'GIALLO';
+    return 'VERDE';
+  })() : null;
+
+  const renderAnalisiTesto = (testo) => testo.split('\n').map((riga, i) => {
+    if (!riga.trim()) return <div key={i} style={{ height:6 }} />;
+    if (riga.startsWith('## ') || riga.startsWith('# '))
+      return <div key={i} style={{ fontFamily:'DM Serif Display,serif', fontSize:14, color:'var(--accent-gold)', margin:'14px 0 4px', fontWeight:700 }}>{riga.replace(/^#+\s*/,'')}</div>;
+    if (riga.startsWith('- ') || riga.startsWith('* '))
+      return <div key={i} style={{ display:'flex', gap:8, margin:'3px 0', paddingLeft:8 }}><span style={{ color:'var(--accent-gold)', flexShrink:0 }}>•</span><span style={{ fontSize:13, lineHeight:1.6 }}>{riga.slice(2).replace(/\*\*(.*?)\*\*/g,'$1')}</span></div>;
+    if (riga.startsWith('---'))
+      return <hr key={i} style={{ border:'none', borderTop:'1px solid var(--border)', margin:'10px 0' }} />;
+    return <p key={i} style={{ fontSize:13, lineHeight:1.7, margin:'3px 0', color:'var(--text-primary)' }}>{riga.replace(/\*\*(.*?)\*\*/g,'$1')}</p>;
+  });
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" onClick={e => e.stopPropagation()} style={{ minWidth:700, maxWidth:860, maxHeight:'90vh', display:'flex', flexDirection:'column' }}>
+
+        {/* Header */}
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:16, flexShrink:0 }}>
+          <div>
+            <div className="modal-title" style={{ marginBottom:2 }}>🤖 Analisi AI Portafoglio</div>
+            <div style={{ fontSize:12, color:'var(--text-secondary)' }}>{portfolio.name} · powered by Claude</div>
+          </div>
+          <div style={{ display:'flex', gap:8, alignItems:'center' }}>
+            {analisiDettagliata && !loading && (
+              <button className="btn btn-ghost" onClick={handlePDF} disabled={pdfLoading}
+                style={{ fontSize:12, padding:'6px 12px', display:'flex', alignItems:'center', gap:6 }}>
+                {pdfLoading ? '⏳' : '📄'} {pdfLoading ? 'Generando...' : 'Scarica PDF'}
+              </button>
+            )}
+            <button className="btn btn-ghost" onClick={onClose} style={{ fontSize:18, padding:'4px 10px' }}>✕</button>
+          </div>
+        </div>
+
+        <div style={{ overflowY:'auto', flex:1, paddingRight:4 }}>
+          {loading && (
+            <div style={{ textAlign:'center', padding:'60px 0' }}>
+              <div style={{ fontSize:32, marginBottom:12 }}>🤖</div>
+              <div style={{ fontSize:14, color:'var(--text-secondary)', marginBottom:6 }}>Analisi in corso...</div>
+              <div style={{ fontSize:12, color:'var(--text-muted)' }}>Claude sta analizzando il portafoglio con contesto macro</div>
+            </div>
+          )}
+          {errore && <div className="alert alert-warning">⚠️ {errore}</div>}
+
+          {!loading && (semafori || puntiChiave.length > 0) && (
+            <>
+              {/* Giudizio globale */}
+              {giudizioGlobale && (
+                <div style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 16px', borderRadius:10, marginBottom:16,
+                  background: giudizioGlobale === 'VERDE' ? 'rgba(34,197,94,0.1)' : giudizioGlobale === 'GIALLO' ? 'rgba(245,158,11,0.1)' : 'rgba(239,68,68,0.1)',
+                  border: `1px solid ${SEMAFORO_COLOR[giudizioGlobale]}33`
+                }}>
+                  <span style={{ fontSize:28 }}>{SEMAFORO_EMOJI[giudizioGlobale]}</span>
+                  <div>
+                    <div style={{ fontSize:15, fontWeight:700, color: SEMAFORO_COLOR[giudizioGlobale] }}>
+                      Giudizio Globale: {giudizioGlobale}
+                    </div>
+                    <div style={{ fontSize:12, color:'var(--text-secondary)' }}>
+                      {giudizioGlobale === 'VERDE' ? 'Portafoglio conforme alle regole del profilo' :
+                       giudizioGlobale === 'GIALLO' ? 'Alcune aree richiedono attenzione' :
+                       'Sono presenti anomalie che richiedono intervento'}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Semafori per area */}
+              {semafori && Object.keys(semafori).length > 0 && (
+                <div style={{ background:'var(--bg-secondary)', borderRadius:10, padding:'12px 16px', marginBottom:16 }}>
+                  <div style={{ fontSize:12, fontWeight:700, color:'var(--text-secondary)', marginBottom:8, textTransform:'uppercase', letterSpacing:1 }}>Valutazione per Area</div>
+                  {Object.entries(semafori).map(([k,v]) => <SemaforoRow key={k} k={k} v={v} />)}
+                </div>
+              )}
+
+              {/* Punti chiave */}
+              {puntiChiave.length > 0 && (
+                <div style={{ marginBottom:16 }}>
+                  <div style={{ fontSize:12, fontWeight:700, color:'var(--text-secondary)', marginBottom:8, textTransform:'uppercase', letterSpacing:1 }}>Punti Chiave</div>
+                  {puntiChiave.map((p, i) => (
+                    <div key={i} style={{ display:'flex', gap:10, padding:'6px 0', borderBottom:'1px solid var(--border)' }}>
+                      <span style={{ color:'var(--accent-gold)', fontWeight:700, flexShrink:0 }}>{i+1}.</span>
+                      <span style={{ fontSize:13, color:'var(--text-primary)', lineHeight:1.5 }}>{p}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Analisi dettagliata — espandibile */}
+              {analisiDettagliata && (
+                <div style={{ marginBottom:16, background:'var(--bg-secondary)', borderRadius:10, overflow:'hidden' }}>
+                  <button onClick={() => setShowAnalisi(a => !a)}
+                    style={{ width:'100%', padding:'10px 16px', display:'flex', justifyContent:'space-between', alignItems:'center', background:'none', border:'none', cursor:'pointer', color:'var(--text-primary)' }}>
+                    <span style={{ fontSize:13, fontWeight:700 }}>📋 Analisi Completa (per PDF)</span>
+                    <span style={{ fontSize:16 }}>{showAnalisi ? '▲' : '▼'}</span>
+                  </button>
+                  {showAnalisi && (
+                    <div style={{ padding:'0 16px 16px', maxHeight:320, overflowY:'auto' }}>
+                      {renderAnalisiTesto(analisiDettagliata)}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Modifiche consigliate — espandibile */}
+              {modifiche.length > 0 && !applicate && (
+                <div style={{ background:'var(--bg-secondary)', border:'1px solid var(--border)', borderRadius:10, overflow:'hidden' }}>
+                  <button onClick={() => setShowModifiche(m => !m)}
+                    style={{ width:'100%', padding:'10px 16px', display:'flex', justifyContent:'space-between', alignItems:'center', background:'none', border:'none', cursor:'pointer', color:'var(--text-primary)' }}>
+                    <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                      <span style={{ fontSize:13, fontWeight:700 }}>💡 Modifiche Consigliate</span>
+                      <span style={{ fontSize:11, padding:'2px 8px', borderRadius:10, background:'var(--accent-gold)22', color:'var(--accent-gold)', fontWeight:700 }}>{nApprovate}/{modifiche.length} selezionate</span>
+                    </div>
+                    <span style={{ fontSize:16 }}>{showModifiche ? '▲' : '▼'}</span>
+                  </button>
+                  {showModifiche && (
+                    <div style={{ padding:'0 16px 16px' }}>
+                      <div style={{ fontSize:11, color:'var(--text-muted)', marginBottom:12 }}>Deseleziona le modifiche che non vuoi applicare</div>
+                      {modifiche.map((m, i) => {
+                        const etf = portfolio.etfs.find(e => e.isin === m.isin);
+                        return (
+                          <div key={i} style={{ display:'flex', alignItems:'flex-start', gap:12, padding:'10px 0', borderBottom: i < modifiche.length-1 ? '1px solid var(--border)' : 'none' }}>
+                            <input type="checkbox" checked={!!approvate[i]} onChange={() => setApprovate(a => ({ ...a, [i]: !a[i] }))}
+                              style={{ marginTop:3, cursor:'pointer', width:15, height:15 }} />
+                            <div style={{ flex:1 }}>
+                              <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:3 }}>
+                                <span style={{ fontSize:10, fontWeight:700, padding:'2px 7px', borderRadius:4,
+                                  background: m.azione === 'deseleziona' ? 'rgba(239,68,68,0.15)' : 'rgba(34,197,94,0.15)',
+                                  color: m.azione === 'deseleziona' ? 'var(--accent-red)' : 'var(--accent-green)' }}>
+                                  {m.azione === 'deseleziona' ? '− RIMUOVI' : m.azione === 'aggiungi' ? '+ AGGIUNGI' : '+ SELEZIONA'}
+                                </span>
+                                <span style={{ fontSize:13, fontWeight:600 }}>{etf?.name || m.name || m.isin}</span>
+                                <span style={{ fontSize:10, color:'var(--text-muted)', fontFamily:'monospace' }}>{m.isin}</span>
+                              </div>
+                              <div style={{ fontSize:12, color:'var(--text-secondary)' }}>{m.motivo}</div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {modifiche.length === 0 && (
+                <div className="alert alert-success" style={{ marginTop:8 }}>✓ Il portafoglio rispetta tutte le regole del profilo selezionato.</div>
+              )}
+            </>
+          )}
+
+          {applicate && (
+            <div className="alert alert-success" style={{ marginTop:16, textAlign:'center', fontSize:14 }}>✓ Modifiche applicate con successo!</div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div style={{ borderTop:'1px solid var(--border)', paddingTop:14, marginTop:14, display:'flex', justifyContent:'space-between', alignItems:'center', flexShrink:0 }}>
+          <div style={{ fontSize:11, color:'var(--text-muted)' }}>
+            {modifiche.length > 0 && !applicate && `${nApprovate} di ${modifiche.length} modifiche selezionate`}
+          </div>
+          <div style={{ display:'flex', gap:10 }}>
+            <button className="btn btn-ghost" onClick={onClose}>Chiudi</button>
+            {modifiche.length > 0 && !applicate && (
+              <button className="btn btn-primary" onClick={handleApplica} disabled={nApprovate === 0 || applying}
+                style={{ background:'linear-gradient(135deg,#6366f1,#8b5cf6)' }}>
+                {applying ? '⏳ Salvataggio...' : `✓ Applica ${nApprovate} Modifica${nApprovate !== 1 ? 'he' : ''}`}
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+export default AIModal;
