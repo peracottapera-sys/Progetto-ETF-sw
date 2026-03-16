@@ -6,11 +6,8 @@ WORKDIR /app
  
 COPY . .
  
-# Verifica struttura
-RUN ls -la && ls -la etf-app/
- 
-# Build frontend con output esplicito
-RUN cd etf-app && npm install && npm run build && ls -la dist/
+# Build frontend — CI=false evita che i warning blocchino la build
+RUN cd etf-app && npm install && CI=false npm run build
  
 # Installa dipendenze backend
 RUN cd etf-server && npm install && npm rebuild better-sqlite3
