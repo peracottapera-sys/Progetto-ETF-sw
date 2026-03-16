@@ -171,7 +171,7 @@ const { schedulaAggiornamento18 } = require('./routes/catalog');
 schedulaAggiornamento18(db, fetchETF);
 
 // ── Serve frontend build (produzione) ─────────────────────────────────────
-const distPath = path.resolve(__dirname, process.env.STATIC_PATH || '/app/etf-app/dist');
+const distPath = process.env.STATIC_PATH || path.join(__dirname, '..', 'etf-app', 'dist');
 if (fs.existsSync(distPath)) {
   app.use(express.static(distPath));
   app.get(/^(?!\/api).*/, (req, res) => res.sendFile(path.join(distPath, 'index.html')));
