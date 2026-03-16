@@ -12,7 +12,7 @@ RUN cd etf-app && npm install && CI=false npm run build
 # Installa dipendenze backend
 RUN cd etf-server && npm install && npm rebuild better-sqlite3
  
-EXPOSE 3001
+EXPOSE 8080
  
 CMD ["node", "etf-server/server.js"]
  
