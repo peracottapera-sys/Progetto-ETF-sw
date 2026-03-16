@@ -179,17 +179,6 @@ if (fs.existsSync(distPath)) {
 }
 
 
-// Serve i file statici della build React
-const distPath = path.join(__dirname, '..', 'etf-app', 'dist');
-app.use(express.static(distPath));
-
-// Tutte le rotte non-API vanno all'index.html (React Router)
-app.get('*', (req, res) => {
-  if (!req.path.startsWith('/api')) {
-    res.sendFile(path.join(distPath, 'index.html'));
-  }
-});
-
 // ── Start ──────────────────────────────────────────────────────────────────
 app.listen(PORT, () => {
   console.log(`\n🚀 ETF Server avviato su http://localhost:${PORT}`);
