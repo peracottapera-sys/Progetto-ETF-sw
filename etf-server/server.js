@@ -171,7 +171,7 @@ const { schedulaAggiornamento18 } = require('./routes/catalog');
 schedulaAggiornamento18(db, fetchETF);
 
 // ── Serve frontend build (produzione) ─────────────────────────────────────
-const distPath = process.env.STATIC_PATH || path.join(__dirname, '..', 'etf-app', 'dist');
+const distPath = process.env.STATIC_PATH || path.join(__dirname, '..', 'etf-app', 'build');
 console.log(`🔍 distPath: ${distPath}`);
 console.log(`🔍 exists: ${fs.existsSync(distPath)}`);
 console.log(`🔍 __dirname: ${__dirname}`);
