@@ -172,12 +172,26 @@ schedulaAggiornamento18(db, fetchETF);
 
 // ── Serve frontend build (produzione) ─────────────────────────────────────
 const distPath = process.env.STATIC_PATH || path.join(__dirname, '..', 'etf-app', 'dist');
+console.log(`🔍 distPath: ${distPath}`);
+console.log(`🔍 exists: ${fs.existsSync(distPath)}`);
+console.log(`🔍 __dirname: ${__dirname}`);
 if (fs.existsSync(distPath)) {
   app.use(express.static(distPath));
   app.get(/^(?!\/api).*/, (req, res) => res.sendFile(path.join(distPath, 'index.html')));
   console.log(`📦 Frontend servito da: ${distPath}`);
 }
+  
 
+// Serve i file statici della build React
+const distPath = path.join(__dirname, '..', 'etf-app', 'dist');
+app.use(express.static(distPath));
+
+// Tutte le rotte non-API vanno all'index.html (React Router)
+app.get('*', (req, res) => {
+  if (!req.path.startsWith('/api')) {
+    res.sendFile(path.join(distPath, 'index.html'));
+  }
+});
 
 // ── Start ──────────────────────────────────────────────────────────────────
 app.listen(PORT, () => {
