@@ -18,4 +18,4 @@ RUN cd etf-server && npm install && npm rebuild better-sqlite3
 EXPOSE 8080
 
 CMD ["node", "etf-server/server.js"]
-```
+
