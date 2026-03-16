@@ -49,13 +49,13 @@ export default function Performance() {
 
   const rows = etfsAperti.map(e => {
     const { quantita, quotazioneAcquisto, dataAcquisto } = e.acquisto;
-    const quotazioneAttuale = e.quotazione > 0 ? e.quotazione : quotazioneAcquisto;
+    const quotazioneAttuale = e.quotazione > 0 ? e.quotazione : null;
     const prezzoAggiornato = e.quotazione > 0;
     const valoreAcquisto = quantita * quotazioneAcquisto;
-    const valoreAttuale = quantita * quotazioneAttuale;
-    const performance = valoreAttuale - valoreAcquisto;
-    const tasse = performance > 0 ? performance * (e.tassazione / 100) : 0;
-    const plFinale = performance - tasse;
+    const valoreAttuale = quotazioneAttuale != null ? quantita * quotazioneAttuale : null;
+    const performance = valoreAttuale != null ? valoreAttuale - valoreAcquisto : null;
+    const tasse = performance != null && performance > 0 ? performance * (e.tassazione / 100) : 0;
+    const plFinale = performance != null ? performance - tasse : null;
     const mesi = calcMesi(dataAcquisto);
     return { ...e, quantita, quotazioneAcquisto, quotazioneAttuale, prezzoAggiornato, dataAcquisto, valoreAcquisto, valoreAttuale, performance, tasse, plFinale, mesi };
   }).sort((a, b) => {
@@ -66,9 +66,9 @@ export default function Performance() {
   });
 
   const totAcquisto = rows.reduce((s, r) => s + r.valoreAcquisto, 0);
-  const totAttuale = rows.reduce((s, r) => s + r.valoreAttuale, 0);
+  const totAttuale = rows.reduce((s, r) => s + (r.valoreAttuale ?? r.valoreAcquisto), 0);
   const totPerf = totAttuale - totAcquisto;
-  const totTasse = rows.reduce((s, r) => s + r.tasse, 0);
+  const totTasse = rows.reduce((s, r) => s + (r.tasse ?? 0), 0);
   const totPL = totPerf - totTasse;
 
   // Totali basati sui valori FIFO pre-calcolati dal server
@@ -278,15 +278,15 @@ export default function Performance() {
                   {rows.map(r => (
                     <tr key={r.isin}>
                       <td><div style={{ fontWeight: 500, fontSize: 14, maxWidth: 180, whiteSpace: 'normal', lineHeight: 1.3 }}>{r.name}</div><div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{r.emittente}</div></td>
-                      <td style={{ fontFamily: 'monospace', fontSize: 14, color: 'var(--text-secondary)' }}>{r.isin}</td>
+                      <td style={{ fontFamily: 'monospace', fontSize: 14 }}><a href={`https://www.justetf.com/it/etf-profile.html?isin=${r.isin}`} target='_blank' rel='noreferrer' style={{ color: 'var(--accent-blue, #60a5fa)', textDecoration: 'none' }} onMouseOver={e => e.target.style.textDecoration='underline'} onMouseOut={e => e.target.style.textDecoration='none'}>{r.isin}</a></td>
                       <td style={{ fontFamily: 'monospace', fontSize: 14 }}>{r.quantita}</td>
                       <td style={{ fontFamily: 'monospace', fontSize: 14 }}>{r.quotazioneAcquisto.toFixed(3)}</td>
                       <td style={{ fontFamily: 'monospace', fontSize: 14 }}>{fmt(r.valoreAcquisto)}</td>
-                      <td style={{ fontFamily: 'monospace', fontSize: 14 }}>{r.quotazioneAttuale.toFixed(3)}{!r.prezzoAggiornato && <span title="Prezzo non aggiornato" style={{ color: 'var(--text-muted)', marginLeft: 2 }}>*</span>}</td>
-                      <td style={{ fontFamily: 'monospace', fontSize: 14 }}>{fmt(r.valoreAttuale)}</td>
-                      <td style={{ fontFamily: 'monospace', fontSize: 14, ...perfColor(r.performance) }}>{sign(r.performance)}{fmt(r.performance)}</td>
-                      <td style={{ fontFamily: 'monospace', fontSize: 14, color: r.tasse > 0 ? 'var(--accent-amber)' : 'var(--text-muted)' }}>{r.tasse > 0 ? fmt(r.tasse) : '—'}</td>
-                      <td style={{ fontFamily: 'monospace', fontSize: 14, ...perfColor(r.plFinale), fontWeight: 700 }}>{sign(r.plFinale)}{fmt(r.plFinale)}</td>
+                      <td style={{ fontFamily: 'monospace', fontSize: 14, color: r.quotazioneAttuale == null ? 'var(--text-muted)' : 'inherit' }}>{r.quotazioneAttuale != null ? r.quotazioneAttuale.toFixed(3) : <span title='Prezzo non ancora aggiornato — clicca Aggiorna Prezzi'>—</span>}</td>
+                      <td style={{ fontFamily: 'monospace', fontSize: 14, color: r.valoreAttuale == null ? 'var(--text-muted)' : 'inherit' }}>{r.valoreAttuale != null ? fmt(r.valoreAttuale) : '—'}</td>
+                      <td style={{ fontFamily: 'monospace', fontSize: 14, ...( r.performance != null ? perfColor(r.performance) : {color: 'var(--text-muted)'}) }}>{r.performance != null ? sign(r.performance)+fmt(r.performance) : '—'}</td>
+                      <td style={{ fontFamily: 'monospace', fontSize: 14, color: r.tasse > 0 ? 'var(--accent-amber)' : 'var(--text-muted)' }}>{r.performance != null && r.tasse > 0 ? fmt(r.tasse) : '—'}</td>
+                      <td style={{ fontFamily: 'monospace', fontSize: 14, ...(r.plFinale != null ? perfColor(r.plFinale) : {color: 'var(--text-muted)'}), fontWeight: 700 }}>{r.plFinale != null ? sign(r.plFinale)+fmt(r.plFinale) : '—'}</td>
                       <td style={{ fontSize: 14, color: 'var(--text-secondary)' }}>{r.mesi}</td>
                     </tr>
                   ))}
