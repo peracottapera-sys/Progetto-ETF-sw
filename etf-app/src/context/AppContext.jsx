@@ -3,7 +3,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 const AppContext = createContext(null);
 const STORAGE_KEY = 'etf_app_data';
 const TOKEN_KEY = 'etf_app_token';
-const API = 'http://localhost:3001';
+const API = process.env.REACT_APP_API_URL || (window.location.hostname === 'localhost' ? 'http://localhost:3001' : '');
 
 // ── ETF master list (sempre disponibile, usata come base) ──
 export const ETF_MASTER = [
