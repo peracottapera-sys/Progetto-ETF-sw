@@ -178,7 +178,6 @@ if (fs.existsSync(distPath)) {
   console.log(`📦 Frontend servito da: ${distPath}`);
 }
 
-const path = require('path');
 
 // Serve i file statici della build React
 const distPath = path.join(__dirname, '..', 'etf-app', 'dist');
