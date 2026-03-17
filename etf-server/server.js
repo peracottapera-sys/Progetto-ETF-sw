@@ -16,7 +16,7 @@ app.use(express.json());
 //  DATABASE POSTGRESQL — INIT
 // ══════════════════════════════════════════════
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
+  connectionString: process.env.DATABASE_PUBLIC_URL || process.env.DATABASE_URL,
   ssl: process.env.DATABASE_URL?.includes('railway') ? { rejectUnauthorized: false } : false,
 });
 
