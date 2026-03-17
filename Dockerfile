@@ -17,4 +17,4 @@ RUN cd etf-server && npm install
 
 EXPOSE 8080
 
-CMD ["node", "etf-server/server.js"]
+CMD ["sh", "-c", "echo DATABASE_URL=$DATABASE_URL && node etf-server/server.js"]
