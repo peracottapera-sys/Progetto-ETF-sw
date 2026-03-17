@@ -12,4 +12,4 @@ RUN cd etf-server && npm install
 
 EXPOSE 8080
 
-CMD ["sh", "-c", "find /app -name '.env' -not -path '*/node_modules/*' && cat /app/etf-server/.env 2>/dev/null || echo 'no .env found' && node etf-server/server.js"]
+CMD ["node", "etf-server/server.js"]
