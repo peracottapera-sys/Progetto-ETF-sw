@@ -3,7 +3,7 @@ const Anthropic = require('@anthropic-ai/sdk');
 const axios = require('axios');
 const authMiddleware = require('../middleware/auth');
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+const getAnthropic = () => new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 const REGOLE_PROFILO = {
   Prudente: {
@@ -201,7 +201,7 @@ R7 — Se conforme: []
 R8 — CRITICO: JSON valido e COMPLETO. Non troncare.`;
 
   try {
-    const message = await anthropic.messages.create({
+    const message = await getAnthropic().messages.create({
       model: 'claude-opus-4-6',
       max_tokens: 4500,
       messages: [{ role: 'user', content: prompt }],
@@ -384,7 +384,7 @@ Perf 1M: ${etf2.perf1m}% | 6M: ${etf2.perf6m}% | 1A: ${etf2.perf1y}% | 5A: ${etf
 Fornisci: 1) Tabella comparativa 2) Vantaggi ETF1 3) Vantaggi ETF2 4) Verdetto 5) Ha senso tenerli entrambi?`;
 
   try {
-    const message = await anthropic.messages.create({
+    const message = await getAnthropic().messages.create({
       model: 'claude-opus-4-6', max_tokens: 1500,
       messages: [{ role: 'user', content: prompt }],
     });
@@ -560,7 +560,7 @@ I pesi devono sommare a 100. Max ${regole.maxETF} ETF. Solo ISIN dalla lista dis
 IMPORTANTE: se la quota azionaria calcolata non rientra nel range obbligatorio, ribilancia i pesi prima di rispondere.`;
 
   try {
-    const message = await anthropic.messages.create({
+    const message = await getAnthropic().messages.create({
       model: 'claude-opus-4-6', max_tokens: 2000,
       messages: [{ role: 'user', content: prompt }],
     });
