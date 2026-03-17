@@ -154,7 +154,7 @@ export function AppProvider({ children }) {
   // ── Controlla se server è disponibile ──
   const checkServer = useCallback(async () => {
     try {
-      const res = await fetch(`${API}/api/health`, { signal: AbortSignal.timeout(2000) });
+      const res = await fetch(`${API}/api/health`, { signal: AbortSignal.timeout(8000) });
       if (res.ok) { setDbMode(true); setDbStatus('online'); return true; }
     } catch {}
     setDbMode(false); setDbStatus('offline');
