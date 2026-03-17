@@ -6,15 +6,12 @@ WORKDIR /app
 
 COPY . .
 
-# Build frontend (CRA produce la cartella 'build')
 RUN cd etf-app && npm install && CI=false npm run build
-
-# Rinomina 'build' in 'dist' per compatibilità con server.js
 RUN mv etf-app/build etf-app/dist
-
-# Installa dipendenze backend
 RUN cd etf-server && npm install
+
+ENV PG_URL=postgresql://postgres:JZKhCmNKgtZZfdDfQSPmgwORwBgxuAHO@crossover.proxy.rlwy.net:20706/railway
 
 EXPOSE 8080
 
-CMD ["sh", "-c", "echo PG_URL=$PG_URL && echo DATABASE_URL=$DATABASE_URL && node etf-server/server.js"]
+CMD ["node", "etf-server/server.js"]
