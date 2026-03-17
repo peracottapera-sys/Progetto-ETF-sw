@@ -7,22 +7,14 @@ WORKDIR /app
 COPY . .
 
 # Build frontend (CRA produce la cartella 'build')
-RUN cd etf-server && npm install
-```
-
-**3. Push:**
-```
-git add .
-git commit -m "migrate: SQLite → PostgreSQL"
-git push origin main
+RUN cd etf-app && npm install && CI=false npm run build
 
 # Rinomina 'build' in 'dist' per compatibilità con server.js
 RUN mv etf-app/build etf-app/dist
 
 # Installa dipendenze backend
-RUN cd etf-server && npm install && npm rebuild better-sqlite3
+RUN cd etf-server && npm install
 
 EXPOSE 8080
 
 CMD ["node", "etf-server/server.js"]
-
