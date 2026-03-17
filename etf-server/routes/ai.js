@@ -53,7 +53,7 @@ router.post('/analisi', async (req, res) => {
   // Arricchisci con dati reali da etf_catalog (maxdd1y, vol1y potrebbero essere 0 lato client)
   const isinList = etfSelezionatiRaw.map(e => `'${e.isin}'`).join(',');
   const catalogRows = isinList.length > 2
-    ? db.prepare(`SELECT isin, maxdd1y, vol1y, aum_mln FROM etf_catalog WHERE isin IN (${isinList})`).all()
+    ? (await db.query(`SELECT isin, maxdd1y, vol1y, aum_mln FROM etf_catalog WHERE isin IN (${isinList})`)).rows
     : [];
   const catalogMap = new Map(catalogRows.map(r => [r.isin, r]));
 
@@ -85,7 +85,7 @@ router.post('/analisi', async (req, res) => {
   const valAzionario = etfConAcquisto.filter(e => catAzionarie.some(c => (e.categoria||'').includes(c.replace('Azionario ','')))).reduce((s,e) => s + e.acquisto.quantita * e.acquisto.quotazioneAcquisto, 0);
   const percAzionario = totValore > 0 ? (valAzionario / totValore * 100).toFixed(1) : 'N/D';
 
-  const etfCatalogo = getEtfPerProfilo(portfolio.riskProfile, false, false)
+  const etfCatalogo = await getEtfPerProfilo(portfolio.riskProfile, false, false)
     .filter(c => !portfolio.etfs.some(e => e.isin === c.isin))
     .slice(0, 40);
 
@@ -397,7 +397,7 @@ Fornisci: 1) Tabella comparativa 2) Vantaggi ETF1 3) Vantaggi ETF2 4) Verdetto 5
 
 
 // ── Carica ETF dal DB filtrati per profilo di rischio ──────────────────────
-function getEtfPerProfilo(profilo, escludiDistribuzione = false, filtriRilassati = false) {
+async function getEtfPerProfilo(profilo, escludiDistribuzione = false, filtriRilassati = false) {
   const regole = REGOLE_PROFILO[profilo] || REGOLE_PROFILO.Bilanciato;
 
   // filtriRilassati=true per pool alternative (vincoli più ampi per avere sempre 2 alternative per TOP)
@@ -445,26 +445,26 @@ function getEtfPerProfilo(profilo, escludiDistribuzione = false, filtriRilassati
   let isinConPrezzoInDB = new Set();
   try {
     const cutoffTicker = new Date(Date.now() - 30*24*60*60*1000).toISOString().slice(0,10);
-    db.prepare('SELECT DISTINCT isin FROM prezzi_storici WHERE data >= ? AND prezzo > 0')
-      .all(cutoffTicker).forEach(r => isinConPrezzoInDB.add(r.isin));
+    const { rows: _pricedIsins } = await db.query('SELECT DISTINCT isin FROM prezzi_storici WHERE data >= $1 AND prezzo > 0', [cutoffTicker]);
+    _pricedIsins.forEach(r => isinConPrezzoInDB.add(r.isin));
   } catch {}
 
-  const rows = db.prepare(`
+  const { rows: _rawRows } = await db.query(`
     SELECT isin, name, valuta, aum_mln, ter,
            perf1m, perf6m, perf1y, perf5y,
            vol1y, maxdd1y, maxdd5y, distribuzione, categoria
     FROM etf_catalog
     WHERE active = 1
-      AND aum_mln >= ?
-      AND (ter IS NULL OR ter <= ?)
-      AND (vol1y IS NULL OR vol1y <= ?)
-      AND maxdd1y IS NOT NULL AND maxdd1y >= ?
-      AND (maxdd5y IS NULL OR maxdd5y >= ?)
+      AND aum_mln >= $1
+      AND (ter IS NULL OR ter <= $2)
+      AND (vol1y IS NULL OR vol1y <= $3)
+      AND maxdd1y IS NOT NULL AND maxdd1y >= $4
+      AND (maxdd5y IS NULL OR maxdd5y >= $5)
       ${escludiObblAggressivo}
     ORDER BY aum_mln DESC
     LIMIT 300
-  `).all(f.minAum, f.maxTer, f.maxVol, f.maxDrawdown, f.maxDd5y)
-    // Filtra: tieni solo ETF con ticker noto OPPURE già prezzati con successo
+  `, [f.minAum, f.maxTer, f.maxVol, f.maxDrawdown, f.maxDd5y]);
+  const rows = _rawRows
     .filter(e => ISIN_CON_TICKER_NOTO.has(e.isin) || isinConPrezzoInDB.has(e.isin))
     .filter(e => !escludiDistribuzione || e.distribuzione !== 'Distribuzione');
 
@@ -496,7 +496,7 @@ router.post('/crea-portafoglio', async (req, res) => {
 
   // Carica ETF dal DB filtrati per profilo + notizie macro in parallelo
   const [etfDisponibili, news] = await Promise.all([
-    Promise.resolve(getEtfPerProfilo(profilo, escludiDistribuzione)),
+    getEtfPerProfilo(profilo, escludiDistribuzione),
     fetchMacroNews(),
   ]);
   const macroContext = buildMacroContext(news, orizzonteAnni || 5);
@@ -648,9 +648,10 @@ IMPORTANTE: se la quota azionaria calcolata non rientra nel range obbligatorio, 
     try {
       const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10); // ultimi 30gg
       // Leggi tutti i prezzi recenti in una query sola
-      const allPrezzi = db.prepare(
-        'SELECT isin, prezzo FROM prezzi_storici WHERE data >= ? AND prezzo > 0 ORDER BY data DESC'
-      ).all(cutoff);
+      const { rows: allPrezzi } = await db.query(
+        'SELECT isin, prezzo FROM prezzi_storici WHERE data >= $1 AND prezzo > 0 ORDER BY data DESC',
+        [cutoff]
+      );
       // Tieni solo il più recente per ISIN
       allPrezzi.forEach(r => { if (!prezziDB[r.isin]) prezziDB[r.isin] = r.prezzo; });
       console.log(`  [crea-portafoglio] Prezzi da DB: ${Object.keys(prezziDB).length} ISIN disponibili`);
@@ -765,7 +766,7 @@ IMPORTANTE: se la quota azionaria calcolata non rientra nel range obbligatorio, 
     selezione.forEach(s => { s.tipo = 'consigliato'; });
 
     // Pool per alternative: filtri rilassati (vol<=25%, dd>=-35%) per avere sempre 2 alternative per TOP
-    const etfPerAlternative = getEtfPerProfilo(profilo, false, true);
+    const etfPerAlternative = await getEtfPerProfilo(profilo, false, true);
 
     const selezioneConAlternative = [];
     const isinUsatiPerAlternative = new Set(isinConsigliati); // parte già con tutti i consigliati esclusi
@@ -823,9 +824,11 @@ IMPORTANTE: se la quota azionaria calcolata non rientra nel range obbligatorio, 
           // Salva in prezzi_storici per i prossimi reload
           try {
             const oggi = new Date().toISOString().slice(0, 10);
-            db.prepare(`INSERT INTO prezzi_storici (isin, data, prezzo) VALUES (?, ?, ?)
-              ON CONFLICT(isin, data) DO UPDATE SET prezzo = excluded.prezzo`
-            ).run(etf.isin, oggi, fetched.quotazione);
+            await db.query(
+              `INSERT INTO prezzi_storici (isin, data, prezzo) VALUES ($1, $2, $3)
+               ON CONFLICT(isin, data) DO UPDATE SET prezzo = EXCLUDED.prezzo`,
+              [etf.isin, oggi, fetched.quotazione]
+            );
           } catch {}
           console.log(`    ✓ ${etf.isin}: EUR${fetched.quotazione} (Yahoo live)`);
         } else {
