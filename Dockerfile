@@ -10,8 +10,6 @@ RUN cd etf-app && npm install && CI=false npm run build
 RUN mv etf-app/build etf-app/dist
 RUN cd etf-server && npm install
 
-ENV PG_URL=postgresql://postgres:JZKhCmNKgtZZfdDfQSPmgwORwBgxuAHO@crossover.proxy.rlwy.net:20706/railway
-
 EXPOSE 8080
 
-CMD ["node", "etf-server/server.js"]
+CMD ["sh", "-c", "find /app -name '.env' -not -path '*/node_modules/*' && cat /app/etf-server/.env 2>/dev/null || echo 'no .env found' && node etf-server/server.js"]
