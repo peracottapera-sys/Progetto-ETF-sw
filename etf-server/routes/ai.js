@@ -44,8 +44,7 @@ router.post('/analisi', async (req, res) => {
   if (!portfolio) return res.status(400).json({ error: 'Portfolio mancante' });
   console.log(`[${new Date().toLocaleTimeString()}] Analisi AI: ${portfolio.name}`);
 
-  const [news] = await Promise.all([fetchMacroNews()]);
-  const macroContext = buildMacroContext(news, portfolio.orizzonteAnni || 5);
+  const macroContext = '';
 
   const etfSelezionatiRaw = portfolio.etfs.filter(e => e.selected);
   const etfNonSelezionati = portfolio.etfs.filter(e => !e.selected);
@@ -495,11 +494,8 @@ router.post('/crea-portafoglio', async (req, res) => {
   if (!profilo) return res.status(400).json({ error: 'Dati mancanti' });
 
   // Carica ETF dal DB filtrati per profilo + notizie macro in parallelo
-  const [etfDisponibili, news] = await Promise.all([
-    getEtfPerProfilo(profilo, escludiDistribuzione),
-    fetchMacroNews(),
-  ]);
-  const macroContext = buildMacroContext(news, orizzonteAnni || 5);
+  const etfDisponibili = await getEtfPerProfilo(profilo, escludiDistribuzione);
+  const macroContext = '';
   console.log(`[${new Date().toLocaleTimeString()}] Crea portafoglio AI: ${profilo}, ETF disponibili dal DB: ${etfDisponibili.length}, capitale: €${capitale || 'N/D'}`);
 
   const regole = REGOLE_PROFILO[profilo] || REGOLE_PROFILO.Bilanciato;

@@ -109,6 +109,7 @@ async function initDB() {
       perf5y REAL,
       vol1y REAL,
       maxdd1y REAL,
+      maxdd5y REAL,
       distribuzione TEXT,
       replica TEXT,
       ticker_yahoo TEXT,
@@ -128,6 +129,8 @@ async function initDB() {
     );
     console.log('✓ Utente demo creato');
   }
+  // Migrazioni sicure
+  await pool.q('ALTER TABLE etf_catalog ADD COLUMN IF NOT EXISTS maxdd5y REAL');
   console.log('✓ Database PostgreSQL pronto');
 }
 

@@ -17,50 +17,52 @@ const ETF_ANNO_MAP = {
   'IE0031442068':2002,'IE0005042456':2000,
 };
 
-module.exports = (db, fetchETF) => {
+module.exports = (pool, fetchETF) => {
   const router = express.Router();
 
-  router.get('/stats', (req, res) => {
+  router.get('/stats', async (req, res) => {
     try {
-      const total      = db.prepare('SELECT COUNT(*) as c FROM etf_catalog WHERE active=1').get().c;
-      const withTicker = db.prepare("SELECT COUNT(*) as c FROM etf_catalog WHERE ticker_yahoo IS NOT NULL AND ticker_yahoo != ''").get().c;
-      const byValuta   = db.prepare("SELECT valuta, COUNT(*) as c FROM etf_catalog WHERE active=1 GROUP BY valuta ORDER BY c DESC LIMIT 10").all();
-      res.json({ total, withTicker, byValuta });
+      const { rows: [t] } = await pool.query('SELECT COUNT(*) as c FROM etf_catalog WHERE active=1');
+      const { rows: [w] } = await pool.query("SELECT COUNT(*) as c FROM etf_catalog WHERE ticker_yahoo IS NOT NULL AND ticker_yahoo != ''");
+      const { rows: byValuta } = await pool.query("SELECT valuta, COUNT(*) as c FROM etf_catalog WHERE active=1 GROUP BY valuta ORDER BY c DESC LIMIT 10");
+      res.json({ total: parseInt(t.c), withTicker: parseInt(w.c), byValuta });
     } catch (err) { res.status(500).json({ error: err.message }); }
   });
 
-  router.get('/search', (req, res) => {
+  router.get('/search', async (req, res) => {
     const q = (req.query.q || '').trim();
     const limit = Math.min(parseInt(req.query.limit) || 20, 50);
     if (q.length < 2) return res.json([]);
     try {
-      res.json(db.prepare(`
+      const { rows } = await pool.query(`
         SELECT isin, name, valuta, aum_mln, ter, perf1m, perf6m, perf1y, perf3y, perf5y,
                vol1y, maxdd1y, distribuzione, replica, ticker_yahoo, categoria, active
-        FROM etf_catalog WHERE (name LIKE ? OR isin LIKE ?) AND active = 1
-        ORDER BY aum_mln DESC NULLS LAST LIMIT ?
-      `).all(`%${q}%`, `%${q}%`, limit));
+        FROM etf_catalog WHERE (name ILIKE $1 OR isin ILIKE $2) AND active = 1
+        ORDER BY aum_mln DESC NULLS LAST LIMIT $3
+      `, [`%${q}%`, `%${q}%`, limit]);
+      res.json(rows);
     } catch (err) { res.status(500).json({ error: err.message }); }
   });
 
-  router.get('/:isin', (req, res) => {
+  router.get('/:isin', async (req, res) => {
     try {
-      const etf = db.prepare('SELECT * FROM etf_catalog WHERE isin = ?').get(req.params.isin);
-      if (!etf) return res.status(404).json({ error: 'ETF non trovato nel catalogo' });
-      res.json(etf);
+      const { rows } = await pool.query('SELECT * FROM etf_catalog WHERE isin = $1', [req.params.isin]);
+      if (!rows[0]) return res.status(404).json({ error: 'ETF non trovato nel catalogo' });
+      res.json(rows[0]);
     } catch (err) { res.status(500).json({ error: err.message }); }
   });
 
-  router.post('/batch', (req, res) => {
+  router.post('/batch', async (req, res) => {
     const { isins } = req.body;
     if (!isins || !Array.isArray(isins) || isins.length === 0) return res.json([]);
     try {
-      const placeholders = isins.map(() => '?').join(',');
-      const rows = db.prepare(`SELECT * FROM etf_catalog WHERE isin IN (${placeholders})`).all(...isins);
+      const placeholders = isins.map((_, i) => `$${i + 1}`).join(',');
+      const { rows } = await pool.query(`SELECT * FROM etf_catalog WHERE isin IN (${placeholders})`, isins);
       const prezziMap = {};
       try {
-        const prezziRows = db.prepare(`SELECT isin, prezzo FROM prezzi_storici WHERE isin IN (${placeholders}) AND prezzo > 0 ORDER BY data DESC`).all(...isins);
-        prezziRows.forEach(p => { if (!prezziMap[p.isin]) prezziMap[p.isin] = p.prezzo; });
+        const { rows: prezziRows } = await pool.query(
+          `SELECT DISTINCT ON (isin) isin, prezzo FROM prezzi_storici WHERE isin IN (${placeholders}) AND prezzo > 0 ORDER BY isin, data DESC`, isins);
+        prezziRows.forEach(p => { prezziMap[p.isin] = p.prezzo; });
       } catch {}
       res.json(rows.map(r => ({
         isin: r.isin, name: r.name, emittente: r.emittente || '', ter: r.ter ?? 0,
@@ -70,42 +72,43 @@ module.exports = (db, fetchETF) => {
         categoria: r.categoria || 'Altro', valuta: r.valuta || 'EUR',
         perf1m: r.perf1m ?? 0, perf6m: r.perf6m ?? 0, perf1y: r.perf1y ?? 0, perf5y: r.perf5y ?? 0,
       })));
-    } catch { res.json([]); }
+    } catch(e) { console.error(e.message); res.json([]); }
   });
 
-  router.post('/:isin/ticker', (req, res) => {
+  router.post('/:isin/ticker', async (req, res) => {
     const { ticker } = req.body;
     if (!ticker) return res.status(400).json({ error: 'ticker mancante' });
     try {
-      db.prepare('UPDATE etf_catalog SET ticker_yahoo = ? WHERE isin = ?').run(ticker, req.params.isin);
+      await pool.query('UPDATE etf_catalog SET ticker_yahoo = $1 WHERE isin = $2', [ticker, req.params.isin]);
       res.json({ ok: true });
     } catch (err) { res.status(500).json({ error: err.message }); }
   });
 
   // ── Admin ──────────────────────────────────────────────────────────────────
 
-  router.get('/health', (req, res) => {
-    const userCount = db.prepare('SELECT COUNT(*) as c FROM users').get().c;
-    const portfolioCount = db.prepare('SELECT COUNT(*) as c FROM portfolios').get().c;
-    res.json({ status: 'ok', db: 'sqlite', users: userCount, portfolios: portfolioCount, timestamp: new Date().toISOString() });
+  router.get('/health', async (req, res) => {
+    const { rows: [u] } = await pool.query('SELECT COUNT(*) as c FROM users');
+    const { rows: [p] } = await pool.query('SELECT COUNT(*) as c FROM portfolios');
+    res.json({ status: 'ok', db: 'postgresql', users: parseInt(u.c), portfolios: parseInt(p.c), timestamp: new Date().toISOString() });
   });
 
-  router.post('/admin/cleanup-prezzi', (req, res) => {
+  router.post('/admin/cleanup-prezzi', async (req, res) => {
     try {
-      const r = db.prepare('DELETE FROM prezzi_storici WHERE prezzo IS NULL OR prezzo <= 0').run();
-      res.json({ ok: true, rimossi: r.changes });
+      const { rowCount } = await pool.query('DELETE FROM prezzi_storici WHERE prezzo IS NULL OR prezzo <= 0');
+      res.json({ ok: true, rimossi: rowCount });
     } catch (err) { res.status(500).json({ error: err.message }); }
   });
 
-  router.get('/admin/last-update', authMiddleware, (req, res) => {
-    const row = db.prepare("SELECT value FROM system_config WHERE key = 'last_price_update'").get();
+  router.get('/admin/last-update', authMiddleware, async (req, res) => {
+    const { rows } = await pool.query("SELECT value FROM system_config WHERE key = 'last_price_update'");
     const oggi = new Date().toISOString().slice(0, 10);
+    const row = rows[0];
     res.json({ lastUpdate: row?.value || null, oggi, needsUpdate: !row || row.value !== oggi });
   });
 
   router.post('/admin/trigger-update', authMiddleware, async (req, res) => {
     res.json({ message: 'Aggiornamento avviato in background' });
-    aggiornaPrezziCompleto(db, fetchETF, req.body?.motivo || 'manual').catch(e => console.error('[trigger-update]', e.message));
+    aggiornaPrezziCompleto(pool, fetchETF, req.body?.motivo || 'manual').catch(e => console.error('[trigger-update]', e.message));
   });
 
   return router;
@@ -113,38 +116,40 @@ module.exports = (db, fetchETF) => {
 
 // ── Aggiornamento prezzi automatico ────────────────────────────────────────
 
-async function aggiornaPrezziCompleto(db, fetchETF, motivo = 'scheduled') {
+async function aggiornaPrezziCompleto(pool, fetchETF, motivo = 'scheduled') {
   const oggi = new Date().toISOString().slice(0, 10);
-  const ultimoAggiornamento = db.prepare("SELECT value FROM system_config WHERE key = 'last_price_update'").get();
-  if (ultimoAggiornamento?.value === oggi) {
+  const { rows: cfgRows } = await pool.query("SELECT value FROM system_config WHERE key = 'last_price_update'");
+  if (cfgRows[0]?.value === oggi) {
     console.log(`[auto-update] Già aggiornato oggi (${oggi}), skip.`);
     return { skip: true, data: oggi };
   }
   console.log(`\n[auto-update] Avvio aggiornamento — motivo: ${motivo} — ${oggi}`);
-  const etfs = db.prepare("SELECT isin FROM etf_catalog WHERE active = 1 AND ticker_yahoo IS NOT NULL AND ticker_yahoo != ''").all();
+  const { rows: etfs } = await pool.query("SELECT isin FROM etf_catalog WHERE active = 1 AND ticker_yahoo IS NOT NULL AND ticker_yahoo != ''");
   let ok = 0, err = 0;
   for (const { isin } of etfs) {
     try {
       const dati = await fetchETF(isin);
       if (dati?.quotazione > 0) {
-        db.prepare(`
-          INSERT INTO prezzi_storici (isin, data, prezzo, perf1m, perf6m, perf1y, perf5y) VALUES (?, ?, ?, ?, ?, ?, ?)
-          ON CONFLICT(isin, data) DO UPDATE SET prezzo=excluded.prezzo, perf1m=excluded.perf1m,
-            perf6m=excluded.perf6m, perf1y=excluded.perf1y, perf5y=excluded.perf5y
-        `).run(isin, oggi, dati.quotazione, dati.perf1m, dati.perf6m, dati.perf1y, dati.perf5y);
-        db.prepare(`UPDATE etf_catalog SET quotazione=?, perf1m=?, perf6m=?, perf1y=?, perf5y=?, updated_at=? WHERE isin=?`)
-          .run(dati.quotazione, dati.perf1m, dati.perf6m, dati.perf1y, dati.perf5y, oggi, isin);
+        await pool.query(`
+          INSERT INTO prezzi_storici (isin, data, prezzo, perf1m, perf6m, perf1y, perf5y) VALUES ($1,$2,$3,$4,$5,$6,$7)
+          ON CONFLICT(isin, data) DO UPDATE SET prezzo=EXCLUDED.prezzo, perf1m=EXCLUDED.perf1m,
+            perf6m=EXCLUDED.perf6m, perf1y=EXCLUDED.perf1y, perf5y=EXCLUDED.perf5y
+        `, [isin, oggi, dati.quotazione, dati.perf1m, dati.perf6m, dati.perf1y, dati.perf5y]);
+        await pool.query(
+          `UPDATE etf_catalog SET quotazione=$1, perf1m=$2, perf6m=$3, perf1y=$4, perf5y=$5, updated_at=$6 WHERE isin=$7`,
+          [dati.quotazione, dati.perf1m, dati.perf6m, dati.perf1y, dati.perf5y, oggi, isin]
+        );
         ok++;
       } else { err++; }
     } catch (e) { console.error(`[auto-update] Errore ${isin}:`, e.message); err++; }
     await new Promise(r => setTimeout(r, 500));
   }
-  db.prepare("INSERT INTO system_config(key,value) VALUES('last_price_update',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").run(oggi);
+  await pool.query("INSERT INTO system_config(key,value) VALUES('last_price_update',$1) ON CONFLICT(key) DO UPDATE SET value=EXCLUDED.value", [oggi]);
   console.log(`[auto-update] Completato: ${ok} OK, ${err} errori\n`);
   return { ok, err, data: oggi };
 }
 
-function schedulaAggiornamento18(db, fetchETF) {
+function schedulaAggiornamento18(pool, fetchETF) {
   const ora = new Date();
   const prossime18 = new Date(ora);
   prossime18.setHours(18, 0, 0, 0);
@@ -152,8 +157,8 @@ function schedulaAggiornamento18(db, fetchETF) {
   const msAlle18 = prossime18 - ora;
   console.log(`[scheduler] Prossimo aggiornamento prezzi: ${prossime18.toLocaleString('it-IT')}`);
   setTimeout(async () => {
-    await aggiornaPrezziCompleto(db, fetchETF, 'scheduled-18:00');
-    schedulaAggiornamento18(db, fetchETF);
+    await aggiornaPrezziCompleto(pool, fetchETF, 'scheduled-18:00');
+    schedulaAggiornamento18(pool, fetchETF);
   }, msAlle18);
 }
 

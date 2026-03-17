@@ -125,11 +125,11 @@ module.exports = (db) => {
         risultati[isin] = dati;
         if (dati.quotazione > 0) {
           const oggi = new Date().toISOString().slice(0, 10);
-          db.prepare(`
-            INSERT INTO prezzi_storici (isin, data, prezzo, perf1m, perf6m, perf1y, perf5y) VALUES (?, ?, ?, ?, ?, ?, ?)
-            ON CONFLICT(isin, data) DO UPDATE SET prezzo=excluded.prezzo, perf1m=excluded.perf1m,
-              perf6m=excluded.perf6m, perf1y=excluded.perf1y, perf5y=excluded.perf5y
-          `).run(isin, oggi, dati.quotazione, dati.perf1m, dati.perf6m, dati.perf1y, dati.perf5y);
+          await db.query(`
+            INSERT INTO prezzi_storici (isin, data, prezzo, perf1m, perf6m, perf1y, perf5y) VALUES ($1,$2,$3,$4,$5,$6,$7)
+            ON CONFLICT(isin, data) DO UPDATE SET prezzo=EXCLUDED.prezzo, perf1m=EXCLUDED.perf1m,
+              perf6m=EXCLUDED.perf6m, perf1y=EXCLUDED.perf1y, perf5y=EXCLUDED.perf5y
+          `, [isin, oggi, dati.quotazione, dati.perf1m, dati.perf6m, dati.perf1y, dati.perf5y]);
         }
       }
       await new Promise(r => setTimeout(r, 600));
