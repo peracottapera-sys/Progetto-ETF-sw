@@ -1,9 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 
-const API = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_URL)
-  || process.env?.REACT_APP_API_URL
-  || 'http://localhost:3001';
+const API = process.env.REACT_APP_API_URL || (window.location.hostname === 'localhost' ? 'http://localhost:3001' : '');
 
 function CreaPortafoglioModal({ portfolioId, onClose, initialProfilo, initialData }) {
   const { applicaPortafoglioAI } = useApp();

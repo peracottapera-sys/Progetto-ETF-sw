@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 
-const API = 'http://localhost:3001';
+const API = process.env.REACT_APP_API_URL || (window.location.hostname === 'localhost' ? 'http://localhost:3001' : '');
 
 export default function PortfolioSelector() {
   const { currentUser, getUserPortfolios, selectPortfolio, createPortfolio, deletePortfolio, logout, token, setPendingAIResult, loadPortfoliosFromDB } = useApp();

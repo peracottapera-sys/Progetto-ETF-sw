@@ -5,9 +5,7 @@ import VenditaModal from './modals/VenditaModal';
 import AIModal from './modals/AIModal';
 import CreaPortafoglioModal from './modals/CreaPortafoglioModal';
 
-const API = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_URL)
-  || process.env?.REACT_APP_API_URL
-  || 'http://localhost:3001';
+const API = process.env.REACT_APP_API_URL || (window.location.hostname === 'localhost' ? 'http://localhost:3001' : '');
 
 export default function Dashboard() {
   const { currentPortfolio, toggleEtfSelection, aggiornaPrezziBatch, token, loadPortfoliosFromDB, currentUser, pendingAIResult, setPendingAIResult } = useApp();

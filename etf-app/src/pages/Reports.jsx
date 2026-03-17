@@ -2,9 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useApp } from '../context/AppContext';
 import { exportToPDF, exportToExcel } from './reportExport';
 
-const API = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_URL)
-  || process.env?.REACT_APP_API_URL
-  || 'http://localhost:3001';
+const API = process.env.REACT_APP_API_URL || (window.location.hostname === 'localhost' ? 'http://localhost:3001' : '');
 const CURRENT_YEAR = new Date().getFullYear();
 const YEARS = Array.from({ length: 5 }, (_, i) => CURRENT_YEAR - i);
 const MONTHS = [
