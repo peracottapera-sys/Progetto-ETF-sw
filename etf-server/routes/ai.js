@@ -799,11 +799,23 @@ IMPORTANTE: se la quota azionaria calcolata non rientra nel range obbligatorio, 
       selezioneConAlternative.push(...alternative);
     });
 
-    // Fetch Yahoo in tempo reale per ETF ancora senza prezzo (non in prezziDB né in ETF_INFO_MAP)
+    // Fetch Yahoo in tempo reale per ETF ancora senza prezzo — solo se hanno ticker nel DB
     const etfSenzaPrezzo = selezioneConAlternative.filter(e => !e.quotazioneAcquisto || e.quotazioneAcquisto <= 0);
     if (etfSenzaPrezzo.length > 0) {
-      console.log(`  Fetch Yahoo live per ${etfSenzaPrezzo.length} ETF senza prezzo...`);
-      for (const etf of etfSenzaPrezzo) {
+      // Carica ticker dal DB per questi ISIN
+      const isinSenzaPrezzo = etfSenzaPrezzo.map(e => e.isin);
+      const placeholdersTicker = isinSenzaPrezzo.map((_, i) => `$${i+1}`).join(',');
+      let tickerDBMap = {};
+      try {
+        const { rows: tickerRows } = await db.query(
+          `SELECT isin, ticker_yahoo FROM etf_catalog WHERE isin IN (${placeholdersTicker}) AND ticker_yahoo IS NOT NULL AND ticker_yahoo != ''`,
+          isinSenzaPrezzo
+        );
+        tickerRows.forEach(r => { tickerDBMap[r.isin] = r.ticker_yahoo; });
+      } catch {}
+      const etfConTicker = etfSenzaPrezzo.filter(e => tickerDBMap[e.isin]);
+      console.log(`  Fetch Yahoo live per ${etfConTicker.length}/${etfSenzaPrezzo.length} ETF senza prezzo (con ticker)...`);
+      for (const etf of etfConTicker) {
         const fetched = await fetchETF(etf.isin);
         if (fetched?.quotazione > 0) {
           etf.quotazioneAcquisto = fetched.quotazione;
