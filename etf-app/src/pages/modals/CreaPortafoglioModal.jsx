@@ -243,6 +243,68 @@ function CreaPortafoglioModal({ portfolioId, onClose, initialProfilo, initialDat
                       )}
                       {corrMax && <Pill label="Corr. max" value={corrMax} color={parseFloat(corrMax) > 0.6 ? 'var(--accent-amber)' : 'var(--accent-green)'} />}
                     </div>
+
+                    {/* Split Paesi (top 5) e Valute (top 3) */}
+                    {(() => {
+                      // Mappa categoria → paese principale
+                      const getPaese = (s) => {
+                        const cat = (s.categoria || '').toLowerCase();
+                        const nome = (s.name || '').toLowerCase();
+                        if (cat.includes('azionario usa') || nome.includes('s&p') || nome.includes('nasdaq') || nome.includes('russell') || nome.includes(' usa') || nome.includes('us equity') || nome.includes('united states')) return 'USA';
+                        if (cat.includes('azionario europa') || nome.includes('stoxx') || nome.includes('europe') || nome.includes('euro stoxx') || nome.includes('ftse europe')) return 'Europa';
+                        if (cat.includes('azionario emergenti') || nome.includes('emerging') || nome.includes('emergenti')) return 'Emergenti';
+                        if (cat.includes('azionario pacifico') || nome.includes('japan') || nome.includes('giappone') || nome.includes('pacific')) return 'Giappone/Pacifico';
+                        if (cat.includes('azionario globale') || nome.includes('world') || nome.includes('acwi') || nome.includes('all-world')) return 'Globale';
+                        if (cat.includes('obbligaz') || cat.includes('bond') || cat.includes('monetar') || cat.includes('liquidit')) return 'Obbligazionario/Liquidità';
+                        if (cat.includes('materie') || cat.includes('commodity') || cat.includes('gold') || cat.includes('oro')) return 'Materie Prime';
+                        return 'Altro';
+                      };
+                      const paesiPeso = {};
+                      consigliati.forEach(s => {
+                        const i = selezione.indexOf(s);
+                        const p = parseFloat(pesi[i]) || s.peso || 0;
+                        const paese = getPaese(s);
+                        paesiPeso[paese] = (paesiPeso[paese] || 0) + p;
+                      });
+                      const topPaesi = Object.entries(paesiPeso).sort((a,b) => b[1]-a[1]).slice(0,5);
+
+                      // Valute
+                      const valutePeso = {};
+                      consigliati.forEach(s => {
+                        const i = selezione.indexOf(s);
+                        const p = parseFloat(pesi[i]) || s.peso || 0;
+                        const v = s.valuta || 'EUR';
+                        valutePeso[v] = (valutePeso[v] || 0) + p;
+                      });
+                      const topValute = Object.entries(valutePeso).sort((a,b) => b[1]-a[1]).slice(0,3);
+
+                      return (
+                        <div style={{ display:'flex', gap:8, marginTop:8, flexWrap:'wrap' }}>
+                          {topPaesi.length > 0 && (
+                            <div style={{ background:'var(--bg-primary)', borderRadius:8, padding:'8px 12px', border:'1px solid var(--border)', flex:1, minWidth:140 }}>
+                              <div style={{ fontSize:11, color:'var(--text-secondary)', marginBottom:5 }}>Aree geografiche (top {topPaesi.length})</div>
+                              {topPaesi.map(([paese, peso]) => (
+                                <div key={paese} style={{ display:'flex', justifyContent:'space-between', fontSize:11, marginBottom:2 }}>
+                                  <span style={{ color:'var(--text-primary)' }}>{paese}</span>
+                                  <span style={{ fontWeight:700, color:'var(--accent-blue)', minWidth:36, textAlign:'right' }}>{Math.round(peso)}%</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          {topValute.length > 0 && (
+                            <div style={{ background:'var(--bg-primary)', borderRadius:8, padding:'8px 12px', border:'1px solid var(--border)', minWidth:100 }}>
+                              <div style={{ fontSize:11, color:'var(--text-secondary)', marginBottom:5 }}>Valute (top {topValute.length})</div>
+                              {topValute.map(([valuta, peso]) => (
+                                <div key={valuta} style={{ display:'flex', justifyContent:'space-between', fontSize:11, marginBottom:2 }}>
+                                  <span style={{ color:'var(--text-primary)' }}>{valuta}</span>
+                                  <span style={{ fontWeight:700, color:'var(--accent-green)', minWidth:36, textAlign:'right' }}>{Math.round(peso)}%</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </div>
                 );
               })()}
