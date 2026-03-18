@@ -106,51 +106,55 @@ function CreaPortafoglioModal({ portfolioId, onClose, initialProfilo, initialDat
         <div style={{ overflowY: 'auto', flex: 1 }}>
           {step === 'form' && (
             <div>
-              <div className="form-group">
-                <label className="form-label">Profilo di rischio</label>
-                <select className="input" value={form.profilo} onChange={e => setForm(f => ({ ...f, profilo: e.target.value }))}>
-                  <option>Prudente</option>
-                  <option>Bilanciato</option>
-                  <option>Aggressivo</option>
-                </select>
-              </div>
-              <div className="form-group">
-                <label className="form-label">Orizzonte temporale (anni)</label>
-                <input className="input" type="number" min="1" max="30"
-                  value={form.orizzonteAnni} onChange={e => setForm(f => ({ ...f, orizzonteAnni: e.target.value }))} />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Capitale disponibile (€) — opzionale</label>
-                <input className="input" type="number" min="0" placeholder="Es: 10000"
-                  value={form.capitale} onChange={e => setForm(f => ({ ...f, capitale: e.target.value }))} />
-                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
-                  Se inserito, verranno calcolate automaticamente le quote da acquistare
+              {/* Riga 1: Profilo + Orizzonte */}
+              <div style={{ display:'flex', gap:12, marginBottom:12 }}>
+                <div style={{ flex:1 }}>
+                  <label className="form-label">Profilo di rischio</label>
+                  <select className="input" value={form.profilo} onChange={e => setForm(f => ({ ...f, profilo: e.target.value }))}>
+                    <option>Prudente</option>
+                    <option>Bilanciato</option>
+                    <option>Aggressivo</option>
+                  </select>
+                </div>
+                <div style={{ flex:1 }}>
+                  <label className="form-label">Orizzonte (anni)</label>
+                  <input className="input" type="number" min="1" max="30"
+                    value={form.orizzonteAnni} onChange={e => setForm(f => ({ ...f, orizzonteAnni: e.target.value }))} />
                 </div>
               </div>
-              <div className="form-group">
+              {/* Riga 2: Capitale + Max USA */}
+              <div style={{ display:'flex', gap:12, marginBottom:12 }}>
+                <div style={{ flex:1 }}>
+                  <label className="form-label">Capitale (€) — opzionale</label>
+                  <input className="input" type="number" min="0" placeholder="Es: 10000"
+                    value={form.capitale} onChange={e => setForm(f => ({ ...f, capitale: e.target.value }))} />
+                  <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:3 }}>Quote calcolate automaticamente</div>
+                </div>
+                <div style={{ flex:1 }}>
+                  <label className="form-label">Limite USA — opzionale</label>
+                  <select className="input" value={form.maxUSA} onChange={e => setForm(f => ({ ...f, maxUSA: e.target.value }))}>
+                    <option value="No max">Nessun limite</option>
+                    <option value="60%">Max 60%</option>
+                    <option value="30%">Max 30%</option>
+                    <option value="0%">Nessuna esposizione USA</option>
+                  </select>
+                  <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:3 }}>Esposizione stimata agli ETF USA</div>
+                </div>
+              </div>
+              {/* Riga 3: Preferenze (campo largo) */}
+              <div style={{ marginBottom:12 }}>
                 <label className="form-label">Preferenze o note — opzionale</label>
-                <input className="input" placeholder="Es: preferisco ETF a basso TER, evitare emergenti..."
+                <input className="input" placeholder="Es: preferisco ETF a basso TER, voglio 1 ETF Oil&Gas..."
                   value={form.preferenze} onChange={e => setForm(f => ({ ...f, preferenze: e.target.value }))} />
               </div>
-              <div className="form-group">
-                <label className="form-label">Limite esposizione USA — opzionale</label>
-                <select className="input" value={form.maxUSA} onChange={e => setForm(f => ({ ...f, maxUSA: e.target.value }))}>
-                  <option value="No max">Nessun limite</option>
-                  <option value="60%">Max 60%</option>
-                  <option value="30%">Max 30%</option>
-                  <option value="0%">Nessuna esposizione USA</option>
-                </select>
-                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
-                  Limita la % del portafoglio investita in ETF con esposizione prevalente agli USA
-                </div>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0', borderTop: '1px solid var(--border)', marginTop: 4 }}>
+              {/* Checkbox distribuzione */}
+              <div style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 0', borderTop:'1px solid var(--border)' }}>
                 <input type="checkbox" id="escludiDistr" checked={form.escludiDistribuzione}
                   onChange={e => setForm(f => ({ ...f, escludiDistribuzione: e.target.checked }))}
-                  style={{ width: 16, height: 16, cursor: 'pointer', accentColor: 'var(--accent-gold)' }} />
-                <label htmlFor="escludiDistr" style={{ fontSize: 13, cursor: 'pointer', userSelect: 'none' }}>
+                  style={{ width:16, height:16, cursor:'pointer', accentColor:'var(--accent-gold)' }} />
+                <label htmlFor="escludiDistr" style={{ fontSize:13, cursor:'pointer', userSelect:'none' }}>
                   Escludi ETF a <strong>Distribuzione</strong>
-                  <span style={{ fontSize: 11, color: 'var(--text-muted)', marginLeft: 6 }}>(preferisci Accumulazione per fiscalità italiana)</span>
+                  <span style={{ fontSize:11, color:'var(--text-muted)', marginLeft:6 }}>(preferisci Accumulazione per fiscalità italiana)</span>
                 </label>
               </div>
               {errore && <div className="alert alert-warning">⚠️ {errore}</div>}
@@ -290,10 +294,10 @@ function CreaPortafoglioModal({ portfolioId, onClose, initialProfilo, initialDat
                 const getMacroAsset = (s) => {
                   const cat = (s.categoria || '').toLowerCase();
                   const nome = (s.name || '').toLowerCase();
+                  // IMPORTANTE: obbligazionario PRIMA di azionario perché "obbligazionario" contiene "azionario"
+                  if (cat.startsWith('obbligaz') || cat.includes('bond') || cat.includes('corporate') || cat.includes('government') || cat.includes('high yield') || cat.includes('aggregate') || cat.includes('liquidit') || cat.includes('monetar') || cat.includes('overnight')) return cat.includes('liquidit') || cat.includes('monetar') || cat.includes('overnight') ? 'Liquidità' : 'Obbligazionario';
                   if (cat.includes('azionario')) return 'Azionario';
-                  if (cat.includes('obbligaz') || cat.includes('bond') || cat.includes('corporate') || cat.includes('government') || cat.includes('high yield') || cat.includes('aggregate') || nome.includes('corporate bond') || nome.includes('bond')) return 'Obbligazionario';
                   if (cat.includes('materie') || cat.includes('commodity') || cat.includes('gold') || cat.includes('oro') || cat.includes('metal')) return 'Materie Prime';
-                  if (cat.includes('liquidit') || cat.includes('monetar') || cat.includes('overnight')) return 'Liquidità';
                   if (cat.includes('immobil') || cat.includes('reit')) return 'Immobiliare';
                   return 'Altro';
                 };
@@ -319,7 +323,7 @@ function CreaPortafoglioModal({ portfolioId, onClose, initialProfilo, initialDat
                     <div style={{ display:'flex', gap:8, alignItems:'flex-start' }}>
                       {/* Categorie dettagliate — leggermente più strette */}
                       {Object.keys(catCount).length > 0 && (
-                        <div style={{ background:'var(--bg-primary)', borderRadius:8, padding:'8px 12px', border:'1px solid var(--border)', flex:'0 0 52%' }}>
+                        <div style={{ background:'var(--bg-primary)', borderRadius:8, padding:'8px 12px', border:'1px solid var(--border)', flex:'0 0 52%', alignSelf:'stretch' }}>
                           <div style={{ fontSize:11, color:'var(--text-secondary)', marginBottom:5 }}>
                             Categorie ({macroDistinte.size} macro-aree)
                           </div>
