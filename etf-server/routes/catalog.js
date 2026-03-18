@@ -34,19 +34,33 @@ module.exports = (pool, fetchETF) => {
     const limit = Math.min(parseInt(req.query.limit) || 20, 50);
     if (q.length < 2) return res.json([]);
     try {
+      // Ricerca multi-parola: ogni parola deve essere presente nel nome
+      const words = q.split(/\s+/).filter(w => w.length > 0);
+      const params = [];
+      let whereClause;
+      if (words.length === 1) {
+        params.push(`%${words[0]}%`, `%${words[0]}%`);
+        whereClause = `(name ILIKE $1 OR isin ILIKE $2)`;
+      } else {
+        whereClause = words.map((w, i) => {
+          params.push(`%${w}%`);
+          return `name ILIKE $${i + 1}`;
+        }).join(' AND ');
+      }
+      params.push(limit);
       const { rows } = await pool.query(`
         SELECT isin, name, valuta, aum_mln, ter, perf1m, perf6m, perf1y, perf3y, perf5y,
                vol1y, maxdd1y, distribuzione, replica, ticker_yahoo, categoria, active, quotazione
-        FROM etf_catalog WHERE (name ILIKE $1 OR isin ILIKE $2) AND active = 1
-        ORDER BY aum_mln DESC NULLS LAST LIMIT $3
-      `, [`%${q}%`, `%${q}%`, limit]);
-      // Arricchisci con prezzi_storici (più aggiornati di etf_catalog.quotazione)
+        FROM etf_catalog WHERE ${whereClause} AND active = 1
+        ORDER BY aum_mln DESC NULLS LAST LIMIT $${params.length}
+      `, params);
+      // Arricchisci con prezzi_storici
       if (rows.length > 0) {
         const isins = rows.map(r => r.isin);
-        const placeholders = isins.map((_, i) => `$${i + 1}`).join(',');
+        const ph = isins.map((_, i) => `$${i + 1}`).join(',');
         try {
           const { rows: prezziRows } = await pool.query(
-            `SELECT DISTINCT ON (isin) isin, prezzo FROM prezzi_storici WHERE isin IN (${placeholders}) AND prezzo > 0 ORDER BY isin, data DESC`,
+            `SELECT DISTINCT ON (isin) isin, prezzo FROM prezzi_storici WHERE isin IN (${ph}) AND prezzo > 0 ORDER BY isin, data DESC`,
             isins
           );
           const prezziMap = {};
