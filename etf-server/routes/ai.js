@@ -486,7 +486,7 @@ async function getEtfPerProfilo(profilo, escludiDistribuzione = false, filtriRil
 
 // POST /api/ai/crea-portafoglio
 router.post('/crea-portafoglio', async (req, res) => {
-  const { profilo, orizzonteAnni, capitale, preferenze, escludiDistribuzione } = req.body;
+  const { profilo, orizzonteAnni, capitale, preferenze, escludiDistribuzione, maxUSA } = req.body;
   if (!profilo) return res.status(400).json({ error: 'Dati mancanti' });
 
   // Carica ETF dal DB filtrati per profilo + notizie macro in parallelo
@@ -505,6 +505,7 @@ Crea un portafoglio ETF ottimale rispettando RIGOROSAMENTE le regole del profilo
 - Orizzonte temporale: ${orizzonteAnni} anni
 - Capitale disponibile: ${conCapitale ? `€${parseFloat(capitale).toLocaleString('it-IT')}` : 'non specificato'}
 - Preferenze utente: ${preferenze || 'nessuna'}
+- Limite esposizione USA: ${maxUSA && maxUSA !== 'No max' ? maxUSA : 'nessun limite'}
 ${preferenze ? `
 ⚠️ ISTRUZIONE PRIORITARIA: L'utente ha espresso preferenze specifiche ("${preferenze}"). DEVI rispettarle includendo almeno 1 ETF che soddisfi questa richiesta, anche se non è il tuo primo candidato per rendimento. Le preferenze dell'utente hanno priorità su criteri di ottimizzazione secondari come correlazione e diversificazione stilistica.` : ''}
 
@@ -530,6 +531,7 @@ ${etfDisponibili.map(e => `- ${e.name} (${e.isin}) | Cat: ${e.categoria} | TER: 
 - La volatilità media PONDERATA del portafoglio non deve superare ${regole.volatilita !== null ? regole.volatilita+'%' : 'nessun limite'} annuo
 - NON includere ETF con vol1y > 20% per profilo Bilanciato
 - L'oro (ETF fisico sull'oro) massimo 5% del portafoglio per profilo Bilanciato
+${maxUSA && maxUSA !== 'No max' ? `- ⚠️ VINCOLO TASSATIVO MAX USA: la somma dei pesi degli ETF con esposizione prevalente agli USA (categoria "Azionario USA" o ETF S&P500/Nasdaq/Russell) NON deve superare ${maxUSA} del portafoglio totale. Questo è un hard limit — NON può essere ignorato per nessun motivo.` : '- Esposizione USA: nessun limite'}
 - Le performance passate NON sono garanzia di rendimenti futuri: usa perf1y/5y solo per confronto relativo, NON come stima di rendimento futuro
 ${escludiDistribuzione ? `- VINCOLO TASSATIVO: seleziona SOLO ETF ad Accumulazione (Acc). ESCLUDI ASSOLUTAMENTE qualsiasi ETF a Distribuzione (Dist/Distributing). Questo vale sia per i consigliati che per le alternative. Se un ETF ha "Distributing" o "Dist" nel nome o nel suo tipo di replica, NON includerlo.` : ''}
 
@@ -844,8 +846,25 @@ IMPORTANTE: se la quota azionaria calcolata non rientra nel range obbligatorio, 
       }
     }
 
+    // ── Verifica vincolo maxUSA ──────────────────────────────────────────────
+    let avvisoMaxUSA = null;
+    if (maxUSA && maxUSA !== 'No max') {
+      const limiteUSA = parseInt(maxUSA); // es. "30" → 30
+      const catUSA = ['Azionario USA'];
+      const totPesoUSA = selezione
+        .filter(e => catUSA.some(c => (e.categoria || '').includes(c)) ||
+                     /s&p|nasdaq|russell|dow jones/i.test(e.name))
+        .reduce((sum, e) => sum + (e.peso || 0), 0);
+      if (totPesoUSA > limiteUSA) {
+        avvisoMaxUSA = `⚠️ Attenzione: l'esposizione USA risultante è ${totPesoUSA.toFixed(0)}%, superiore al limite impostato di ${maxUSA}. L'AI ha incluso ETF globali (es. MSCI World) che hanno una componente USA significativa ma non sono classificati come "Azionario USA" puri.`;
+        console.log(`  [maxUSA] VIOLAZIONE: ${totPesoUSA.toFixed(0)}% > ${limiteUSA}%`);
+      } else {
+        console.log(`  [maxUSA] OK: esposizione USA ${totPesoUSA.toFixed(0)}% <= ${limiteUSA}%`);
+      }
+    }
+
     console.log(`  ✓ Portafoglio AI: ${selezione.length} ETF consigliati + ${selezioneConAlternative.length - selezione.length} alternative`);
-    res.json({ spiegazione, selezione: selezioneConAlternative, capitaleUsato: conCapitale ? parseFloat(capitale) : null });
+    res.json({ spiegazione, selezione: selezioneConAlternative, capitaleUsato: conCapitale ? parseFloat(capitale) : null, avvisoMaxUSA });
   } catch (err) {
     res.status(500).json({ error: 'Errore creazione portafoglio AI: ' + err.message });
   }
