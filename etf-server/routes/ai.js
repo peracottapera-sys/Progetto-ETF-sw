@@ -2,7 +2,7 @@ const express = require('express');
 const Anthropic = require('@anthropic-ai/sdk');
 const axios = require('axios');
 const authMiddleware = require('../middleware/auth');
-
+console.log('[AI-FILE] caricato da:', __filename, 'righe totali:', require('fs').readFileSync(__filename,'utf8').split('\n').length);
 
 const getAnthropic = () => {
   // Estrae ANTHROPIC_API_KEY dal valore di Var_002 (formato: "ANTHROPIC_API_KEY = sk-ant-...")
@@ -93,10 +93,10 @@ router.post('/analisi', async (req, res) => {
   const catAzionarie = ['Azionario Globale','Azionario USA','Azionario Europa','Azionario Emergenti','Azionario Tematico','Azionario Pacifico'];
   const valAzionario = etfConAcquisto.filter(e => catAzionarie.some(c => (e.categoria||'').includes(c.replace('Azionario ','')))).reduce((s,e) => s + e.acquisto.quantita * e.acquisto.quotazioneAcquisto, 0);
   const percAzionario = totValore > 0 ? (valAzionario / totValore * 100).toFixed(1) : 'N/D';
-
-  console.log('[DEBUG] ai.js riga 97-100:', require('fs').readFileSync(__filename, 'utf8').split('\n').slice(95,103).join('\n'));
   
   const etfCatalogoRaw = await getEtfPerProfilo(portfolio.riskProfile, false, false);
+
+  console.log('[DEBUG] ai.js riga 97-100:', require('fs').readFileSync(__filename, 'utf8').split('\n').slice(95,103).join('\n'));
   const etfCatalogo = etfCatalogoRaw
     .filter(c => !portfolio.etfs.some(e => e.isin === c.isin))
     .slice(0, 40);
