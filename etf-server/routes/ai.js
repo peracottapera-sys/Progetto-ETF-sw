@@ -5,8 +5,13 @@ const authMiddleware = require('../middleware/auth');
 
 
 const getAnthropic = () => {
-  const key = process.env.ANT_KEY || process.env.ANTHROPIC_API_KEY || process.env.Var_002;
-  console.log('[AI] key source:', process.env.ANT_KEY ? 'ANT_KEY' : process.env.ANTHROPIC_API_KEY ? 'ANTHROPIC_API_KEY' : process.env.Var_002 ? 'Var_002' : 'NESSUNA');
+  // Estrae ANTHROPIC_API_KEY dal valore di Var_002 (formato: "ANTHROPIC_API_KEY = sk-ant-...")
+  let key = process.env.ANTHROPIC_API_KEY;
+  if (!key && process.env.Var_002) {
+    const match = process.env.Var_002.match(/ANTHROPIC_API_KEY\s*=\s*(sk-ant-[\w\-]+)/);
+    if (match) key = match[1];
+  }
+  console.log('[AI] key trovata:', !!key, 'lunghezza:', key?.length);
   return new Anthropic({ apiKey: key });
 };
 
