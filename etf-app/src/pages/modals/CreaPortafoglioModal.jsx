@@ -315,27 +315,27 @@ function CreaPortafoglioModal({ portfolioId, onClose, initialProfilo, initialDat
                   <div style={{ background:'var(--bg-secondary)', borderRadius:10, padding:'14px 16px', marginBottom:20, border:'1px solid var(--border)' }}>
                     {logica && <p style={{ fontSize:13, color:'var(--text-secondary)', lineHeight:1.6, margin:'0 0 12px 0' }}>{logica}</p>}
 
-                    {/* Riga unica: Categorie | Asset Class | Valute */}
+                    {/* Layout: Categorie (sinistra) | Colonna destra (Asset+Valute+Pills) */}
                     <div style={{ display:'flex', gap:8, alignItems:'flex-start' }}>
-                      {/* Categorie dettagliate */}
+                      {/* Categorie dettagliate — leggermente più strette */}
                       {Object.keys(catCount).length > 0 && (
-                        <div style={{ background:'var(--bg-primary)', borderRadius:8, padding:'8px 12px', border:'1px solid var(--border)', flex:3 }}>
+                        <div style={{ background:'var(--bg-primary)', borderRadius:8, padding:'8px 12px', border:'1px solid var(--border)', flex:'0 0 52%' }}>
                           <div style={{ fontSize:11, color:'var(--text-secondary)', marginBottom:5 }}>
                             Categorie ({macroDistinte.size} macro-aree)
                           </div>
                           {Object.entries(catCount).map(([cat, n]) => (
                             <div key={cat} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', fontSize:11, marginBottom:2 }}>
-                              <span style={{ color:'var(--text-primary)' }}>{cat}</span>
-                              <span style={{ display:'flex', gap:8, marginLeft:8 }}>
+                              <span style={{ color:'var(--text-primary)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', maxWidth:160 }}>{cat}</span>
+                              <span style={{ display:'flex', gap:6, marginLeft:6, flexShrink:0 }}>
                                 <span style={{ color:'var(--text-muted)' }}>{n} ETF</span>
-                                <span style={{ fontWeight:700, color:'var(--accent-gold)', minWidth:36, textAlign:'right' }}>{Math.round(catPeso[cat])}%</span>
+                                <span style={{ fontWeight:700, color:'var(--accent-gold)', minWidth:32, textAlign:'right' }}>{Math.round(catPeso[cat])}%</span>
                               </span>
                             </div>
                           ))}
                         </div>
                       )}
-                      {/* Colonna destra: Asset Class + Valute + Pills */}
-                      <div style={{ display:'flex', flexDirection:'column', gap:8, flex:2 }}>
+                      {/* Colonna destra: Asset Class + Valute + Pills (inclusa USA) */}
+                      <div style={{ display:'flex', flexDirection:'column', gap:8, flex:1 }}>
                         {/* Asset Class */}
                         {topAsset.length > 0 && (
                           <div style={{ background:'var(--bg-primary)', borderRadius:8, padding:'8px 12px', border:'1px solid var(--border)' }}>
@@ -360,12 +360,12 @@ function CreaPortafoglioModal({ portfolioId, onClose, initialProfilo, initialDat
                             ))}
                           </div>
                         )}
-                        {/* Pills ETF + TER + Corr + USA */}
+                        {/* Pills: ETF · TER · Corr · Exp.USA — tutti sulla stessa riga */}
                         <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
                           <Pill label="ETF" value={consigliati.length} color="var(--accent-gold)" />
-                          <Pill label="TER totale" value={terTotale.toFixed(2)+'%'} color={terTotale > 1 ? 'var(--accent-amber)' : 'var(--accent-green)'} />
-                          {corrMax && <Pill label="Corr. max" value={corrMax} color={parseFloat(corrMax) > 0.6 ? 'var(--accent-amber)' : 'var(--accent-green)'} />}
-                          <Pill label="Exp. USA ~" value={expUSA+'%'} color={expUSA > 60 ? 'var(--accent-amber)' : expUSA > 30 ? 'var(--accent-gold)' : 'var(--accent-green)'} />
+                          <Pill label="TER tot." value={terTotale.toFixed(2)+'%'} color={terTotale > 1 ? 'var(--accent-amber)' : 'var(--accent-green)'} />
+                          {corrMax && <Pill label="Corr.max" value={corrMax} color={parseFloat(corrMax) > 0.6 ? 'var(--accent-amber)' : 'var(--accent-green)'} />}
+                          <Pill label="Exp.USA~" value={expUSA+'%'} color={expUSA > 60 ? 'var(--accent-red)' : expUSA > 30 ? 'var(--accent-amber)' : 'var(--accent-green)'} />
                         </div>
                       </div>
                     </div>
