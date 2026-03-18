@@ -94,6 +94,8 @@ router.post('/analisi', async (req, res) => {
   const valAzionario = etfConAcquisto.filter(e => catAzionarie.some(c => (e.categoria||'').includes(c.replace('Azionario ','')))).reduce((s,e) => s + e.acquisto.quantita * e.acquisto.quotazioneAcquisto, 0);
   const percAzionario = totValore > 0 ? (valAzionario / totValore * 100).toFixed(1) : 'N/D';
 
+  console.log('[DEBUG] ai.js riga 97-100:', require('fs').readFileSync(__filename, 'utf8').split('\n').slice(95,103).join('\n'));
+  
   const etfCatalogoRaw = await getEtfPerProfilo(portfolio.riskProfile, false, false);
   const etfCatalogo = etfCatalogoRaw
     .filter(c => !portfolio.etfs.some(e => e.isin === c.isin))
