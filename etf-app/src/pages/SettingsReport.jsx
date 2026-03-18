@@ -17,6 +17,7 @@ export function Settings() {
     setSaved('Impostazioni salvate!');
     setForm(f => ({ ...f, newPwd: '', confirmPwd: '' }));
   };
+  
 
   return (
     <div style={{ padding: '20px 16px' }}>
