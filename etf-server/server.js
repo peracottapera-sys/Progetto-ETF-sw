@@ -159,9 +159,8 @@ app.get('/api/debug-env', (req, res) => {
   res.json({
     hasAnthropicKey: !!process.env.ANTHROPIC_API_KEY,
     keyLength: process.env.ANTHROPIC_API_KEY?.length,
-    nodeEnv: process.env.NODE_ENV,
     port: process.env.PORT,
-    allKeys: Object.keys(process.env).filter(k => !k.includes('PASSWORD') && !k.includes('SECRET') && !k.includes('KEY')),
+    allKeys: Object.keys(process.env),
   });
 });
 
