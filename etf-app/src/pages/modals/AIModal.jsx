@@ -326,6 +326,7 @@ function AIModal({ portfolio, onClose }) {
 
         {/* STEP 2 — Risultato analisi */}
         {step === 'analisi' && (
+        <>
         <div style={{ overflowY:'auto', flex:1, paddingRight:4 }}>
           {/* Riepilogo parametri usati */}
           {!loading && (semafori || errore) && (
@@ -472,6 +473,7 @@ function AIModal({ portfolio, onClose }) {
             )}
           </div>
         </div>
+        </>
         )}
       </div>
     </div>
