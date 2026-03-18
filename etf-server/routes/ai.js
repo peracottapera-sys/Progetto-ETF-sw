@@ -4,9 +4,11 @@ const axios = require('axios');
 const authMiddleware = require('../middleware/auth');
 
 
-const getAnthropic = () => new Anthropic({ 
-  apiKey: process.env.ANTHROPIC_API_KEY || process.env.Var_002 
-});
+const getAnthropic = () => {
+  const key = process.env.ANT_KEY || process.env.ANTHROPIC_API_KEY || process.env.Var_002;
+  console.log('[AI] key source:', process.env.ANT_KEY ? 'ANT_KEY' : process.env.ANTHROPIC_API_KEY ? 'ANTHROPIC_API_KEY' : process.env.Var_002 ? 'Var_002' : 'NESSUNA');
+  return new Anthropic({ apiKey: key });
+};
 
 const REGOLE_PROFILO = {
   Prudente: {
