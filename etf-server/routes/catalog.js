@@ -36,10 +36,24 @@ module.exports = (pool, fetchETF) => {
     try {
       const { rows } = await pool.query(`
         SELECT isin, name, valuta, aum_mln, ter, perf1m, perf6m, perf1y, perf3y, perf5y,
-               vol1y, maxdd1y, distribuzione, replica, ticker_yahoo, categoria, active
+               vol1y, maxdd1y, distribuzione, replica, ticker_yahoo, categoria, active, quotazione
         FROM etf_catalog WHERE (name ILIKE $1 OR isin ILIKE $2) AND active = 1
         ORDER BY aum_mln DESC NULLS LAST LIMIT $3
       `, [`%${q}%`, `%${q}%`, limit]);
+      // Arricchisci con prezzi_storici (più aggiornati di etf_catalog.quotazione)
+      if (rows.length > 0) {
+        const isins = rows.map(r => r.isin);
+        const placeholders = isins.map((_, i) => `$${i + 1}`).join(',');
+        try {
+          const { rows: prezziRows } = await pool.query(
+            `SELECT DISTINCT ON (isin) isin, prezzo FROM prezzi_storici WHERE isin IN (${placeholders}) AND prezzo > 0 ORDER BY isin, data DESC`,
+            isins
+          );
+          const prezziMap = {};
+          prezziRows.forEach(p => { prezziMap[p.isin] = p.prezzo; });
+          rows.forEach(r => { r.quotazione = prezziMap[r.isin] ?? r.quotazione ?? 0; });
+        } catch {}
+      }
       res.json(rows);
     } catch (err) { res.status(500).json({ error: err.message }); }
   });
