@@ -3,7 +3,12 @@ const Anthropic = require('@anthropic-ai/sdk');
 const axios = require('axios');
 const authMiddleware = require('../middleware/auth');
 
-const getAnthropic = () => new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+
+const getAnthropic = () => {
+  const key = process.env.ANTHROPIC_API_KEY;
+  console.log('[AI] key presente:', !!key, 'lunghezza:', key?.length, 'inizio:', key?.substring(0,20));
+  return new Anthropic({ apiKey: key });
+};
 
 const REGOLE_PROFILO = {
   Prudente: {
