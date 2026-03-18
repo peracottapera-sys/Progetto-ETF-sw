@@ -155,6 +155,15 @@ app.get('/api/health', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+app.get('/api/debug-env', (req, res) => {
+  res.json({
+    hasAnthropicKey: !!process.env.ANTHROPIC_API_KEY,
+    keyLength: process.env.ANTHROPIC_API_KEY?.length,
+    nodeEnv: process.env.NODE_ENV,
+    port: process.env.PORT,
+  });
+});
+
 app.post('/api/admin/cleanup-prezzi', async (req, res) => {
   try {
     const { rowCount } = await pool.q('DELETE FROM prezzi_storici WHERE prezzo IS NULL OR prezzo <= 0');
