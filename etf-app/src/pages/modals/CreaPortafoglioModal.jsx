@@ -11,6 +11,7 @@ function CreaPortafoglioModal({ portfolioId, onClose, initialProfilo, initialDat
     capitale: initialData?.capitale ? String(initialData.capitale) : '',
     preferenze: '',
     escludiDistribuzione: true,
+    maxUSA: 'No max',
   });
   const [spiegazione, setSpiegazione] = useState(initialData?.spiegazione || '');
   const [selezione, setSelezione] = useState(initialData?.selezione || []);
@@ -43,6 +44,7 @@ function CreaPortafoglioModal({ portfolioId, onClose, initialProfilo, initialDat
           capitale: form.capitale ? parseFloat(form.capitale) : null,
           preferenze: form.preferenze,
           escludiDistribuzione: form.escludiDistribuzione,
+          maxUSA: form.maxUSA,
         })
       });
       const data = await res.json();
@@ -129,6 +131,18 @@ function CreaPortafoglioModal({ portfolioId, onClose, initialProfilo, initialDat
                 <label className="form-label">Preferenze o note — opzionale</label>
                 <input className="input" placeholder="Es: preferisco ETF a basso TER, evitare emergenti..."
                   value={form.preferenze} onChange={e => setForm(f => ({ ...f, preferenze: e.target.value }))} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Limite esposizione USA — opzionale</label>
+                <select className="input" value={form.maxUSA} onChange={e => setForm(f => ({ ...f, maxUSA: e.target.value }))}>
+                  <option value="No max">Nessun limite</option>
+                  <option value="60%">Max 60%</option>
+                  <option value="30%">Max 30%</option>
+                  <option value="0%">Nessuna esposizione USA</option>
+                </select>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
+                  Limita la % del portafoglio investita in ETF con esposizione prevalente agli USA
+                </div>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0', borderTop: '1px solid var(--border)', marginTop: 4 }}>
                 <input type="checkbox" id="escludiDistr" checked={form.escludiDistribuzione}
@@ -222,11 +236,10 @@ function CreaPortafoglioModal({ portfolioId, onClose, initialProfilo, initialDat
                 return (
                   <div style={{ background:'var(--bg-secondary)', borderRadius:10, padding:'14px 16px', marginBottom:20, border:'1px solid var(--border)' }}>
                     {logica && <p style={{ fontSize:13, color:'var(--text-secondary)', lineHeight:1.6, margin:'0 0 12px 0' }}>{logica}</p>}
-                    <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
-                      <Pill label="ETF" value={consigliati.length} color="var(--accent-gold)" />
-                      <Pill label="TER totale" value={terTotale.toFixed(2)+'%'} color={terTotale > 1 ? 'var(--accent-amber)' : 'var(--accent-green)'} />
+                    {/* Riga 1: Categorie + Asset Class + Valute */}
+                    <div style={{ display:'flex', gap:8 }}>
                       {Object.keys(catCount).length > 0 && (
-                        <div style={{ background:'var(--bg-primary)', borderRadius:8, padding:'8px 12px', border:'1px solid var(--border)', flex:1, minWidth:120 }}>
+                        <div style={{ background:'var(--bg-primary)', borderRadius:8, padding:'8px 12px', border:'1px solid var(--border)', flex:2 }}>
                           <div style={{ fontSize:11, color:'var(--text-secondary)', marginBottom:5 }}>
                             Categorie ({macroDistinte.size} macro-aree)
                           </div>
@@ -241,32 +254,35 @@ function CreaPortafoglioModal({ portfolioId, onClose, initialProfilo, initialDat
                           ))}
                         </div>
                       )}
+                    </div>
+                    {/* Riga 2: Pills ETF + TER + Corr */}
+                    <div style={{ display:'flex', gap:8, marginTop:8 }}>
+                      <Pill label="ETF" value={consigliati.length} color="var(--accent-gold)" />
+                      <Pill label="TER totale" value={terTotale.toFixed(2)+'%'} color={terTotale > 1 ? 'var(--accent-amber)' : 'var(--accent-green)'} />
                       {corrMax && <Pill label="Corr. max" value={corrMax} color={parseFloat(corrMax) > 0.6 ? 'var(--accent-amber)' : 'var(--accent-green)'} />}
                     </div>
 
-                    {/* Split Paesi (top 5) e Valute (top 3) */}
+                    {/* Split Asset Class e Valute */}
                     {(() => {
-                      // Mappa categoria → paese principale
-                      const getPaese = (s) => {
+                      // Macro asset class
+                      const getMacroAsset = (s) => {
                         const cat = (s.categoria || '').toLowerCase();
-                        const nome = (s.name || '').toLowerCase();
-                        if (cat.includes('azionario usa') || nome.includes('s&p') || nome.includes('nasdaq') || nome.includes('russell') || nome.includes(' usa') || nome.includes('us equity') || nome.includes('united states')) return 'USA';
-                        if (cat.includes('azionario europa') || nome.includes('stoxx') || nome.includes('europe') || nome.includes('euro stoxx') || nome.includes('ftse europe')) return 'Europa';
-                        if (cat.includes('azionario emergenti') || nome.includes('emerging') || nome.includes('emergenti')) return 'Emergenti';
-                        if (cat.includes('azionario pacifico') || nome.includes('japan') || nome.includes('giappone') || nome.includes('pacific')) return 'Giappone/Pacifico';
-                        if (cat.includes('azionario globale') || nome.includes('world') || nome.includes('acwi') || nome.includes('all-world')) return 'Globale';
-                        if (cat.includes('obbligaz') || cat.includes('bond') || cat.includes('monetar') || cat.includes('liquidit')) return 'Obbligazionario/Liquidità';
-                        if (cat.includes('materie') || cat.includes('commodity') || cat.includes('gold') || cat.includes('oro')) return 'Materie Prime';
+                        if (cat.includes('azionario')) return 'Azionario';
+                        if (cat.includes('obbligaz') || cat.includes('bond') || cat.includes('corporate') || cat.includes('government') || cat.includes('high yield') || cat.includes('aggregate')) return 'Obbligazionario';
+                        if (cat.includes('materie') || cat.includes('commodity') || cat.includes('gold') || cat.includes('oro') || cat.includes('metal')) return 'Materie Prime';
+                        if (cat.includes('liquidit') || cat.includes('monetar') || cat.includes('overnight')) return 'Liquidità';
+                        if (cat.includes('immobil') || cat.includes('reit')) return 'Immobiliare';
                         return 'Altro';
                       };
-                      const paesiPeso = {};
+                      const assetPeso = {};
                       consigliati.forEach(s => {
                         const i = selezione.indexOf(s);
                         const p = parseFloat(pesi[i]) || s.peso || 0;
-                        const paese = getPaese(s);
-                        paesiPeso[paese] = (paesiPeso[paese] || 0) + p;
+                        const a = getMacroAsset(s);
+                        assetPeso[a] = (assetPeso[a] || 0) + p;
                       });
-                      const topPaesi = Object.entries(paesiPeso).sort((a,b) => b[1]-a[1]).slice(0,5);
+                      const topAsset = Object.entries(assetPeso).sort((a,b) => b[1]-a[1]);
+                      const assetColor = { 'Azionario':'var(--accent-gold)', 'Obbligazionario':'var(--accent-blue)', 'Materie Prime':'var(--accent-amber)', 'Liquidità':'var(--accent-green)', 'Immobiliare':'#a78bfa', 'Altro':'var(--text-muted)' };
 
                       // Valute
                       const valutePeso = {};
@@ -279,20 +295,20 @@ function CreaPortafoglioModal({ portfolioId, onClose, initialProfilo, initialDat
                       const topValute = Object.entries(valutePeso).sort((a,b) => b[1]-a[1]).slice(0,3);
 
                       return (
-                        <div style={{ display:'flex', gap:8, marginTop:8, flexWrap:'wrap' }}>
-                          {topPaesi.length > 0 && (
-                            <div style={{ background:'var(--bg-primary)', borderRadius:8, padding:'8px 12px', border:'1px solid var(--border)', flex:1, minWidth:140 }}>
-                              <div style={{ fontSize:11, color:'var(--text-secondary)', marginBottom:5 }}>Aree geografiche (top {topPaesi.length})</div>
-                              {topPaesi.map(([paese, peso]) => (
-                                <div key={paese} style={{ display:'flex', justifyContent:'space-between', fontSize:11, marginBottom:2 }}>
-                                  <span style={{ color:'var(--text-primary)' }}>{paese}</span>
-                                  <span style={{ fontWeight:700, color:'var(--accent-blue)', minWidth:36, textAlign:'right' }}>{Math.round(peso)}%</span>
+                        <div style={{ display:'flex', gap:8, marginTop:8 }}>
+                          {topAsset.length > 0 && (
+                            <div style={{ background:'var(--bg-primary)', borderRadius:8, padding:'8px 12px', border:'1px solid var(--border)', flex:2 }}>
+                              <div style={{ fontSize:11, color:'var(--text-secondary)', marginBottom:5 }}>Split per Asset Class</div>
+                              {topAsset.map(([asset, peso]) => (
+                                <div key={asset} style={{ display:'flex', justifyContent:'space-between', fontSize:11, marginBottom:2 }}>
+                                  <span style={{ color:'var(--text-primary)' }}>{asset}</span>
+                                  <span style={{ fontWeight:700, color: assetColor[asset] || 'var(--text-primary)', minWidth:36, textAlign:'right' }}>{Math.round(peso)}%</span>
                                 </div>
                               ))}
                             </div>
                           )}
                           {topValute.length > 0 && (
-                            <div style={{ background:'var(--bg-primary)', borderRadius:8, padding:'8px 12px', border:'1px solid var(--border)', minWidth:100 }}>
+                            <div style={{ background:'var(--bg-primary)', borderRadius:8, padding:'8px 12px', border:'1px solid var(--border)', flex:1 }}>
                               <div style={{ fontSize:11, color:'var(--text-secondary)', marginBottom:5 }}>Valute (top {topValute.length})</div>
                               {topValute.map(([valuta, peso]) => (
                                 <div key={valuta} style={{ display:'flex', justifyContent:'space-between', fontSize:11, marginBottom:2 }}>
