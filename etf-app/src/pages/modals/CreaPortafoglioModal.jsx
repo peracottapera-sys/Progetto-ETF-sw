@@ -233,7 +233,60 @@ function CreaPortafoglioModal({ portfolioId, onClose, initialProfilo, initialDat
                   </div>
                 );
 
-                // Calcola asset class e valute qui (fuori dal return)
+                // Mappa % USA stimata per categoria
+                const USA_PCT_MAP = {
+                  // Esplicitamente USA
+                  'azionario usa': 100,
+                  // Globale con forte componente USA
+                  'azionario globale': 70,
+                  'azionario - smart beta': 60,
+                  'azionario - dividend': 50,
+                  // Tematici
+                  'azionario tematico - tecnologia': 80,
+                  'azionario tematico - salute': 60,
+                  'azionario tematico - esg/green': 50,
+                  'azionario tematico - immobiliare': 50,
+                  'azionario tematico - energia': 30,
+                  'azionario tematico - finanziario': 40,
+                  'azionario tematico - consumi': 40,
+                  'azionario tematico - infrastrutture': 30,
+                  'azionario - small/mid cap': 50,
+                  // Zero USA
+                  'azionario europa': 0,
+                  'azionario emergenti': 0,
+                  'azionario pacifico': 0,
+                  'azionario tematico': 40, // fallback tematico generico
+                  // Non azionario
+                  'obbligazionario': 10,
+                  'materie prime': 0,
+                  'liquidità / monetario': 0,
+                  'immobiliare': 50,
+                };
+                const getUsaPct = (s) => {
+                  const cat = (s.categoria || '').toLowerCase();
+                  const nome = (s.name || '').toLowerCase();
+                  // Override per nome esplicito
+                  if (nome.includes('s&p') || nome.includes('nasdaq') || nome.includes('russell') || nome.includes('dow jones')) return 100;
+                  if (nome.includes('ftse 100') || nome.includes('dax') || nome.includes('cac') || nome.includes('stoxx') || nome.includes('ftse mib')) return 0;
+                  if (nome.includes('nikkei') || nome.includes('topix') || nome.includes('japan') || nome.includes('pacific')) return 0;
+                  if (nome.includes('emerging') || nome.includes('emergenti')) return 0;
+                  // Cerca nella mappa per corrispondenza esatta o parziale
+                  for (const [key, pct] of Object.entries(USA_PCT_MAP)) {
+                    if (cat.includes(key)) return pct;
+                  }
+                  return 0;
+                };
+
+                // Calcola esposizione USA stimata portafoglio
+                let expUSA = 0;
+                consigliati.forEach(s => {
+                  const i = selezione.indexOf(s);
+                  const p = parseFloat(pesi[i]) || s.peso || 0;
+                  expUSA += p * getUsaPct(s) / 100;
+                });
+                expUSA = Math.round(expUSA);
+
+                // Calcola asset class e valute
                 const getMacroAsset = (s) => {
                   const cat = (s.categoria || '').toLowerCase();
                   const nome = (s.name || '').toLowerCase();
@@ -307,11 +360,12 @@ function CreaPortafoglioModal({ portfolioId, onClose, initialProfilo, initialDat
                             ))}
                           </div>
                         )}
-                        {/* Pills ETF + TER + Corr */}
+                        {/* Pills ETF + TER + Corr + USA */}
                         <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
                           <Pill label="ETF" value={consigliati.length} color="var(--accent-gold)" />
                           <Pill label="TER totale" value={terTotale.toFixed(2)+'%'} color={terTotale > 1 ? 'var(--accent-amber)' : 'var(--accent-green)'} />
                           {corrMax && <Pill label="Corr. max" value={corrMax} color={parseFloat(corrMax) > 0.6 ? 'var(--accent-amber)' : 'var(--accent-green)'} />}
+                          <Pill label="Exp. USA ~" value={expUSA+'%'} color={expUSA > 60 ? 'var(--accent-amber)' : expUSA > 30 ? 'var(--accent-gold)' : 'var(--accent-green)'} />
                         </div>
                       </div>
                     </div>
