@@ -75,7 +75,7 @@ export function Settings() {
 
 // ── Pannello ricerca catalogo ETF ──────────────────────────────────────────
 function CatalogAdmin() {
-  const { token, currentPortfolio, toggleEtfSelection } = useApp();
+  const { token, currentPortfolio, toggleEtfSelection, saveAcquisto } = useApp();
   const [query, setQuery]     = useState('');
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -84,6 +84,9 @@ function CatalogAdmin() {
   const [sortCol, setSortCol] = useState('aum_mln');
   const [sortDir, setSortDir] = useState('desc');
   const debounceRef = useRef(null);
+  const [modalEtf, setModalEtf]   = useState(null);  // ETF selezionato per acquisto
+  const [acqForm, setAcqForm]     = useState({ quantita: '', quotazione: '', data: new Date().toISOString().slice(0,10) });
+  const [acqError, setAcqError]   = useState('');
 
   const API = process.env.REACT_APP_API_URL || (window.location.hostname === 'localhost' ? 'http://localhost:3001' : '');
 
@@ -110,11 +113,24 @@ function CatalogAdmin() {
   };
 
   const handleAdd = (etf) => {
+    setAcqForm({ quantita: '', quotazione: '', data: new Date().toISOString().slice(0,10) });
+    setAcqError('');
+    setModalEtf(etf);
+  };
+
+  const handleAcquisto = async () => {
+    const q = parseFloat(acqForm.quantita);
+    const p = parseFloat(acqForm.quotazione);
+    if (!q || q <= 0) { setAcqError('Inserisci una quantità valida'); return; }
+    if (!p || p <= 0) { setAcqError('Inserisci un prezzo valido'); return; }
+    if (!acqForm.data)  { setAcqError('Inserisci una data'); return; }
+
+    const etf = modalEtf;
     const etfObj = {
       isin: etf.isin, name: etf.name,
       emittente: etf.name.split(' ')[0] || '—',
       ter: etf.ter ?? 0, tassazione: 26,
-      quotazione: 0, annoNascita: null,
+      quotazione: p, annoNascita: null,
       capitalizzazione: etf.aum_mln ?? 0,
       variabilita: etf.vol1y ?? 0, maxDrawdown: etf.maxdd1y ?? 0,
       categoria: etf.categoria || 'Altro', valuta: etf.valuta || 'EUR',
@@ -122,8 +138,14 @@ function CatalogAdmin() {
       perf1m: etf.perf1m ?? 0, perf6m: etf.perf6m ?? 0,
       perf1y: etf.perf1y ?? 0, perf5y: etf.perf5y ?? 0,
     };
-    toggleEtfSelection(etf.isin, true, etfObj);
+    await toggleEtfSelection(currentPortfolio.id, etf.isin, true, etfObj);
+    await saveAcquisto(currentPortfolio.id, etf.isin, {
+      quantita: q,
+      quotazioneAcquisto: p,
+      dataAcquisto: acqForm.data,
+    });
     setAdded(a => ({ ...a, [etf.isin]: true }));
+    setModalEtf(null);
   };
 
   const inPortfolio = (isin) => currentPortfolio?.etfs?.some(e => e.isin === isin && e.selected);
@@ -149,6 +171,46 @@ function CatalogAdmin() {
 
   return (
     <div className="card" style={{ marginTop: 0 }}>
+      {/* Modal acquisto */}
+      {modalEtf && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ background: 'var(--bg-card)', borderRadius: 12, padding: 28, width: 380, boxShadow: '0 8px 32px rgba(0,0,0,0.4)' }}>
+            <h3 style={{ margin: '0 0 4px', fontSize: 16 }}>Aggiungi al portafoglio</h3>
+            <p style={{ margin: '0 0 18px', fontSize: 12, color: 'var(--text-muted)' }}>{modalEtf.name}</p>
+            <div style={{ marginBottom: 12 }}>
+              <label style={{ fontSize: 12, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Quantità (quote)</label>
+              <input type="number" min="0" step="1" value={acqForm.quantita}
+                onChange={e => setAcqForm(f => ({ ...f, quantita: e.target.value }))}
+                style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-secondary)', color: 'var(--text-primary)', fontSize: 14, boxSizing: 'border-box' }}
+                placeholder="es. 10" />
+            </div>
+            <div style={{ marginBottom: 12 }}>
+              <label style={{ fontSize: 12, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Prezzo di acquisto (€)</label>
+              <input type="number" min="0" step="0.01" value={acqForm.quotazione}
+                onChange={e => setAcqForm(f => ({ ...f, quotazione: e.target.value }))}
+                style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-secondary)', color: 'var(--text-primary)', fontSize: 14, boxSizing: 'border-box' }}
+                placeholder="es. 95.50" />
+            </div>
+            <div style={{ marginBottom: 18 }}>
+              <label style={{ fontSize: 12, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Data acquisto</label>
+              <input type="date" value={acqForm.data}
+                onChange={e => setAcqForm(f => ({ ...f, data: e.target.value }))}
+                style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-secondary)', color: 'var(--text-primary)', fontSize: 14, boxSizing: 'border-box' }} />
+            </div>
+            {acqError && <p style={{ color: 'var(--accent-red)', fontSize: 12, margin: '0 0 12px' }}>{acqError}</p>}
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+              <button onClick={() => setModalEtf(null)}
+                style={{ padding: '8px 18px', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-primary)', cursor: 'pointer', fontSize: 13 }}>
+                Annulla
+              </button>
+              <button onClick={handleAcquisto}
+                style={{ padding: '8px 18px', borderRadius: 6, border: 'none', background: 'var(--accent-blue)', color: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>
+                Aggiungi
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="card-title">🔍 Catalogo ETF — JustETF</div>
 
       {stats && (
