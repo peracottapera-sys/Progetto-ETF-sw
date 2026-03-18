@@ -17,7 +17,6 @@ export function Settings() {
     setSaved('Impostazioni salvate!');
     setForm(f => ({ ...f, newPwd: '', confirmPwd: '' }));
   };
-  
 
   return (
     <div style={{ padding: '20px 16px' }}>
@@ -114,7 +113,7 @@ function CatalogAdmin() {
   };
 
   const handleAdd = (etf) => {
-    setAcqForm({ quantita: '', quotazione: '', data: new Date().toISOString().slice(0,10) });
+    setAcqForm({ quantita: '', quotazione: etf.quotazione > 0 ? etf.quotazione.toFixed(2) : '', data: new Date().toISOString().slice(0,10) });
     setAcqError('');
     setModalEtf(etf);
   };
@@ -198,6 +197,14 @@ function CatalogAdmin() {
                 onChange={e => setAcqForm(f => ({ ...f, data: e.target.value }))}
                 style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-secondary)', color: 'var(--text-primary)', fontSize: 14, boxSizing: 'border-box' }} />
             </div>
+            {acqForm.quantita && acqForm.quotazione && (
+              <div style={{ background: 'var(--bg-secondary)', borderRadius: 6, padding: '8px 12px', marginBottom: 12, fontSize: 13 }}>
+                <span style={{ color: 'var(--text-muted)' }}>Controvalore totale: </span>
+                <strong style={{ color: 'var(--accent-blue)' }}>
+                  €{(parseFloat(acqForm.quantita) * parseFloat(acqForm.quotazione)).toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </strong>
+              </div>
+            )}
             {acqError && <p style={{ color: 'var(--accent-red)', fontSize: 12, margin: '0 0 12px' }}>{acqError}</p>}
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
               <button onClick={() => setModalEtf(null)}
