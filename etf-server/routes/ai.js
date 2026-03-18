@@ -432,27 +432,13 @@ async function getEtfPerProfilo(profilo, escludiDistribuzione = false, filtriRil
       )`
     : '';
 
-  // Lista ISIN con ticker Yahoo noto — gli unici che possiamo prezzare correttamente
-  const ISIN_CON_TICKER_NOTO = new Set([
-    // ETF_MASTER (45 ETF verificati con prezzi reali)
-    'IE00B4L5Y983','IE00B3XXRP09','IE00BK5BQT80','IE00B4L5YX21','LU1681041782',
-    'IE00B5BMR087','IE00B3ZW0K18','IE0032077012','IE00B4K48X80','LU1681043599',
-    'IE00B53L3W79','IE00BKM4GZ66','IE00B4L5YC18','LU1050469367','LU1829219655',
-    'LU1681045370','IE00B441G979','IE00BP3QZB59','IE00B3VVMM84','IE00BGDQ0H97',
-    'IE00B4JNQZ49','IE00BYVJRP78','IE00BFG0R112','IE00BD4DXW77','IE00B3FH7618',
-    'IE00B4WXJJ64','LU0290358497','IE00B3F81R35','IE00B3F81409','IE00B66F4759',
-    'IE00BJK55C48','FR0013416716','IE00B4ND3602','DE000A1EK0G3','DE000A0S9GB0',
-    'LU1829218749','LU1437016972','LU0908500753','IE00BJ0KDQ92','IE00BL25JM42',
-    'LU0478205379','IE00B6R52259','IE00BGSF1X88','IE00B3RBWM25','IE00B3YCGJ38',
-    'IE0031442068','IE0005042456',
-    // ETF con ticker verificati nella ISIN_TICKER_MAP
-    'IE00B3VVMM84','LU1931974692','LU1781541179','IE00B14X4S71','IE00B1FZS798',
-    'IE00BGPP6599','IE00BGDQ0H97',
-  ]);
-
-  // Aggiungi anche ISIN con prezzo in prezzi_storici (già fetchati con successo)
+  // ISIN con prezzo disponibile: ticker_yahoo nel catalogo OPPURE prezzo in prezzi_storici
   let isinConPrezzoInDB = new Set();
   try {
+    // ETF con ticker Yahoo nel catalogo
+    const { rows: _tickerRows } = await db.query("SELECT isin FROM etf_catalog WHERE ticker_yahoo IS NOT NULL AND ticker_yahoo != ''");
+    _tickerRows.forEach(r => isinConPrezzoInDB.add(r.isin));
+    // ETF con prezzo storico recente
     const cutoffTicker = new Date(Date.now() - 30*24*60*60*1000).toISOString().slice(0,10);
     const { rows: _pricedIsins } = await db.query('SELECT DISTINCT isin FROM prezzi_storici WHERE data >= $1 AND prezzo > 0', [cutoffTicker]);
     _pricedIsins.forEach(r => isinConPrezzoInDB.add(r.isin));
@@ -474,7 +460,7 @@ async function getEtfPerProfilo(profilo, escludiDistribuzione = false, filtriRil
     LIMIT 300
   `, [f.minAum, f.maxTer, f.maxVol, f.maxDrawdown, f.maxDd5y]);
   const rows = _rawRows
-    .filter(e => ISIN_CON_TICKER_NOTO.has(e.isin) || isinConPrezzoInDB.has(e.isin))
+    .filter(e => isinConPrezzoInDB.has(e.isin))
     .filter(e => !escludiDistribuzione || e.distribuzione !== 'Distribuzione');
 
   return rows.map(e => ({
@@ -518,7 +504,9 @@ Crea un portafoglio ETF ottimale rispettando RIGOROSAMENTE le regole del profilo
 - Profilo: ${profilo}
 - Orizzonte temporale: ${orizzonteAnni} anni
 - Capitale disponibile: ${conCapitale ? `€${parseFloat(capitale).toLocaleString('it-IT')}` : 'non specificato'}
-- Preferenze: ${preferenze || 'nessuna'}
+- Preferenze utente: ${preferenze || 'nessuna'}
+${preferenze ? `
+⚠️ ISTRUZIONE PRIORITARIA: L'utente ha espresso preferenze specifiche ("${preferenze}"). DEVI rispettarle includendo almeno 1 ETF che soddisfi questa richiesta, anche se non è il tuo primo candidato per rendimento. Le preferenze dell'utente hanno priorità su criteri di ottimizzazione secondari come correlazione e diversificazione stilistica.` : ''}
 
 ## REGOLE OBBLIGATORIE PROFILO ${profilo.toUpperCase()}:
 - Rendimento atteso: ${regole.rendimentoMin} / ${regole.rendimentoMax}
