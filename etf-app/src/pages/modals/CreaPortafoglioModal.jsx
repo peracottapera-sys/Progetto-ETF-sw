@@ -261,7 +261,11 @@ function CreaPortafoglioModal({ portfolioId, onClose, initialProfilo, initialDat
                   'azionario pacifico': 0,
                   'azionario tematico': 40, // fallback tematico generico
                   // Non azionario
-                  'obbligazionario': 10,
+                  'obbligazionario governativo': 5,   // Gov europeo/globale
+                  'obbligazionario corporate': 15,    // Corporate mix globale
+                  'obbligazionario high yield': 20,   // HY spesso USA-heavy
+                  'obbligazionario emergenti': 0,     // EM bonds
+                  'obbligazionario': 10,              // fallback generico
                   'materie prime': 0,
                   'liquidità / monetario': 0,
                   'immobiliare': 50,
@@ -269,14 +273,24 @@ function CreaPortafoglioModal({ portfolioId, onClose, initialProfilo, initialDat
                 const getUsaPct = (s) => {
                   const cat = (s.categoria || '').toLowerCase();
                   const nome = (s.name || '').toLowerCase();
-                  // Override per nome esplicito
+                  // Override per nome esplicito — azionario
                   if (nome.includes('s&p') || nome.includes('nasdaq') || nome.includes('russell') || nome.includes('dow jones')) return 100;
                   if (nome.includes('ftse 100') || nome.includes('dax') || nome.includes('cac') || nome.includes('stoxx') || nome.includes('ftse mib')) return 0;
                   if (nome.includes('nikkei') || nome.includes('topix') || nome.includes('japan') || nome.includes('pacific')) return 0;
                   if (nome.includes('emerging') || nome.includes('emergenti')) return 0;
-                  // Cerca nella mappa per corrispondenza esatta o parziale
-                  for (const [key, pct] of Object.entries(USA_PCT_MAP)) {
-                    if (cat.includes(key)) return pct;
+                  // Override per Treasury USA — alto rischio paese USA
+                  if (nome.includes('us treasury') || nome.includes('usd treasury') || nome.includes('treasury bond') ||
+                      nome.includes('treasury bill') || nome.includes('t-bill') || nome.includes('tips') ||
+                      nome.includes('us govt') || nome.includes('us government') || nome.includes('united states bond') ||
+                      (nome.includes('treasury') && !nome.includes('euro') && !nome.includes('bund'))) return 70;
+                  // Override per obbligazionario europeo puro
+                  if (nome.includes('btp') || nome.includes('bund') || nome.includes('oat ') || nome.includes('gilt') ||
+                      nome.includes('euro government') || nome.includes('eur government') ||
+                      nome.includes('eurozone') || nome.includes('euro aggregate')) return 0;
+                  // Cerca nella mappa per corrispondenza esatta o parziale (più specifico prima)
+                  const keysOrdinati = Object.keys(USA_PCT_MAP).sort((a,b) => b.length - a.length);
+                  for (const key of keysOrdinati) {
+                    if (cat.includes(key)) return USA_PCT_MAP[key];
                   }
                   return 0;
                 };
