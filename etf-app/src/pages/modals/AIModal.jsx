@@ -27,12 +27,21 @@ function SemaforoRow({ k, v }) {
 
 function AIModal({ portfolio, onClose }) {
   const { token, loadPortfoliosFromDB, currentUser } = useApp();
+  // Step pre-analisi
+  const [step, setStep] = useState('form'); // 'form' | 'analisi'
+  const [opzioni, setOpzioni] = useState({
+    obiettivo: 'completa',
+    disponibilita: 'moderato',
+    sogliaVendita: '',
+    maxUSA: portfolio?.maxUSA || 'No max',
+    note: '',
+  });
   const [semafori, setSemafori] = useState(null);
   const [puntiChiave, setPuntiChiave] = useState([]);
   const [analisiDettagliata, setAnalisiDettagliata] = useState('');
   const [modifiche, setModifiche] = useState([]);
   const [approvate, setApprovate] = useState({});
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [applying, setApplying] = useState(false);
   const [pdfLoading, setPdfLoading] = useState(false);
   const [errore, setErrore] = useState('');
@@ -42,32 +51,33 @@ function AIModal({ portfolio, onClose }) {
 
   const authHdr = { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) };
 
-  React.useEffect(() => {
-    (async () => {
-      try {
-        const res = await fetch(`${API}/api/ai/analisi`, {
-          method: 'POST', headers: authHdr,
-          body: JSON.stringify({ portfolio }),
-        });
-        const data = await res.json();
-        if (data.semafori || data.analisiDettagliata) {
-          setSemafori(data.semafori || null);
-          setPuntiChiave(data.puntiChiave || []);
-          setAnalisiDettagliata(data.analisiDettagliata || '');
-          setModifiche(data.modifiche || []);
-          const init = {};
-          (data.modifiche || []).forEach((_, i) => { init[i] = true; });
-          setApprovate(init);
-        } else {
-          setErrore(data.error || 'Risposta non valida dal server');
-        }
-      } catch (err) {
-        setErrore('Server non raggiungibile.');
-      } finally {
-        setLoading(false);
+  const avviaAnalisi = async () => {
+    setStep('analisi');
+    setLoading(true);
+    setErrore('');
+    try {
+      const res = await fetch(`${API}/api/ai/analisi`, {
+        method: 'POST', headers: authHdr,
+        body: JSON.stringify({ portfolio, opzioni }),
+      });
+      const data = await res.json();
+      if (data.semafori || data.analisiDettagliata) {
+        setSemafori(data.semafori || null);
+        setPuntiChiave(data.puntiChiave || []);
+        setAnalisiDettagliata(data.analisiDettagliata || '');
+        setModifiche(data.modifiche || []);
+        const init = {};
+        (data.modifiche || []).forEach((_, i) => { init[i] = true; });
+        setApprovate(init);
+      } else {
+        setErrore(data.error || 'Risposta non valida dal server');
       }
-    })();
-  }, []);
+    } catch (err) {
+      setErrore('Server non raggiungibile.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleApplica = async () => {
     setApplying(true);
@@ -206,6 +216,14 @@ function AIModal({ portfolio, onClose }) {
     return <p key={i} style={{ fontSize:13, lineHeight:1.7, margin:'3px 0', color:'var(--text-primary)' }}>{riga.replace(/\*\*(.*?)\*\*/g,'$1')}</p>;
   });
 
+  const obiettivoLabel = {
+    'completa': 'Analisi completa',
+    'regole': 'Verifica conformità regole',
+    'costi': 'Ottimizzazione costi (TER)',
+    'rendimento': 'Massimizzazione rendimento',
+    'rischio': 'Riduzione rischio/volatilità',
+  };
+
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={e => e.stopPropagation()} style={{ minWidth:700, maxWidth:860, maxHeight:'90vh', display:'flex', flexDirection:'column' }}>
@@ -217,7 +235,7 @@ function AIModal({ portfolio, onClose }) {
             <div style={{ fontSize:12, color:'var(--text-secondary)' }}>{portfolio.name} · powered by Claude</div>
           </div>
           <div style={{ display:'flex', gap:8, alignItems:'center' }}>
-            {analisiDettagliata && !loading && (
+            {step === 'analisi' && analisiDettagliata && !loading && (
               <button className="btn btn-ghost" onClick={handlePDF} disabled={pdfLoading}
                 style={{ fontSize:12, padding:'6px 12px', display:'flex', alignItems:'center', gap:6 }}>
                 {pdfLoading ? '⏳' : '📄'} {pdfLoading ? 'Generando...' : 'Scarica PDF'}
@@ -227,7 +245,99 @@ function AIModal({ portfolio, onClose }) {
           </div>
         </div>
 
+        {/* STEP 1 — Form pre-analisi */}
+        {step === 'form' && (
+          <div style={{ overflowY:'auto', flex:1, paddingRight:4 }}>
+            <div style={{ background:'var(--bg-secondary)', borderRadius:10, padding:'16px 18px', marginBottom:16, border:'1px solid var(--border)' }}>
+              <div style={{ fontSize:13, color:'var(--text-secondary)', marginBottom:14, lineHeight:1.5 }}>
+                Configura i parametri dell'analisi prima di avviarla. L'AI utilizzerà queste preferenze per personalizzare suggerimenti e modifiche proposte.
+              </div>
+
+              {/* Obiettivo */}
+              <div style={{ marginBottom:16 }}>
+                <label style={{ fontSize:12, fontWeight:600, color:'var(--text-primary)', display:'block', marginBottom:8 }}>Obiettivo dell'analisi</label>
+                <div style={{ display:'flex', flexWrap:'wrap', gap:8 }}>
+                  {[['completa','🔍 Analisi completa'],['regole','📋 Verifica regole'],['costi','💰 Ottimizza costi'],['rendimento','📈 Massimizza rendimento'],['rischio','🛡️ Riduci rischio']].map(([val, label]) => (
+                    <button key={val} onClick={() => setOpzioni(o => ({...o, obiettivo: val}))}
+                      style={{ padding:'7px 14px', borderRadius:20, border:`1px solid ${opzioni.obiettivo === val ? 'var(--accent-blue)' : 'var(--border)'}`,
+                        background: opzioni.obiettivo === val ? 'var(--accent-blue)' : 'var(--bg-primary)',
+                        color: opzioni.obiettivo === val ? '#fff' : 'var(--text-primary)', cursor:'pointer', fontSize:12, fontWeight: opzioni.obiettivo === val ? 600 : 400 }}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Disponibilità modifiche */}
+              <div style={{ marginBottom:16 }}>
+                <label style={{ fontSize:12, fontWeight:600, color:'var(--text-primary)', display:'block', marginBottom:8 }}>Disponibilità alle modifiche</label>
+                <div style={{ display:'flex', gap:8 }}>
+                  {[['conservativo','🔒 Conservativo','Solo segnalazioni, nessuna modifica'],['moderato','⚖️ Moderato','Max 2 modifiche, preferisci ribilanciamenti'],['radicale','🔄 Radicale','Tutte le modifiche necessarie']].map(([val, label, desc]) => (
+                    <div key={val} onClick={() => setOpzioni(o => ({...o, disponibilita: val}))}
+                      style={{ flex:1, padding:'10px 12px', borderRadius:8, border:`1px solid ${opzioni.disponibilita === val ? 'var(--accent-blue)' : 'var(--border)'}`,
+                        background: opzioni.disponibilita === val ? 'rgba(59,130,246,0.08)' : 'var(--bg-primary)', cursor:'pointer' }}>
+                      <div style={{ fontSize:12, fontWeight:600, color: opzioni.disponibilita === val ? 'var(--accent-blue)' : 'var(--text-primary)', marginBottom:3 }}>{label}</div>
+                      <div style={{ fontSize:11, color:'var(--text-muted)', lineHeight:1.4 }}>{desc}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Riga: Soglia P&L + Max USA */}
+              <div style={{ display:'flex', gap:12, marginBottom:16 }}>
+                <div style={{ flex:1 }}>
+                  <label style={{ fontSize:12, fontWeight:600, color:'var(--text-primary)', display:'block', marginBottom:6 }}>Soglia min. P&L per vendita — opzionale</label>
+                  <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                    <input type="number" className="input" placeholder="Es: -5 (non vendere se perdi più del 5%)"
+                      value={opzioni.sogliaVendita} onChange={e => setOpzioni(o => ({...o, sogliaVendita: e.target.value}))}
+                      style={{ flex:1 }} />
+                    <span style={{ fontSize:12, color:'var(--text-muted)', flexShrink:0 }}>%</span>
+                  </div>
+                  <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:3 }}>Valore negativo = soglia di perdita massima accettabile</div>
+                </div>
+                <div style={{ flex:1 }}>
+                  <label style={{ fontSize:12, fontWeight:600, color:'var(--text-primary)', display:'block', marginBottom:6 }}>Limite esposizione USA</label>
+                  <select className="input" value={opzioni.maxUSA} onChange={e => setOpzioni(o => ({...o, maxUSA: e.target.value}))}>
+                    <option value="No max">Nessun limite</option>
+                    <option value="60%">Max 60%</option>
+                    <option value="30%">Max 30%</option>
+                    <option value="0%">Nessuna esposizione USA</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Note libere */}
+              <div style={{ marginBottom:8 }}>
+                <label style={{ fontSize:12, fontWeight:600, color:'var(--text-primary)', display:'block', marginBottom:6 }}>Note o preferenze — opzionale</label>
+                <input type="text" className="input" placeholder="Es: voglio mantenere l'ETF Gold, evitare obbligazionario..."
+                  value={opzioni.note} onChange={e => setOpzioni(o => ({...o, note: e.target.value}))} />
+              </div>
+            </div>
+
+            <div style={{ display:'flex', justifyContent:'flex-end', gap:10, paddingTop:8, flexShrink:0 }}>
+              <button className="btn btn-ghost" onClick={onClose}>Annulla</button>
+              <button className="btn btn-primary" onClick={avviaAnalisi}
+                style={{ display:'flex', alignItems:'center', gap:8 }}>
+                🤖 Avvia Analisi AI
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* STEP 2 — Risultato analisi */}
+        {step === 'analisi' && (
         <div style={{ overflowY:'auto', flex:1, paddingRight:4 }}>
+          {/* Riepilogo parametri usati */}
+          {!loading && (semafori || errore) && (
+            <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginBottom:12, padding:'8px 12px', background:'var(--bg-secondary)', borderRadius:8, border:'1px solid var(--border)', fontSize:11, color:'var(--text-muted)' }}>
+              <span>📋 <strong>{obiettivoLabel[opzioni.obiettivo]}</strong></span>
+              <span>·</span>
+              <span>🔄 {opzioni.disponibilita}</span>
+              {opzioni.sogliaVendita && <><span>·</span><span>📉 Soglia vendita: {opzioni.sogliaVendita}%</span></>}
+              {opzioni.maxUSA !== 'No max' && <><span>·</span><span>🇺🇸 Max USA: {opzioni.maxUSA}</span></>}
+              {opzioni.note && <><span>·</span><span>📝 {opzioni.note}</span></>}
+            </div>
+          )}
           {loading && (
             <div style={{ textAlign:'center', padding:'60px 0' }}>
               <div style={{ fontSize:32, marginBottom:12 }}>🤖</div>
@@ -362,6 +472,7 @@ function AIModal({ portfolio, onClose }) {
             )}
           </div>
         </div>
+        )}
       </div>
     </div>
   );

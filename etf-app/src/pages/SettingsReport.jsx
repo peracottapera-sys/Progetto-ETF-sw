@@ -63,6 +63,29 @@ export function Settings() {
           </div>
         </div>
 
+        {/* Card Motore AI */}
+        <div style={{ width: 300, flexShrink: 0 }}>
+          <div className="card">
+            <div className="card-title">🤖 Motore AI</div>
+            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 16, lineHeight: 1.6 }}>
+              Consulta il documento con le regole, i vincoli e i parametri usati dal motore AI per la creazione e l'analisi dei portafogli.
+            </div>
+            <a href="/Regole_AI_ETF_Portfolio.docx" download
+              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderRadius: 8,
+                background: 'var(--bg-secondary)', border: '1px solid var(--border)', color: 'var(--text-primary)',
+                textDecoration: 'none', fontSize: 13, fontWeight: 500, marginBottom: 10 }}>
+              <span style={{ fontSize: 18 }}>📄</span>
+              <div>
+                <div style={{ fontWeight: 600 }}>Regole Motore AI</div>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Documento di riferimento — .docx</div>
+              </div>
+            </a>
+            <div style={{ fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.5 }}>
+              Include: parametri per profilo, gerarchia vincoli, mappa esposizione USA, fonti dati.
+            </div>
+          </div>
+        </div>
+
         {/* Colonna destra — Catalogo ETF */}
         <div style={{ flex: 1, minWidth: 0 }}>
           <CatalogAdmin />
