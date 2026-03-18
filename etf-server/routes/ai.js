@@ -96,7 +96,6 @@ router.post('/analisi', async (req, res) => {
   
   const etfCatalogoRaw = await getEtfPerProfilo(portfolio.riskProfile, false, false);
 
-  console.log('[DEBUG] ai.js riga 97-100:', require('fs').readFileSync(__filename, 'utf8').split('\n').slice(95,103).join('\n'));
   const etfCatalogo = etfCatalogoRaw
     .filter(c => !portfolio.etfs.some(e => e.isin === c.isin))
     .slice(0, 40);
