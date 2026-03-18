@@ -233,13 +233,40 @@ function CreaPortafoglioModal({ portfolioId, onClose, initialProfilo, initialDat
                   </div>
                 );
 
+                // Calcola asset class e valute qui (fuori dal return)
+                const getMacroAsset = (s) => {
+                  const cat = (s.categoria || '').toLowerCase();
+                  const nome = (s.name || '').toLowerCase();
+                  if (cat.includes('azionario')) return 'Azionario';
+                  if (cat.includes('obbligaz') || cat.includes('bond') || cat.includes('corporate') || cat.includes('government') || cat.includes('high yield') || cat.includes('aggregate') || nome.includes('corporate bond') || nome.includes('bond')) return 'Obbligazionario';
+                  if (cat.includes('materie') || cat.includes('commodity') || cat.includes('gold') || cat.includes('oro') || cat.includes('metal')) return 'Materie Prime';
+                  if (cat.includes('liquidit') || cat.includes('monetar') || cat.includes('overnight')) return 'Liquidità';
+                  if (cat.includes('immobil') || cat.includes('reit')) return 'Immobiliare';
+                  return 'Altro';
+                };
+                const assetPeso = {};
+                const valutePeso = {};
+                consigliati.forEach(s => {
+                  const i = selezione.indexOf(s);
+                  const p = parseFloat(pesi[i]) || s.peso || 0;
+                  const a = getMacroAsset(s);
+                  assetPeso[a] = (assetPeso[a] || 0) + p;
+                  const v = s.valuta || 'EUR';
+                  valutePeso[v] = (valutePeso[v] || 0) + p;
+                });
+                const topAsset = Object.entries(assetPeso).sort((a,b) => b[1]-a[1]);
+                const topValute = Object.entries(valutePeso).sort((a,b) => b[1]-a[1]).slice(0,3);
+                const assetColor = { 'Azionario':'var(--accent-gold)', 'Obbligazionario':'var(--accent-blue)', 'Materie Prime':'var(--accent-amber)', 'Liquidità':'var(--accent-green)', 'Immobiliare':'#a78bfa', 'Altro':'var(--text-muted)' };
+
                 return (
                   <div style={{ background:'var(--bg-secondary)', borderRadius:10, padding:'14px 16px', marginBottom:20, border:'1px solid var(--border)' }}>
                     {logica && <p style={{ fontSize:13, color:'var(--text-secondary)', lineHeight:1.6, margin:'0 0 12px 0' }}>{logica}</p>}
-                    {/* Riga 1: Categorie + Asset Class + Valute */}
-                    <div style={{ display:'flex', gap:8 }}>
+
+                    {/* Riga unica: Categorie | Asset Class | Valute */}
+                    <div style={{ display:'flex', gap:8, alignItems:'flex-start' }}>
+                      {/* Categorie dettagliate */}
                       {Object.keys(catCount).length > 0 && (
-                        <div style={{ background:'var(--bg-primary)', borderRadius:8, padding:'8px 12px', border:'1px solid var(--border)', flex:2 }}>
+                        <div style={{ background:'var(--bg-primary)', borderRadius:8, padding:'8px 12px', border:'1px solid var(--border)', flex:3 }}>
                           <div style={{ fontSize:11, color:'var(--text-secondary)', marginBottom:5 }}>
                             Categorie ({macroDistinte.size} macro-aree)
                           </div>
@@ -254,73 +281,40 @@ function CreaPortafoglioModal({ portfolioId, onClose, initialProfilo, initialDat
                           ))}
                         </div>
                       )}
-                    </div>
-                    {/* Riga 2: Pills ETF + TER + Corr */}
-                    <div style={{ display:'flex', gap:8, marginTop:8 }}>
-                      <Pill label="ETF" value={consigliati.length} color="var(--accent-gold)" />
-                      <Pill label="TER totale" value={terTotale.toFixed(2)+'%'} color={terTotale > 1 ? 'var(--accent-amber)' : 'var(--accent-green)'} />
-                      {corrMax && <Pill label="Corr. max" value={corrMax} color={parseFloat(corrMax) > 0.6 ? 'var(--accent-amber)' : 'var(--accent-green)'} />}
-                    </div>
-
-                    {/* Split Asset Class e Valute */}
-                    {(() => {
-                      // Macro asset class
-                      const getMacroAsset = (s) => {
-                        const cat = (s.categoria || '').toLowerCase();
-                        if (cat.includes('azionario')) return 'Azionario';
-                        if (cat.includes('obbligaz') || cat.includes('bond') || cat.includes('corporate') || cat.includes('government') || cat.includes('high yield') || cat.includes('aggregate')) return 'Obbligazionario';
-                        if (cat.includes('materie') || cat.includes('commodity') || cat.includes('gold') || cat.includes('oro') || cat.includes('metal')) return 'Materie Prime';
-                        if (cat.includes('liquidit') || cat.includes('monetar') || cat.includes('overnight')) return 'Liquidità';
-                        if (cat.includes('immobil') || cat.includes('reit')) return 'Immobiliare';
-                        return 'Altro';
-                      };
-                      const assetPeso = {};
-                      consigliati.forEach(s => {
-                        const i = selezione.indexOf(s);
-                        const p = parseFloat(pesi[i]) || s.peso || 0;
-                        const a = getMacroAsset(s);
-                        assetPeso[a] = (assetPeso[a] || 0) + p;
-                      });
-                      const topAsset = Object.entries(assetPeso).sort((a,b) => b[1]-a[1]);
-                      const assetColor = { 'Azionario':'var(--accent-gold)', 'Obbligazionario':'var(--accent-blue)', 'Materie Prime':'var(--accent-amber)', 'Liquidità':'var(--accent-green)', 'Immobiliare':'#a78bfa', 'Altro':'var(--text-muted)' };
-
-                      // Valute
-                      const valutePeso = {};
-                      consigliati.forEach(s => {
-                        const i = selezione.indexOf(s);
-                        const p = parseFloat(pesi[i]) || s.peso || 0;
-                        const v = s.valuta || 'EUR';
-                        valutePeso[v] = (valutePeso[v] || 0) + p;
-                      });
-                      const topValute = Object.entries(valutePeso).sort((a,b) => b[1]-a[1]).slice(0,3);
-
-                      return (
-                        <div style={{ display:'flex', gap:8, marginTop:8 }}>
-                          {topAsset.length > 0 && (
-                            <div style={{ background:'var(--bg-primary)', borderRadius:8, padding:'8px 12px', border:'1px solid var(--border)', flex:2 }}>
-                              <div style={{ fontSize:11, color:'var(--text-secondary)', marginBottom:5 }}>Split per Asset Class</div>
-                              {topAsset.map(([asset, peso]) => (
-                                <div key={asset} style={{ display:'flex', justifyContent:'space-between', fontSize:11, marginBottom:2 }}>
-                                  <span style={{ color:'var(--text-primary)' }}>{asset}</span>
-                                  <span style={{ fontWeight:700, color: assetColor[asset] || 'var(--text-primary)', minWidth:36, textAlign:'right' }}>{Math.round(peso)}%</span>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                          {topValute.length > 0 && (
-                            <div style={{ background:'var(--bg-primary)', borderRadius:8, padding:'8px 12px', border:'1px solid var(--border)', flex:1 }}>
-                              <div style={{ fontSize:11, color:'var(--text-secondary)', marginBottom:5 }}>Valute (top {topValute.length})</div>
-                              {topValute.map(([valuta, peso]) => (
-                                <div key={valuta} style={{ display:'flex', justifyContent:'space-between', fontSize:11, marginBottom:2 }}>
-                                  <span style={{ color:'var(--text-primary)' }}>{valuta}</span>
-                                  <span style={{ fontWeight:700, color:'var(--accent-green)', minWidth:36, textAlign:'right' }}>{Math.round(peso)}%</span>
-                                </div>
-                              ))}
-                            </div>
-                          )}
+                      {/* Colonna destra: Asset Class + Valute + Pills */}
+                      <div style={{ display:'flex', flexDirection:'column', gap:8, flex:2 }}>
+                        {/* Asset Class */}
+                        {topAsset.length > 0 && (
+                          <div style={{ background:'var(--bg-primary)', borderRadius:8, padding:'8px 12px', border:'1px solid var(--border)' }}>
+                            <div style={{ fontSize:11, color:'var(--text-secondary)', marginBottom:5 }}>Split per Asset Class</div>
+                            {topAsset.map(([asset, peso]) => (
+                              <div key={asset} style={{ display:'flex', justifyContent:'space-between', fontSize:11, marginBottom:2 }}>
+                                <span style={{ color:'var(--text-primary)' }}>{asset}</span>
+                                <span style={{ fontWeight:700, color: assetColor[asset] || 'var(--text-primary)', minWidth:36, textAlign:'right' }}>{Math.round(peso)}%</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {/* Valute */}
+                        {topValute.length > 0 && (
+                          <div style={{ background:'var(--bg-primary)', borderRadius:8, padding:'8px 12px', border:'1px solid var(--border)' }}>
+                            <div style={{ fontSize:11, color:'var(--text-secondary)', marginBottom:5 }}>Valuta di scambio (top {topValute.length})</div>
+                            {topValute.map(([valuta, peso]) => (
+                              <div key={valuta} style={{ display:'flex', justifyContent:'space-between', fontSize:11, marginBottom:2 }}>
+                                <span style={{ color:'var(--text-primary)' }}>{valuta}</span>
+                                <span style={{ fontWeight:700, color:'var(--accent-green)', minWidth:36, textAlign:'right' }}>{Math.round(peso)}%</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {/* Pills ETF + TER + Corr */}
+                        <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
+                          <Pill label="ETF" value={consigliati.length} color="var(--accent-gold)" />
+                          <Pill label="TER totale" value={terTotale.toFixed(2)+'%'} color={terTotale > 1 ? 'var(--accent-amber)' : 'var(--accent-green)'} />
+                          {corrMax && <Pill label="Corr. max" value={corrMax} color={parseFloat(corrMax) > 0.6 ? 'var(--accent-amber)' : 'var(--accent-green)'} />}
                         </div>
-                      );
-                    })()}
+                      </div>
+                    </div>
                   </div>
                 );
               })()}
