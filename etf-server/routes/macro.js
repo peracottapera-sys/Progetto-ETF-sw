@@ -1,223 +1,257 @@
 /**
  * macro.js — Contesto macroeconomico per il motore AI
- * Fonti: FRED API (Fed/inflazione USA), BCE API (tassi EU), Yahoo Finance (VIX, S&P, Treasury 10Y)
+ * Fonti: FRED API, BCE API, Yahoo Finance
  * Cache in memoria: refresh ogni 6 ore
  */
 
 const axios = require('axios');
-
 const HEADERS = { 'User-Agent': 'Mozilla/5.0' };
 
-// ── Cache ──────────────────────────────────────────────────────────────────
 let cache = null;
+let cacheDati = null;
 let cacheTimestamp = 0;
-const CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6 ore
+const CACHE_TTL_MS = 6 * 60 * 60 * 1000;
 
-// ── Fetch Yahoo Finance (VIX, S&P500, Treasury 10Y) ───────────────────────
 async function fetchYahoo(ticker) {
   try {
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=5d`;
-    const { data } = await axios.get(url, { headers: HEADERS, timeout: 8000 });
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=400d`;
+    const { data } = await axios.get(url, { headers: HEADERS, timeout: 10000 });
     const result = data?.chart?.result?.[0];
     if (!result) return null;
-    const prezzo = result.meta?.regularMarketPrice;
-    const closes = result.indicators?.quote?.[0]?.close?.filter(c => c != null) || [];
-    const perf1m = closes.length >= 22
-      ? parseFloat(((prezzo - closes[Math.max(0, closes.length - 22)]) / closes[Math.max(0, closes.length - 22)] * 100).toFixed(2))
-      : null;
-    return { prezzo: parseFloat(prezzo?.toFixed(2)), perf1m };
-  } catch {
+    const meta = result.meta;
+    const closes = result.indicators?.quote?.[0]?.close || [];
+    const timestamps = result.timestamp || [];
+    const validi = closes.map((c, i) => ({ c, t: timestamps[i] })).filter(x => x.c != null);
+    if (validi.length < 2) return null;
+    const prezzo = parseFloat((meta.regularMarketPrice || validi[validi.length - 1].c).toFixed(4));
+    const l = validi.length;
+    const perf1d = l >= 2 ? parseFloat(((prezzo - validi[l - 2].c) / validi[l - 2].c * 100).toFixed(2)) : null;
+    const perf1m = l >= 22 ? parseFloat(((prezzo - validi[l - 22].c) / validi[l - 22].c * 100).toFixed(2)) : null;
+    return { prezzo, perf1d, perf1m };
+  } catch (e) {
+    console.error(`[macro] Errore Yahoo ${ticker}:`, e.message);
     return null;
   }
 }
 
-// ── Fetch FRED API (dati Fed e inflazione USA) ─────────────────────────────
-async function fetchFRED(seriesId) {
+async function fetchFREDYoY(seriesId) {
   try {
-    // FRED API pubblica senza key — usa il endpoint observation
     const url = `https://fred.stlouisfed.org/graph/fredgraph.csv?id=${seriesId}`;
-    const { data } = await axios.get(url, { headers: HEADERS, timeout: 8000 });
-    const lines = data.trim().split('\n').filter(l => !l.startsWith('DATE'));
+    const { data } = await axios.get(url, { headers: HEADERS, timeout: 10000 });
+    const lines = data.trim().split('\n').filter(l => !l.startsWith('DATE') && !l.includes('.'));
+    if (lines.length < 13) return null;
     const last = lines[lines.length - 1]?.split(',');
-    if (!last || last.length < 2 || last[1] === '.') return null;
-    return { data: last[0], valore: parseFloat(last[1]) };
-  } catch {
+    const prev12 = lines[lines.length - 13]?.split(',');
+    if (!last || !prev12) return null;
+    const valoreAttuale = parseFloat(last[1]);
+    const valore12mFa = parseFloat(prev12[1]);
+    if (isNaN(valoreAttuale) || isNaN(valore12mFa) || valore12mFa === 0) return null;
+    const yoy = parseFloat(((valoreAttuale - valore12mFa) / valore12mFa * 100).toFixed(2));
+    return { data: last[0], valore: valoreAttuale, yoy };
+  } catch (e) {
+    console.error(`[macro] Errore FRED YoY ${seriesId}:`, e.message);
     return null;
   }
 }
 
-// ── Fetch BCE API (tasso BCE) ──────────────────────────────────────────────
+async function fetchFREDLast(seriesId) {
+  try {
+    const url = `https://fred.stlouisfed.org/graph/fredgraph.csv?id=${seriesId}`;
+    const { data } = await axios.get(url, { headers: HEADERS, timeout: 10000 });
+    const lines = data.trim().split('\n').filter(l => !l.startsWith('DATE') && !l.includes('.'));
+    const last = lines[lines.length - 1]?.split(',');
+    if (!last || isNaN(parseFloat(last[1]))) return null;
+    return { data: last[0], valore: parseFloat(parseFloat(last[1]).toFixed(2)) };
+  } catch (e) {
+    console.error(`[macro] Errore FRED ${seriesId}:`, e.message);
+    return null;
+  }
+}
+
 async function fetchBCE() {
   try {
-    // ECB Data Portal — tasso sui depositi (DFR)
     const url = 'https://data-api.ecb.europa.eu/service/data/FM/B.U2.EUR.4F.KR.DFR.LEV?lastNObservations=1&format=jsondata';
-    const { data } = await axios.get(url, { headers: { ...HEADERS, Accept: 'application/json' }, timeout: 8000 });
+    const { data } = await axios.get(url, { headers: { ...HEADERS, Accept: 'application/json' }, timeout: 10000 });
     const obs = data?.dataSets?.[0]?.series?.['0:0:0:0:0:0:0']?.observations;
     if (!obs) return null;
     const keys = Object.keys(obs).sort((a, b) => parseInt(b) - parseInt(a));
     const valore = obs[keys[0]]?.[0];
     return valore != null ? parseFloat(valore.toFixed(2)) : null;
-  } catch {
+  } catch (e) {
+    console.error('[macro] Errore BCE:', e.message);
     return null;
   }
 }
 
-// ── Interpreta il livello VIX ──────────────────────────────────────────────
+function stimaPoliticaMonetaria(tasso, inflazione, target = 2.0, banca = 'BCE') {
+  if (!tasso || !inflazione) return null;
+  const diff = inflazione - target;
+  const tassoReale = parseFloat((tasso - inflazione).toFixed(2));
+  let outlook, dettaglio;
+  if (diff > 1.5 && tasso > 3.0) {
+    outlook = 'STABILE o RIALZO';
+    dettaglio = `Inflazione ${inflazione}% sopra target → ${banca} difficilmente taglierà nel breve`;
+  } else if (diff > 0.5) {
+    outlook = 'STABILE';
+    dettaglio = `Inflazione leggermente sopra target → pausa probabile, tagli lontani`;
+  } else if (diff > -0.5 && tasso > 2.0) {
+    outlook = 'TAGLIO nei prossimi 6-12 mesi';
+    dettaglio = `Inflazione vicina al target → ${banca} può iniziare ciclo di allentamento`;
+  } else if (tasso > 1.0) {
+    outlook = 'TAGLI probabili';
+    dettaglio = `Inflazione sotto target → ${banca} ha margine per tagliare`;
+  } else {
+    outlook = 'TASSI BASSI';
+    dettaglio = `Tassi già minimi, politica accomodante`;
+  }
+  return { outlook, dettaglio, tassoReale };
+}
+
 function interpretaVIX(vix) {
   if (!vix) return 'N/D';
-  if (vix < 15) return 'BASSO — mercati molto calmi, bassa volatilità attesa';
-  if (vix < 20) return 'MODERATO — condizioni normali';
-  if (vix < 25) return 'ELEVATO — attenzione, nervosismo sui mercati';
-  if (vix < 35) return 'ALTO — volatilità significativa, cautela raccomandata';
-  return 'MOLTO ALTO — stress di mercato, massima cautela';
+  if (vix < 15) return 'BASSO — mercati calmi';
+  if (vix < 20) return 'Moderato — condizioni normali';
+  if (vix < 25) return 'Moderato-alto — attenzione';
+  if (vix < 35) return 'ALTO — volatilità significativa';
+  return 'MOLTO ALTO — stress di mercato';
 }
 
-// ── Interpreta il tasso BCE ────────────────────────────────────────────────
-function interpretaBCE(tasso) {
-  if (!tasso) return '';
-  if (tasso >= 3.5) return 'tassi ancora restrittivi → obbligazionario breve durata preferibile per profilo Prudente';
-  if (tasso >= 2.0) return 'tassi in normalizzazione → contesto favorevole per obbligazionario medio termine';
-  return 'tassi accomodanti → favorisce azionario e obbligazionario lunga durata';
+function interpretaCurva(spread) {
+  if (spread == null) return null;
+  if (spread < -0.5) return { label: 'INVERTITA', colore: 'red', desc: 'Segnale storico di recessione' };
+  if (spread < 0) return { label: 'Piatta/invertita', colore: 'orange', desc: 'Attenzione rallentamento' };
+  if (spread < 0.5) return { label: 'Piatta', colore: 'amber', desc: 'Incertezza ciclo economico' };
+  return { label: 'Normale', colore: 'green', desc: 'Curva sana, crescita attesa' };
 }
 
-// ── Interpreta inflazione EU ───────────────────────────────────────────────
-function interpretaInflazione(cpi, target = 2.0) {
-  if (!cpi) return '';
-  const diff = cpi - target;
-  if (diff > 1.5) return `inflazione ${cpi}% sopra target BCE (${target}%) → rischio per obbligazionario reale`;
-  if (diff > 0.5) return `inflazione ${cpi}% leggermente sopra target → BCE potrebbe mantenere tassi alti`;
-  if (diff > -0.5) return `inflazione ${cpi}% vicina al target BCE → contesto stabile`;
-  return `inflazione ${cpi}% sotto target BCE → possibili tagli tassi in vista`;
-}
-
-// ── Genera implicazioni per profilo ───────────────────────────────────────
 function generaImplicazioni(dati) {
+  const { vix, bce, inflEU, inflUSA, treasury10y, treasury2y, bund10y, btpBundSpread, eurusd } = dati;
   const impl = [];
-  const { vix, bce, inflEU, treasury10y } = dati;
-
   if (vix > 30) {
-    impl.push('Prudente: VIX elevato → considera aumentare liquidità e obbligazionario breve');
+    impl.push('Prudente: VIX elevato → aumenta liquidità, riduci duration obbligazionaria');
     impl.push('Bilanciato: VIX elevato → riduci esposizione azionaria tattica');
-    impl.push('Aggressivo: VIX elevato → opportunità di acquisto per orizzonti lunghi');
-  } else if (vix > 20) {
-    impl.push('Prudente: volatilità in aumento → mantieni hedging valutario');
-    impl.push('Aggressivo: volatilità moderata → finestra di attenzione, non aggressività massima');
-  } else {
-    impl.push('Tutti i profili: VIX basso → condizioni favorevoli per esposizione azionaria');
+    impl.push('Aggressivo: VIX elevato → opportunità per orizzonti >5 anni');
+  } else if (vix > 22) {
+    impl.push('Tutti i profili: volatilità in aumento → mantieni hedging valutario');
+  } else if (vix) {
+    impl.push('Tutti i profili: VIX contenuto → condizioni favorevoli per azionario');
   }
-
-  if (bce >= 3.0) {
-    impl.push('Prudente/Bilanciato: tassi BCE alti → obbligazionario breve durata (1-3y) preferibile al lungo');
-  } else if (bce < 2.0) {
-    impl.push('Tutti i profili: tassi BCE bassi → durata obbligazionaria più lunga diventa interessante');
+  if (bce >= 3.0) impl.push('Prudente/Bilanciato: BCE restrittiva → obbligazionario breve (1-3y) preferibile');
+  else if (bce != null && bce < 1.5) impl.push('Tutti i profili: BCE accomodante → lunga duration favorita');
+  if (inflEU > 3.0) impl.push('Prudente: inflazione alta → considera ETF inflation-linked per protezione');
+  else if (inflEU != null && inflEU < 1.5) impl.push('Bilanciato/Aggressivo: inflazione bassa → obbligazionario nominale preferito');
+  if (treasury10y != null && treasury2y != null && (treasury10y - treasury2y) < 0) {
+    impl.push('Curva USA invertita → segnale storico di recessione, riduci ciclici');
   }
-
-  if (treasury10y > 4.5) {
-    impl.push('Profili con USD: Treasury 10Y > 4.5% → valuta opportunità obbligazionario USA ma attenzione rischio cambio');
+  if (btpBundSpread != null && btpBundSpread > 2.0) {
+    impl.push(`Spread BTP-Bund ${btpBundSpread}% → rischio Italia elevato, attenzione obbligazionario IT`);
   }
-
+  if (eurusd != null && eurusd < 1.05) impl.push('EUR/USD debole → ETF hedged preferibili per esposizione USD');
+  else if (eurusd != null && eurusd > 1.15) impl.push('EUR forte → hedging su USD meno necessario');
   return impl;
 }
 
-// ── Funzione principale: fetcha e caccha il contesto macro ─────────────────
-async function getMacroContext() {
+async function getMacroDati() {
   const ora = Date.now();
-  if (cache && (ora - cacheTimestamp) < CACHE_TTL_MS) {
+  if (cache && cacheDati && (ora - cacheTimestamp) < CACHE_TTL_MS) {
     console.log('[macro] Cache hit');
-    return cache;
+    return { testo: cache, dati: cacheDati };
   }
 
   console.log('[macro] Fetching dati macroeconomici...');
   const oggi = new Date().toLocaleDateString('it-IT');
 
-  // Fetch in parallelo
-  const [vixData, sp500Data, treasury10yData, fedFundsData, cpiUSAData, cpiEUData, tasoBCE] = await Promise.allSettled([
-    fetchYahoo('^VIX'),
-    fetchYahoo('^GSPC'),
-    fetchYahoo('^TNX'),
-    fetchFRED('FEDFUNDS'),     // Fed Funds Rate
-    fetchFRED('CPIAUCSL'),     // CPI USA
-    fetchFRED('CP0000EZ17M086NEST'), // HICP EU
-    fetchBCE(),
-  ]);
+  const [vixR, sp500R, t10yR, t2yR, eurusdR, goldR, stoxx50R, fedR, cpiUSAR, cpiEUR, bceR, btpR] =
+    await Promise.allSettled([
+      fetchYahoo('^VIX'),
+      fetchYahoo('^GSPC'),
+      fetchYahoo('^TNX'),
+      fetchYahoo('^FVX'),         // Treasury 5Y come proxy 2Y (^IRX = 13wk)
+      fetchYahoo('EURUSD=X'),
+      fetchYahoo('GC=F'),
+      fetchYahoo('^STOXX50E'),
+      fetchFREDLast('FEDFUNDS'),
+      fetchFREDYoY('CPIAUCSL'),
+      fetchFREDYoY('CP0000EZ17M086NEST'),
+      fetchBCE(),
+      fetchFREDLast('IRLTLT01ITM156N'), // BTP 10Y da FRED
+    ]);
 
-  const vix = vixData.status === 'fulfilled' ? vixData.value?.prezzo : null;
-  const sp500 = sp500Data.status === 'fulfilled' ? sp500Data.value : null;
-  const treasury10y = treasury10yData.status === 'fulfilled' ? treasury10yData.value?.prezzo : null;
-  const fedFunds = fedFundsData.status === 'fulfilled' ? fedFundsData.value?.valore : null;
-  const cpiUSA = cpiUSAData.status === 'fulfilled' ? cpiUSAData.value?.valore : null;
-  const inflEU = cpiEUData.status === 'fulfilled' ? cpiEUData.value?.valore : null;
-  const bce = tasoBCE.status === 'fulfilled' ? tasoBCE.value : null;
+  const vix = vixR.value?.prezzo ?? null;
+  const sp500 = sp500R.value ?? null;
+  const treasury10y = t10yR.value?.prezzo ?? null;
+  const treasury5y = t2yR.value?.prezzo ?? null;  // usiamo 5Y
+  const eurusd = eurusdR.value?.prezzo ?? null;
+  const gold = goldR.value ?? null;
+  const stoxx50 = stoxx50R.value ?? null;
+  const fedFunds = fedR.value?.valore ?? null;
+  const cpiUSA = cpiUSAR.value?.yoy ?? null;
+  const inflEU = cpiEUR.value?.yoy ?? null;
+  const bce = bceR.value ?? null;
+  const btp10y = btpR.value?.valore ?? null;
 
-  const dati = { vix, sp500: sp500?.prezzo, sp500Perf1m: sp500?.perf1m, treasury10y, fedFunds, cpiUSA, inflEU, bce };
-  const implicazioni = generaImplicazioni(dati);
+  // Bund 10Y da FRED
+  const bundR = await fetchFREDLast('IRLTLT01DEM156N').catch(() => null);
+  const bund10y = bundR?.valore ?? null;
+  const btpBundSpread = (btp10y != null && bund10y != null)
+    ? parseFloat((btp10y - bund10y).toFixed(2))
+    : null;
 
-  // Costruisci stringa macroContext
-  const lines = [
-    `## CONTESTO MACRO AGGIORNATO (${oggi}):`,
-    fedFunds != null ? `- Tasso Fed (Fed Funds Rate): ${fedFunds}%` : null,
-    bce != null ? `- Tasso BCE (Deposit Facility): ${bce}%` : null,
-    cpiUSA != null ? `- Inflazione USA (CPI): ${cpiUSA}% YoY` : null,
-    inflEU != null ? `- Inflazione EU (HICP): ${inflEU}% YoY` : null,
-    vix != null ? `- VIX (volatilità S&P500): ${vix} — ${interpretaVIX(vix)}` : null,
-    sp500 != null ? `- S&P500: ${sp500.prezzo?.toLocaleString('it-IT')} (perf 1M: ${sp500.perf1m != null ? sp500.perf1m + '%' : 'N/D'})` : null,
-    treasury10y != null ? `- Treasury USA 10Y: ${treasury10y}%` : null,
-    bce != null ? `- Implicazione tassi BCE: ${interpretaBCE(bce)}` : null,
-    inflEU != null ? `- Implicazione inflazione EU: ${interpretaInflazione(inflEU)}` : null,
-    '',
-    '## IMPLICAZIONI PER PROFILO DI RISCHIO:',
-    ...implicazioni.map(i => `- ${i}`),
-  ].filter(l => l !== null);
-
-  const macroContext = lines.join('\n');
-
-  console.log('[macro] Contesto generato:');
-  console.log(macroContext);
-
-  cache = macroContext;
-  cacheTimestamp = ora;
-  return macroContext;
-}
-
-module.exports = { getMacroContext };
-
-// ── Esporta anche i dati strutturati per il pannello frontend ──────────────
-async function getMacroDati() {
-  const ora = Date.now();
-  if (cache && (ora - cacheTimestamp) < CACHE_TTL_MS) {
-    return { testo: cache, dati: cacheDati };
-  }
-
-  const [vixData, sp500Data, treasury10yData, fedFundsData, cpiUSAData, cpiEUData, tasoBCE] = await Promise.allSettled([
-    fetchYahoo('^VIX'),
-    fetchYahoo('^GSPC'),
-    fetchYahoo('^TNX'),
-    fetchFRED('FEDFUNDS'),
-    fetchFRED('CPIAUCSL'),
-    fetchFRED('CP0000EZ17M086NEST'),
-    fetchBCE(),
-  ]);
-
-  const vix = vixData.status === 'fulfilled' ? vixData.value?.prezzo : null;
-  const sp500 = sp500Data.status === 'fulfilled' ? sp500Data.value : null;
-  const treasury10y = treasury10yData.status === 'fulfilled' ? treasury10yData.value?.prezzo : null;
-  const fedFunds = fedFundsData.status === 'fulfilled' ? fedFundsData.value?.valore : null;
-  const cpiUSA = cpiUSAData.status === 'fulfilled' ? cpiUSAData.value?.valore : null;
-  const inflEU = cpiEUData.status === 'fulfilled' ? cpiEUData.value?.valore : null;
-  const bce = tasoBCE.status === 'fulfilled' ? tasoBCE.value : null;
+  const curvaUSA = (treasury10y != null && treasury5y != null)
+    ? parseFloat((treasury10y - treasury5y).toFixed(2))
+    : null;
+  const curvaInfo = interpretaCurva(curvaUSA);
+  const stimaBCE = stimaPoliticaMonetaria(bce, inflEU, 2.0, 'BCE');
+  const stimaFed = stimaPoliticaMonetaria(fedFunds, cpiUSA, 2.0, 'Fed');
 
   const dati = {
-    vix, sp500: sp500?.prezzo, sp500Perf1m: sp500?.perf1m,
-    treasury10y, fedFunds, cpiUSA, inflEU, bce,
-    vixLabel: interpretaVIX(vix),
-    implicazioni: generaImplicazioni({ vix, bce, inflEU, treasury10y }),
+    vix, vixLabel: interpretaVIX(vix),
+    sp500: sp500?.prezzo, sp500Perf1d: sp500?.perf1d, sp500Perf1m: sp500?.perf1m,
+    treasury10y, treasury5y, curvaUSA, curvaInfo,
+    eurusd, eurusdPerf1m: eurusdR.value?.perf1m ?? null,
+    gold: gold?.prezzo, goldPerf1m: gold?.perf1m,
+    stoxx50: stoxx50?.prezzo, stoxx50Perf1d: stoxx50?.perf1d, stoxx50Perf1m: stoxx50?.perf1m,
+    bund10y, btp10y, btpBundSpread,
+    fedFunds, cpiUSA, inflEU, bce,
+    stimaBCE, stimaFed,
+    implicazioni: generaImplicazioni({ vix, bce, inflEU, inflUSA: cpiUSA, treasury10y, treasury2y: treasury5y, bund10y, btpBundSpread, eurusd }),
     aggiornato: new Date().toISOString(),
   };
 
-  const testo = await getMacroContext();
+  const lines = [
+    `## CONTESTO MACRO AGGIORNATO (${oggi}):`,
+    fedFunds != null ? `- Tasso Fed: ${fedFunds}%` : null,
+    bce != null ? `- Tasso BCE: ${bce}%` : null,
+    cpiUSA != null ? `- Inflazione USA (CPI YoY): ${cpiUSA}%` : null,
+    inflEU != null ? `- Inflazione EU (HICP YoY): ${inflEU}%` : null,
+    vix != null ? `- VIX: ${vix} — ${interpretaVIX(vix)}` : null,
+    treasury10y != null ? `- Treasury USA 10Y: ${treasury10y}%` : null,
+    curvaUSA != null ? `- Curva tassi USA (10Y-5Y): ${curvaUSA}% — ${curvaInfo?.label}` : null,
+    eurusd != null ? `- EUR/USD: ${eurusd}` : null,
+    gold?.prezzo != null ? `- Oro: $${gold.prezzo} (1M: ${gold.perf1m != null ? gold.perf1m + '%' : 'N/D'})` : null,
+    bund10y != null ? `- Bund 10Y: ${bund10y}%` : null,
+    btpBundSpread != null ? `- Spread BTP-Bund: ${btpBundSpread}%` : null,
+    stoxx50?.prezzo != null ? `- Euro Stoxx 50: ${stoxx50.prezzo} (1M: ${stoxx50.perf1m != null ? stoxx50.perf1m + '%' : 'N/D'})` : null,
+    '',
+    stimaBCE ? `## OUTLOOK BCE: ${stimaBCE.outlook}\n${stimaBCE.dettaglio}` : null,
+    stimaFed ? `## OUTLOOK FED: ${stimaFed.outlook}\n${stimaFed.dettaglio}` : null,
+    '',
+    '## IMPLICAZIONI PER PROFILO:',
+    ...dati.implicazioni.map(i => `- ${i}`),
+  ].filter(l => l !== null);
+
+  const macroContext = lines.join('\n');
+  console.log('[macro] OK — ' + macroContext.split('\n').length + ' righe generate');
+
+  cache = macroContext;
   cacheDati = dati;
-  return { testo, dati };
+  cacheTimestamp = ora;
+  return { testo: macroContext, dati };
 }
 
-let cacheDati = null;
+async function getMacroContext() {
+  const { testo } = await getMacroDati();
+  return testo;
+}
+
 module.exports = { getMacroContext, getMacroDati };

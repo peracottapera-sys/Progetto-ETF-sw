@@ -2,30 +2,54 @@ import React, { useState, useEffect } from 'react';
 
 const API = process.env.REACT_APP_API_URL || (window.location.hostname === 'localhost' ? 'http://localhost:3001' : '');
 
-function Indicatore({ label, valore, unita = '', colore, sub }) {
+function Pill({ label, valore, unita = '', colore, sub, perf }) {
   return (
-    <div style={{ background: 'var(--bg-primary)', borderRadius: 8, padding: '10px 14px', border: '1px solid var(--border)', minWidth: 110 }}>
-      <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>{label}</div>
-      <div style={{ fontSize: 18, fontWeight: 700, color: colore || 'var(--text-primary)' }}>
+    <div style={{ background: 'var(--bg-primary)', borderRadius: 8, padding: '9px 13px', border: '1px solid var(--border)', minWidth: 100 }}>
+      <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 3, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</div>
+      <div style={{ fontSize: 16, fontWeight: 700, color: colore || 'var(--text-primary)', lineHeight: 1.2 }}>
         {valore != null ? `${valore}${unita}` : '—'}
       </div>
-      {sub && <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>{sub}</div>}
+      {(sub || perf != null) && (
+        <div style={{ fontSize: 10, marginTop: 3, color: perf != null ? (perf >= 0 ? 'var(--accent-green)' : 'var(--accent-red)') : 'var(--text-muted)' }}>
+          {perf != null ? `${perf >= 0 ? '+' : ''}${perf}% 1M` : sub}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function OutlookBadge({ label, outlook }) {
+  if (!outlook) return null;
+  const colore = outlook.outlook?.includes('TAGLIO') || outlook.outlook?.includes('BASSO')
+    ? 'var(--accent-green)'
+    : outlook.outlook?.includes('RIALZO')
+    ? 'var(--accent-red)'
+    : 'var(--accent-amber)';
+  return (
+    <div style={{ background: 'var(--bg-primary)', borderRadius: 8, padding: '9px 13px', border: `1px solid ${colore}44`, flex: 1 }}>
+      <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 3, textTransform: 'uppercase' }}>{label}</div>
+      <div style={{ fontSize: 12, fontWeight: 700, color: colore, marginBottom: 2 }}>{outlook.outlook}</div>
+      <div style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.4 }}>{outlook.dettaglio}</div>
+      {outlook.tassoReale != null && (
+        <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 3 }}>
+          Tasso reale: {outlook.tassoReale}%
+        </div>
+      )}
     </div>
   );
 }
 
 function colorVIX(v) {
   if (!v) return 'var(--text-primary)';
-  if (v < 15) return 'var(--accent-green)';
   if (v < 20) return 'var(--accent-green)';
   if (v < 25) return 'var(--accent-amber)';
-  if (v < 35) return 'var(--accent-red)';
-  return '#ff4444';
+  return 'var(--accent-red)';
 }
 
-function colorPerf(v) {
-  if (!v) return 'var(--text-primary)';
-  return v >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
+function colorCurva(info) {
+  if (!info) return 'var(--text-primary)';
+  const m = { red: 'var(--accent-red)', orange: 'var(--accent-red)', amber: 'var(--accent-amber)', green: 'var(--accent-green)' };
+  return m[info.colore] || 'var(--text-primary)';
 }
 
 export default function MacroPanel({ token }) {
@@ -35,16 +59,14 @@ export default function MacroPanel({ token }) {
   const [lastFetch, setLastFetch] = useState(null);
 
   const fetchMacro = async (force = false) => {
-    // Usa cache locale per la giornata (non rifetcha se già fatto oggi)
     const oggi = new Date().toISOString().slice(0, 10);
-    const cached = sessionStorage.getItem('macroData');
-    const cachedDate = sessionStorage.getItem('macroDate');
-    if (!force && cached && cachedDate === oggi) {
-      setDati(JSON.parse(cached));
-      setLastFetch(cachedDate);
-      return;
+    if (!force) {
+      const cached = sessionStorage.getItem('macroData');
+      const cachedDate = sessionStorage.getItem('macroDate');
+      if (cached && cachedDate === oggi) {
+        try { setDati(JSON.parse(cached)); setLastFetch(cachedDate); return; } catch {}
+      }
     }
-
     setLoading(true);
     setErrore('');
     try {
@@ -67,81 +89,92 @@ export default function MacroPanel({ token }) {
     }
   };
 
-  useEffect(() => {
-    fetchMacro();
-  }, []);
+  useEffect(() => { fetchMacro(); }, []);
 
   return (
-    <div style={{ background: 'var(--bg-card)', borderRadius: 12, padding: '16px 18px', border: '1px solid var(--border)', marginBottom: 20 }}>
+    <div style={{ background: 'var(--bg-card)', borderRadius: 12, padding: '14px 18px', border: '1px solid var(--border)', marginBottom: 16 }}>
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span style={{ fontSize: 18 }}>🌍</span>
-          <div>
-            <div style={{ fontWeight: 700, fontSize: 14 }}>Contesto Macro</div>
-            <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-              {lastFetch ? `Aggiornato: ${lastFetch}` : 'Fonti: FRED, BCE, Yahoo Finance'}
-            </div>
-          </div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+        <div>
+          <span style={{ fontWeight: 700, fontSize: 13 }}>🌍 Contesto Macro</span>
+          <span style={{ fontSize: 11, color: 'var(--text-muted)', marginLeft: 10 }}>
+            {lastFetch ? `Aggiornato: ${lastFetch}` : 'FRED · BCE · Yahoo Finance'}
+          </span>
         </div>
         <button onClick={() => fetchMacro(true)} disabled={loading}
-          style={{ padding: '5px 12px', borderRadius: 6, border: '1px solid var(--border)',
-            background: 'var(--bg-secondary)', color: 'var(--text-primary)', cursor: 'pointer', fontSize: 12 }}>
-          {loading ? '⏳' : '🔄 Aggiorna'}
+          style={{ padding: '4px 10px', borderRadius: 6, border: '1px solid var(--border)',
+            background: 'var(--bg-secondary)', color: 'var(--text-primary)', cursor: 'pointer', fontSize: 11 }}>
+          {loading ? '⏳' : '🔄'}
         </button>
       </div>
 
-      {loading && (
-        <div style={{ textAlign: 'center', padding: '20px 0', color: 'var(--text-muted)', fontSize: 13 }}>
-          Recupero dati in corso...
+      {loading && <div style={{ textAlign: 'center', padding: '16px 0', color: 'var(--text-muted)', fontSize: 12 }}>Recupero dati in corso... (10-15 sec)</div>}
+      {errore && <div style={{ color: 'var(--accent-red)', fontSize: 12 }}>⚠️ {errore}</div>}
+
+      {dati && !loading && (<>
+
+        {/* Riga 1: Volatilità e mercati */}
+        <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Volatilità e Mercati</div>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
+          <Pill label="VIX" valore={dati.vix} colore={colorVIX(dati.vix)} sub={dati.vixLabel} />
+          <Pill label="Euro Stoxx 50" valore={dati.stoxx50?.toLocaleString('it-IT')} perf={dati.stoxx50Perf1m} />
+          <Pill label="Oro" valore={dati.gold != null ? '$' + dati.gold.toLocaleString('it-IT') : null} perf={dati.goldPerf1m} colore="var(--accent-amber)" />
+          <Pill label="EUR/USD" valore={dati.eurusd} perf={dati.eurusdPerf1m}
+            colore={dati.eurusd < 1.05 ? 'var(--accent-red)' : dati.eurusd > 1.15 ? 'var(--accent-green)' : 'var(--text-primary)'} />
         </div>
-      )}
 
-      {errore && (
-        <div style={{ color: 'var(--accent-red)', fontSize: 13, padding: '8px 0' }}>⚠️ {errore}</div>
-      )}
+        {/* Riga 2: Tassi e rendimenti */}
+        <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Tassi e Rendimenti</div>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
+          <Pill label="Tasso Fed" valore={dati.fedFunds} unita="%" colore="var(--accent-amber)" sub="Fed Funds Rate" />
+          <Pill label="Tasso BCE" valore={dati.bce} unita="%" colore="var(--accent-amber)" sub="Deposit Facility" />
+          <Pill label="Treasury 10Y" valore={dati.treasury10y} unita="%" colore="var(--accent-blue)" sub="USA benchmark" />
+          <Pill label="Bund 10Y" valore={dati.bund10y} unita="%" colore="var(--accent-blue)" sub="EU benchmark" />
+          <Pill label="Spread BTP-Bund" valore={dati.btpBundSpread} unita="%"
+            colore={dati.btpBundSpread > 2.5 ? 'var(--accent-red)' : dati.btpBundSpread > 1.5 ? 'var(--accent-amber)' : 'var(--accent-green)'}
+            sub={dati.btpBundSpread > 2.5 ? '⚠️ Rischio Italia' : dati.btpBundSpread > 1.5 ? 'Attenzione' : 'Contenuto'} />
+          <Pill label="Curva USA (10Y-5Y)" valore={dati.curvaUSA} unita="%"
+            colore={colorCurva(dati.curvaInfo)}
+            sub={dati.curvaInfo?.label + (dati.curvaInfo ? ' — ' + dati.curvaInfo.desc : '')} />
+        </div>
 
-      {dati && !loading && (
-        <>
-          {/* Indicatori principali */}
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
-            <Indicatore label="VIX" valore={dati.vix} colore={colorVIX(dati.vix)}
-              sub={dati.vix > 25 ? '⚠️ Elevato' : dati.vix > 20 ? '⚡ Moderato' : '✓ Basso'} />
-            <Indicatore label="S&P 500" valore={dati.sp500?.toLocaleString('it-IT')}
-              sub={dati.sp500Perf1m != null ? `1M: ${dati.sp500Perf1m > 0 ? '+' : ''}${dati.sp500Perf1m}%` : ''}
-              colore={colorPerf(dati.sp500Perf1m)} />
-            <Indicatore label="Treasury 10Y" valore={dati.treasury10y} unita="%" colore="var(--accent-blue)"
-              sub="Rendimento USA" />
-            <Indicatore label="Tasso Fed" valore={dati.fedFunds} unita="%" colore="var(--accent-amber)"
-              sub="Fed Funds Rate" />
-            <Indicatore label="Tasso BCE" valore={dati.bce} unita="%" colore="var(--accent-amber)"
-              sub="Deposit Facility" />
-            <Indicatore label="Inflazione USA" valore={dati.cpiUSA} unita="%" colore={dati.cpiUSA > 3 ? 'var(--accent-red)' : 'var(--text-primary)'}
-              sub="CPI YoY" />
-            <Indicatore label="Inflazione EU" valore={dati.inflEU} unita="%" colore={dati.inflEU > 3 ? 'var(--accent-red)' : 'var(--text-primary)'}
-              sub="HICP YoY" />
-          </div>
+        {/* Riga 3: Inflazione */}
+        <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Inflazione (YoY)</div>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
+          <Pill label="Inflazione USA (CPI)" valore={dati.cpiUSA} unita="%"
+            colore={dati.cpiUSA > 3 ? 'var(--accent-red)' : dati.cpiUSA > 2 ? 'var(--accent-amber)' : 'var(--accent-green)'}
+            sub={dati.cpiUSA > 3 ? 'Sopra target Fed' : dati.cpiUSA > 2 ? 'Moderata' : 'Vicina al target'} />
+          <Pill label="Inflazione EU (HICP)" valore={dati.inflEU} unita="%"
+            colore={dati.inflEU > 3 ? 'var(--accent-red)' : dati.inflEU > 2 ? 'var(--accent-amber)' : 'var(--accent-green)'}
+            sub={dati.inflEU > 3 ? 'Sopra target BCE' : dati.inflEU > 2 ? 'Moderata' : 'Vicina al target'} />
+        </div>
 
-          {/* Implicazioni per profilo */}
-          {dati.implicazioni?.length > 0 && (
-            <div style={{ background: 'var(--bg-secondary)', borderRadius: 8, padding: '10px 14px', border: '1px solid var(--border)' }}>
-              <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6 }}>
-                IMPLICAZIONI PER I PORTAFOGLI
-              </div>
-              {dati.implicazioni.map((imp, i) => (
-                <div key={i} style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 3, display: 'flex', gap: 6 }}>
-                  <span style={{ color: 'var(--accent-gold)', flexShrink: 0 }}>•</span>
-                  <span>{imp}</span>
-                </div>
-              ))}
+        {/* Riga 4: Outlook politica monetaria */}
+        <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Outlook Politica Monetaria</div>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
+          <OutlookBadge label="BCE — prossime mosse" outlook={dati.stimaBCE} />
+          <OutlookBadge label="Fed — prossime mosse" outlook={dati.stimaFed} />
+        </div>
+
+        {/* Implicazioni */}
+        {dati.implicazioni?.length > 0 && (
+          <div style={{ background: 'var(--bg-secondary)', borderRadius: 8, padding: '10px 14px', border: '1px solid var(--border)' }}>
+            <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase' }}>
+              Implicazioni per i portafogli
             </div>
-          )}
-
-          <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 10, textAlign: 'right' }}>
-            Fonti: Federal Reserve (FRED) · BCE · Yahoo Finance · Cache aggiornata ogni 6 ore
+            {dati.implicazioni.map((imp, i) => (
+              <div key={i} style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 3, display: 'flex', gap: 6 }}>
+                <span style={{ color: 'var(--accent-gold)', flexShrink: 0 }}>•</span>
+                <span>{imp}</span>
+              </div>
+            ))}
           </div>
-        </>
-      )}
+        )}
+
+        <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 8, textAlign: 'right' }}>
+          Fonti: FRED (Fed Reserve) · BCE · Yahoo Finance · Cache 6h · Inflazione = variazione YoY
+        </div>
+      </>)}
     </div>
   );
 }
