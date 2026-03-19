@@ -60,29 +60,19 @@ export function Settings() {
             {saved && <div className="alert alert-success" style={{ marginBottom: 16 }}>✓ {saved}</div>}
 
             <button className="btn btn-primary" onClick={handleSave}>Salva Modifiche</button>
-          </div>
-        </div>
 
-        {/* Card Motore AI */}
-        <div style={{ width: 300, flexShrink: 0 }}>
-          <div className="card">
-            <div className="card-title">🤖 Motore AI</div>
-            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 16, lineHeight: 1.6 }}>
-              Consulta il documento con le regole, i vincoli e i parametri usati dal motore AI per la creazione e l'analisi dei portafogli.
-            </div>
+            <hr className="divider" style={{ margin: '16px 0' }} />
+            <div className="card-title" style={{ fontSize: 13, marginBottom: 8 }}>🤖 Motore AI</div>
             <a href="/Regole_AI_ETF_Portfolio.docx" download
-              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderRadius: 8,
+              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 8,
                 background: 'var(--bg-secondary)', border: '1px solid var(--border)', color: 'var(--text-primary)',
-                textDecoration: 'none', fontSize: 13, fontWeight: 500, marginBottom: 10 }}>
-              <span style={{ fontSize: 18 }}>📄</span>
+                textDecoration: 'none', fontSize: 12, fontWeight: 500 }}>
+              <span style={{ fontSize: 16 }}>📄</span>
               <div>
                 <div style={{ fontWeight: 600 }}>Regole Motore AI</div>
                 <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Documento di riferimento — .docx</div>
               </div>
             </a>
-            <div style={{ fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.5 }}>
-              Include: parametri per profilo, gerarchia vincoli, mappa esposizione USA, fonti dati.
-            </div>
           </div>
         </div>
 
