@@ -133,6 +133,7 @@ export default function MacroPanel({ token }) {
           ))}
         </div>
 
+        {tab === 'indicatori' && <>
         {/* Riga 1: Volatilità e mercati */}
         <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Volatilità e Mercati</div>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
@@ -191,11 +192,10 @@ export default function MacroPanel({ token }) {
           </div>
         )}
 
-        {tab === 'indicatori' && (
         <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 8, textAlign: 'right' }}>
           Fonti: FRED · BCE · Yahoo Finance · Cache 6h · Inflazione EU: {dati.inflEUSource || 'FRED'}
         </div>
-        )}
+        </>}
 
         {/* Tab Paesi */}
         {tab === 'paesi' && dati.paesiMacro && (

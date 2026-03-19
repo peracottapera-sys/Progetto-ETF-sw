@@ -22,9 +22,13 @@ const PAESI_MACRO = [
   { paese: 'Svizzera',     pil: 937,   crescita: 0.2,  tasso: 0.0,  inflazione: 0.1,  disoccupazione: 3.2,  debito: 15.5  },
 ];
 
-// Inflazione EU fallback (da Trading Economics, aggiornare mensilmente)
-// Usata se FRED non risponde
-const INFL_EU_FALLBACK = 1.9; // Area Euro, marzo 2026
+// Fallback statici (Trading Economics + fonti ufficiali, aggiornare mensilmente)
+// Usati se le API non rispondono dal container Railway
+const INFL_EU_FALLBACK   = 1.9;   // HICP Area Euro, feb 2026
+const FED_FUNDS_FALLBACK = 3.5;   // Fed Funds lower limit, marzo 2026
+const BUND_10Y_FALLBACK  = 2.65;  // Bund 10Y, mar 2026 (approssimato)
+const BTP_10Y_FALLBACK   = 3.22;  // BTP 10Y, mar 2026 (approssimato)
+const CPI_USA_FALLBACK   = 2.8;   // CPI USA YoY, feb 2026
 
 let cache = null;
 let cacheDati = null;
@@ -231,16 +235,19 @@ async function getMacroDati() {
   const gold = goldR.value ?? null;
   const brent = brentR.value ?? null;
   const stoxx50 = stoxx50R.value ?? null;
-  const fedFunds = fedR.value?.valore ?? null;
-  const cpiUSA = cpiUSAR.value?.yoy ?? null;
+  const fedFunds = fedR.value?.valore ?? FED_FUNDS_FALLBACK;
+  const fedFundsSource = fedR.value?.valore != null ? 'FRED' : 'statico';
+  const cpiUSA = cpiUSAR.value?.yoy ?? CPI_USA_FALLBACK;
+  const cpiUSASource = cpiUSAR.value?.yoy != null ? 'FRED' : 'statico';
   // HICP EU: serie FRED, fallback a dato statico Trading Economics se null
   const inflEU = cpiEUYoYR.value?.valore ?? INFL_EU_FALLBACK;
   const inflEUSource = cpiEUYoYR.value?.valore != null ? 'FRED' : 'Trading Economics (statico)';
   // CPI USA MoM: serie FRED già in formato % change mensile
   const cpiUSAMoM = cpiEUMoMR.value?.valore ?? null;
   const bce = bceR.value ?? null;
-  const btp10y = btpR.value?.valore ?? null;
-  const bund10y = bundR.value?.valore ?? null;
+  const btp10y = btpR.value?.valore ?? BTP_10Y_FALLBACK;
+  const bund10y = bundR.value?.valore ?? BUND_10Y_FALLBACK;
+  const bundSource = bundR.value?.valore != null ? 'FRED' : 'statico';
   // Spread in punti base (1% = 100 pb)
   const btpBundSpreadPct = (btp10y != null && bund10y != null)
     ? parseFloat((btp10y - bund10y).toFixed(3)) : null;
