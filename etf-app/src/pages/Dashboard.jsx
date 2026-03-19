@@ -4,7 +4,7 @@ import AcquistoModal from './modals/AcquistoModal';
 import VenditaModal from './modals/VenditaModal';
 import AIModal from './modals/AIModal';
 import CreaPortafoglioModal from './modals/CreaPortafoglioModal';
-import MacroPanel from '../MacroPanel';
+import MacroPanel from './MacroPanel';
 
 const API = process.env.REACT_APP_API_URL || (window.location.hostname === 'localhost' ? 'http://localhost:3001' : '');
 
