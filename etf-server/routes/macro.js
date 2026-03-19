@@ -94,7 +94,7 @@ function stimaPoliticaMonetaria(tasso, inflazione, target = 2.0, banca = 'BCE') 
   let outlook, dettaglio;
   if (diff > 1.5 && tasso > 3.0) {
     outlook = 'STABILE o RIALZO';
-    dettaglio = `Inflazione ${inflazione}% sopra target → ${banca} difficilmente taglierà nel breve`;
+    dettaglio = `Inflazione ${inflazione}% sopra target (${target}%) → ${banca} in modalità wait-and-see`;
   } else if (diff > 0.5) {
     outlook = 'STABILE';
     dettaglio = `Inflazione sopra target → pausa probabile, tagli lontani`;
@@ -147,11 +147,14 @@ function generaImplicazioni(dati) {
   if (treasury10y != null && treasury5y != null && (treasury10y - treasury5y) < 0) {
     impl.push('Curva USA invertita → segnale storico di recessione, riduci ciclici');
   }
-  if (btpBundSpread != null && btpBundSpread > 2.0) {
-    impl.push(`Spread BTP-Bund ${btpBundSpread}% → rischio Italia elevato, attenzione obbligazionario IT`);
+  if (btpBundSpread != null && btpBundSpread > 200) {
+    impl.push(`Spread BTP-Bund ${btpBundSpread} pb → rischio Italia elevato, attenzione obbligazionario IT`);
   }
   if (eurusd != null && eurusd < 1.05) impl.push('EUR/USD debole → ETF hedged preferibili per esposizione USD');
   else if (eurusd != null && eurusd > 1.15) impl.push('EUR forte → hedging su USD meno necessario');
+  const { brent } = dati;
+  if (brent != null && brent > 100) impl.push(`Brent $${brent} → petrolio alto, rischio inflazione secondaria, cautela su tagli tassi`);
+  else if (brent != null && brent < 60) impl.push(`Brent $${brent} → petrolio basso, deflazione importata, favorisce tagli tassi`);
   return impl;
 }
 
@@ -174,6 +177,7 @@ async function getMacroDati() {
       fetchYahoo('^FVX'),           // Treasury 5Y
       fetchYahoo('EURUSD=X'),
       fetchYahoo('GC=F'),           // Oro futures
+      fetchYahoo('BZ=F'),           // Brent crude
       fetchYahoo('^STOXX50E'),      // Euro Stoxx 50
       fetchFREDLast('DFEDTARL'),    // Fed Funds Lower Limit (daily, aggiornato)
       fetchFREDYoY('CPIAUCSL'),     // CPI USA YoY
@@ -189,6 +193,7 @@ async function getMacroDati() {
   const treasury5y = t5yR.value?.prezzo ?? null;
   const eurusd = eurusdR.value?.prezzo ?? null;
   const gold = goldR.value ?? null;
+  const brent = brentR.value ?? null;
   const stoxx50 = stoxx50R.value ?? null;
   const fedFunds = fedR.value?.valore ?? null;
   const cpiUSA = cpiUSAR.value?.yoy ?? null;
@@ -196,8 +201,11 @@ async function getMacroDati() {
   const bce = bceR.value ?? null;
   const btp10y = btpR.value?.valore ?? null;
   const bund10y = bundR.value?.valore ?? null;
-  const btpBundSpread = (btp10y != null && bund10y != null)
-    ? parseFloat((btp10y - bund10y).toFixed(2)) : null;
+  // Spread in punti base (1% = 100 pb)
+  const btpBundSpreadPct = (btp10y != null && bund10y != null)
+    ? parseFloat((btp10y - bund10y).toFixed(3)) : null;
+  const btpBundSpread = btpBundSpreadPct != null
+    ? Math.round(btpBundSpreadPct * 100) : null; // in punti base
 
   const curvaUSA = (treasury10y != null && treasury5y != null)
     ? parseFloat((treasury10y - treasury5y).toFixed(2)) : null;
@@ -212,10 +220,11 @@ async function getMacroDati() {
     eurusd, eurusdPerf1m: eurusdR.value?.perf1m ?? null,
     gold: gold?.prezzo, goldPerf1m: gold?.perf1m,
     stoxx50: stoxx50?.prezzo, stoxx50Perf1d: stoxx50?.perf1d, stoxx50Perf1m: stoxx50?.perf1m,
-    bund10y, btp10y, btpBundSpread,
+    bund10y, btp10y, btpBundSpread, btpBundSpreadPct,
+    brent: brent?.prezzo, brentPerf1m: brent?.perf1m,
     fedFunds, cpiUSA, inflEU, bce,
     stimaBCE, stimaFed,
-    implicazioni: generaImplicazioni({ vix, bce, inflEU, inflUSA: cpiUSA, treasury10y, treasury5y, bund10y, btpBundSpread, eurusd }),
+    implicazioni: generaImplicazioni({ vix, bce, inflEU, inflUSA: cpiUSA, treasury10y, treasury5y, bund10y, btpBundSpread, eurusd, brent: brent?.prezzo }),
     aggiornato: new Date().toISOString(),
   };
 
@@ -235,7 +244,8 @@ async function getMacroDati() {
     eurusd != null ? `- EUR/USD: ${eurusd}` : null,
     gold?.prezzo != null ? `- Oro: $${gold.prezzo}` : null,
     bund10y != null ? `- Bund 10Y: ${bund10y}%` : null,
-    btpBundSpread != null ? `- Spread BTP-Bund: ${btpBundSpread}%` : null,
+    btpBundSpread != null ? `- Spread BTP-Bund: ${btpBundSpread} pb` : null,
+    brent?.prezzo != null ? `- Petrolio Brent: $${brent.prezzo}` : null,
     stoxx50?.prezzo != null ? `- Euro Stoxx 50: ${stoxx50.prezzo}` : null,
     '',
     stimaBCE ? `## OUTLOOK BCE: ${stimaBCE.outlook}\n${stimaBCE.dettaglio}` : null,
