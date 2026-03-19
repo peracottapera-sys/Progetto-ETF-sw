@@ -7,6 +7,25 @@
 const axios = require('axios');
 const HEADERS = { 'User-Agent': 'Mozilla/5.0' };
 
+// ── Dati statici paesi (Trading Economics, aggiornare mensilmente) ─────────
+// Ultimo aggiornamento: marzo 2026
+const PAESI_MACRO = [
+  { paese: 'Stati Uniti',  pil: 29185, crescita: 0.7,  tasso: 3.75, inflazione: 2.4,  disoccupazione: 4.4,  debito: 124.3 },
+  { paese: 'Area Euro',    pil: 16406, crescita: 0.2,  tasso: 2.15, inflazione: 1.9,  disoccupazione: 6.1,  debito: 87.1  },
+  { paese: 'Germania',     pil: 4660,  crescita: 0.3,  tasso: 2.15, inflazione: 1.9,  disoccupazione: 6.3,  debito: 62.2  },
+  { paese: 'Giappone',     pil: 4026,  crescita: 0.3,  tasso: 0.75, inflazione: 1.5,  disoccupazione: 2.7,  debito: 236.7 },
+  { paese: 'Regno Unito',  pil: 3644,  crescita: 0.1,  tasso: 3.75, inflazione: 3.0,  disoccupazione: 5.2,  debito: 93.6  },
+  { paese: 'Francia',      pil: 3162,  crescita: 0.2,  tasso: 2.15, inflazione: 0.9,  disoccupazione: 7.9,  debito: 113.0 },
+  { paese: 'Italia',       pil: 2373,  crescita: 0.3,  tasso: 2.15, inflazione: 1.5,  disoccupazione: 5.1,  debito: 137.1 },
+  { paese: 'Cina',         pil: 18744, crescita: 1.2,  tasso: 3.0,  inflazione: 1.3,  disoccupazione: 5.3,  debito: 88.3  },
+  { paese: 'India',        pil: 3913,  crescita: 2.0,  tasso: 5.25, inflazione: 3.21, disoccupazione: 4.9,  debito: 81.92 },
+  { paese: 'Svizzera',     pil: 937,   crescita: 0.2,  tasso: 0.0,  inflazione: 0.1,  disoccupazione: 3.2,  debito: 15.5  },
+];
+
+// Inflazione EU fallback (da Trading Economics, aggiornare mensilmente)
+// Usata se FRED non risponde
+const INFL_EU_FALLBACK = 1.9; // Area Euro, marzo 2026
+
 let cache = null;
 let cacheDati = null;
 let cacheTimestamp = 0;
@@ -87,11 +106,13 @@ async function fetchBCE() {
   }
 }
 
-function stimaPoliticaMonetaria(tasso, inflazione, target = 2.0, banca = 'BCE') {
+function stimaPoliticaMonetaria(tasso, inflazione, target = 2.0, banca = 'BCE', brent = null) {
   if (tasso == null || inflazione == null) return null;
   const diff = inflazione - target;
   const tassoReale = parseFloat((tasso - inflazione).toFixed(2));
-  let outlook, dettaglio;
+  const petrolioCaldo = brent != null && brent > 95; // petrolio alto = rischio inflazione secondaria
+  let outlook, dettaglio, avvertenza = null;
+
   if (diff > 1.5 && tasso > 3.0) {
     outlook = 'STABILE o RIALZO';
     dettaglio = `Inflazione ${inflazione}% sopra target (${target}%) → ${banca} in modalità wait-and-see`;
@@ -99,16 +120,27 @@ function stimaPoliticaMonetaria(tasso, inflazione, target = 2.0, banca = 'BCE') 
     outlook = 'STABILE';
     dettaglio = `Inflazione sopra target → pausa probabile, tagli lontani`;
   } else if (diff > -0.5 && tasso > 2.0) {
-    outlook = 'TAGLIO nei prossimi 6-12 mesi';
-    dettaglio = `Inflazione vicina al target → ${banca} può iniziare ciclo di allentamento`;
+    if (petrolioCaldo) {
+      outlook = 'STABILE — tagli rinviati';
+      dettaglio = `Inflazione vicina al target ma petrolio a $${brent} → rischio inflazione secondaria frena ${banca}`;
+      avvertenza = `Brent $${brent} sopra $95 → tagli tassi meno probabili nel breve`;
+    } else {
+      outlook = 'TAGLIO nei prossimi 6-12 mesi';
+      dettaglio = `Inflazione vicina al target → ${banca} può iniziare ciclo di allentamento`;
+    }
   } else if (tasso > 1.0) {
-    outlook = 'TAGLI probabili';
-    dettaglio = `Inflazione sotto target → ${banca} ha margine per tagliare`;
+    if (petrolioCaldo) {
+      outlook = 'CAUTO — petrolio frena tagli';
+      dettaglio = `Inflazione sotto target ma petrolio elevato ($${brent}) → ${banca} procede con cautela`;
+    } else {
+      outlook = 'TAGLI probabili';
+      dettaglio = `Inflazione sotto target → ${banca} ha margine per tagliare`;
+    }
   } else {
     outlook = 'TASSI BASSI';
     dettaglio = `Tassi già minimi, politica accomodante`;
   }
-  return { outlook, dettaglio, tassoReale };
+  return { outlook, dettaglio, tassoReale, avvertenza };
 }
 
 function interpretaVIX(vix) {
@@ -201,8 +233,9 @@ async function getMacroDati() {
   const stoxx50 = stoxx50R.value ?? null;
   const fedFunds = fedR.value?.valore ?? null;
   const cpiUSA = cpiUSAR.value?.yoy ?? null;
-  // HICP EU: serie CPHPLA01EZM659N già in formato YoY %
-  const inflEU = cpiEUYoYR.value?.valore ?? null;
+  // HICP EU: serie FRED, fallback a dato statico Trading Economics se null
+  const inflEU = cpiEUYoYR.value?.valore ?? INFL_EU_FALLBACK;
+  const inflEUSource = cpiEUYoYR.value?.valore != null ? 'FRED' : 'Trading Economics (statico)';
   // CPI USA MoM: serie FRED già in formato % change mensile
   const cpiUSAMoM = cpiEUMoMR.value?.valore ?? null;
   const bce = bceR.value ?? null;
@@ -217,8 +250,8 @@ async function getMacroDati() {
   const curvaUSA = (treasury10y != null && treasury5y != null)
     ? parseFloat((treasury10y - treasury5y).toFixed(2)) : null;
   const curvaInfo = interpretaCurva(curvaUSA);
-  const stimaBCE = stimaPoliticaMonetaria(bce, inflEU, 2.0, 'BCE');
-  const stimaFed = stimaPoliticaMonetaria(fedFunds, cpiUSA, 2.0, 'Fed');
+  const stimaBCE = stimaPoliticaMonetaria(bce, inflEU, 2.0, 'BCE', brent?.prezzo);
+  const stimaFed = stimaPoliticaMonetaria(fedFunds, cpiUSA, 2.0, 'Fed', brent?.prezzo);
 
   const dati = {
     vix, vixLabel: interpretaVIX(vix),
@@ -229,8 +262,9 @@ async function getMacroDati() {
     stoxx50: stoxx50?.prezzo, stoxx50Perf1d: stoxx50?.perf1d, stoxx50Perf1m: stoxx50?.perf1m,
     bund10y, btp10y, btpBundSpread, btpBundSpreadPct,
     brent: brent?.prezzo, brentPerf1m: brent?.perf1m,
-    fedFunds, cpiUSA, cpiUSAMoM, inflEU, bce,
+    fedFunds, cpiUSA, cpiUSAMoM, inflEU, inflEUSource, bce,
     stimaBCE, stimaFed,
+    paesiMacro: PAESI_MACRO,
     implicazioni: generaImplicazioni({ vix, bce, inflEU, inflUSA: cpiUSA, treasury10y, treasury5y, bund10y, btpBundSpread, eurusd, brent: brent?.prezzo }),
     aggiornato: new Date().toISOString(),
   };
@@ -245,7 +279,7 @@ async function getMacroDati() {
     bce != null ? `- Tasso BCE: ${bce}%` : null,
     cpiUSA != null ? `- Inflazione USA (CPI YoY): ${cpiUSA}%` : null,
     cpiUSAMoM != null ? `- Inflazione USA (CPI MoM): ${cpiUSAMoM > 0 ? '+' : ''}${cpiUSAMoM}%` : null,
-    inflEU != null ? `- Inflazione EU (HICP YoY): ${inflEU}%` : null,
+    inflEU != null ? `- Inflazione EU (HICP YoY): ${inflEU}% (fonte: ${inflEUSource})` : null,
     vix != null ? `- VIX: ${vix} — ${interpretaVIX(vix)}` : null,
     treasury10y != null ? `- Treasury USA 10Y: ${treasury10y}%` : null,
     curvaUSA != null ? `- Curva tassi USA (10Y-5Y): ${curvaUSA}% — ${curvaInfo?.label}` : null,
@@ -256,8 +290,8 @@ async function getMacroDati() {
     brent?.prezzo != null ? `- Petrolio Brent: $${brent.prezzo}` : null,
     stoxx50?.prezzo != null ? `- Euro Stoxx 50: ${stoxx50.prezzo}` : null,
     '',
-    stimaBCE ? `## OUTLOOK BCE: ${stimaBCE.outlook}\n${stimaBCE.dettaglio}` : null,
-    stimaFed ? `## OUTLOOK FED: ${stimaFed.outlook}\n${stimaFed.dettaglio}` : null,
+    stimaBCE ? `## OUTLOOK BCE: ${stimaBCE.outlook}\n${stimaBCE.dettaglio}${stimaBCE.avvertenza ? '\n⚠️ ' + stimaBCE.avvertenza : ''}` : null,
+    stimaFed ? `## OUTLOOK FED: ${stimaFed.outlook}\n${stimaFed.dettaglio}${stimaFed.avvertenza ? '\n⚠️ ' + stimaFed.avvertenza : ''}` : null,
     '',
     '## IMPLICAZIONI PER PROFILO:',
     ...dati.implicazioni.map(i => `- ${i}`),

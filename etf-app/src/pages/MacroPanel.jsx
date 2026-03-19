@@ -30,9 +30,17 @@ function OutlookBadge({ label, outlook }) {
       <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 3, textTransform: 'uppercase' }}>{label}</div>
       <div style={{ fontSize: 12, fontWeight: 700, color: colore, marginBottom: 2 }}>{outlook.outlook}</div>
       <div style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.4 }}>{outlook.dettaglio}</div>
+      {outlook.avvertenza && (
+        <div style={{ fontSize: 11, color: 'var(--accent-amber)', marginTop: 6, paddingTop: 6, borderTop: '1px solid var(--border)' }}>
+          ⚠️ {outlook.avvertenza}
+        </div>
+      )}
       {outlook.tassoReale != null && (
-        <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 3 }}>
-          Tasso reale: {outlook.tassoReale}%
+        <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6, paddingTop: 6, borderTop: '1px solid var(--border)' }}>
+          📊 Tasso reale (nominale − inflazione): <strong>{outlook.tassoReale}%</strong>
+          <span style={{ marginLeft: 6, color: outlook.tassoReale > 0 ? 'var(--accent-red)' : 'var(--accent-green)' }}>
+            {outlook.tassoReale > 1 ? '— politica restrittiva' : outlook.tassoReale > 0 ? '— lievemente restrittiva' : '— politica accomodante'}
+          </span>
         </div>
       )}
     </div>
@@ -57,6 +65,7 @@ export default function MacroPanel({ token }) {
   const [loading, setLoading] = useState(false);
   const [errore, setErrore] = useState('');
   const [lastFetch, setLastFetch] = useState(null);
+  const [tab, setTab] = useState('indicatori'); // 'indicatori' | 'paesi'
 
   const fetchMacro = async (force = false) => {
     const oggi = new Date().toISOString().slice(0, 10);
@@ -112,6 +121,17 @@ export default function MacroPanel({ token }) {
       {errore && <div style={{ color: 'var(--accent-red)', fontSize: 12 }}>⚠️ {errore}</div>}
 
       {dati && !loading && (<>
+        {/* Tab switcher */}
+        <div style={{ display: 'flex', gap: 4, marginBottom: 14, borderBottom: '1px solid var(--border)', paddingBottom: 8 }}>
+          {[['indicatori','📊 Indicatori'],['paesi','🌐 Paesi']].map(([t,l]) => (
+            <button key={t} onClick={() => setTab(t)}
+              style={{ padding: '4px 12px', borderRadius: 6, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: tab === t ? 700 : 400,
+                background: tab === t ? 'var(--accent-blue)' : 'transparent',
+                color: tab === t ? '#fff' : 'var(--text-muted)' }}>
+              {l}
+            </button>
+          ))}
+        </div>
 
         {/* Riga 1: Volatilità e mercati */}
         <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Volatilità e Mercati</div>
@@ -141,10 +161,10 @@ export default function MacroPanel({ token }) {
         {/* Riga 3: Inflazione */}
         <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Inflazione (YoY)</div>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
-          <Pill label="CPI USA — YoY" valore={dati.cpiUSA} unita="%"
+          <Pill label="Inflazione USA (CPI)" valore={dati.cpiUSA} unita="%"
             colore={dati.cpiUSA > 3 ? 'var(--accent-red)' : dati.cpiUSA > 2 ? 'var(--accent-amber)' : 'var(--accent-green)'}
-            sub={dati.cpiUSAMoM != null ? `MoM: ${dati.cpiUSAMoM > 0 ? '+' : ''}${dati.cpiUSAMoM}%` : (dati.cpiUSA > 3 ? 'Sopra target Fed' : dati.cpiUSA > 2 ? 'Moderata' : 'Vicina al target')} />
-          <Pill label="HICP EU — YoY" valore={dati.inflEU} unita="%"
+            sub={dati.cpiUSA > 3 ? 'Sopra target Fed' : dati.cpiUSA > 2 ? 'Moderata' : 'Vicina al target'} />
+          <Pill label="Inflazione EU (HICP)" valore={dati.inflEU} unita="%"
             colore={dati.inflEU > 3 ? 'var(--accent-red)' : dati.inflEU > 2 ? 'var(--accent-amber)' : 'var(--accent-green)'}
             sub={dati.inflEU > 3 ? 'Sopra target BCE' : dati.inflEU > 2 ? 'Moderata' : 'Vicina al target'} />
         </div>
@@ -171,9 +191,42 @@ export default function MacroPanel({ token }) {
           </div>
         )}
 
+        {tab === 'indicatori' && (
         <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 8, textAlign: 'right' }}>
-          Fonti: FRED (Fed Reserve) · BCE · Yahoo Finance · Cache 6h · Inflazione = variazione YoY
+          Fonti: FRED · BCE · Yahoo Finance · Cache 6h · Inflazione EU: {dati.inflEUSource || 'FRED'}
         </div>
+        )}
+
+        {/* Tab Paesi */}
+        {tab === 'paesi' && dati.paesiMacro && (
+          <div style={{ overflowX: 'auto' }}>
+            <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 8 }}>
+              Dati macroeconomici principali paesi · Fonte: Trading Economics · Aggiornamento: mensile
+            </div>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                  {['Paese','PIL (Mld$)','Crescita %','Tasso %','Inflazione %','Disoccupaz. %','Debito/PIL %'].map(h => (
+                    <th key={h} style={{ padding: '4px 8px', textAlign: h === 'Paese' ? 'left' : 'right', color: 'var(--text-muted)', fontWeight: 600, fontSize: 10, textTransform: 'uppercase' }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {dati.paesiMacro.map((p, i) => (
+                  <tr key={i} style={{ borderBottom: '1px solid var(--border)', background: i % 2 === 0 ? 'transparent' : 'var(--bg-secondary)' }}>
+                    <td style={{ padding: '5px 8px', fontWeight: 600 }}>{p.paese}</td>
+                    <td style={{ padding: '5px 8px', textAlign: 'right' }}>{p.pil?.toLocaleString('it-IT')}</td>
+                    <td style={{ padding: '5px 8px', textAlign: 'right', color: p.crescita > 1 ? 'var(--accent-green)' : p.crescita < 0 ? 'var(--accent-red)' : 'var(--text-primary)' }}>{p.crescita}%</td>
+                    <td style={{ padding: '5px 8px', textAlign: 'right', color: p.tasso > 5 ? 'var(--accent-red)' : 'var(--text-primary)' }}>{p.tasso}%</td>
+                    <td style={{ padding: '5px 8px', textAlign: 'right', color: p.inflazione > 3 ? 'var(--accent-red)' : p.inflazione > 2 ? 'var(--accent-amber)' : 'var(--accent-green)' }}>{p.inflazione}%</td>
+                    <td style={{ padding: '5px 8px', textAlign: 'right', color: p.disoccupazione > 8 ? 'var(--accent-red)' : 'var(--text-primary)' }}>{p.disoccupazione}%</td>
+                    <td style={{ padding: '5px 8px', textAlign: 'right', color: p.debito > 120 ? 'var(--accent-red)' : p.debito > 90 ? 'var(--accent-amber)' : 'var(--text-primary)' }}>{p.debito}%</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </>)}
     </div>
   );
