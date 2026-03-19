@@ -143,15 +143,18 @@ function generaImplicazioni(dati) {
   if (bce >= 3.0) impl.push('Prudente/Bilanciato: BCE restrittiva → obbligazionario breve (1-3y) preferibile');
   else if (bce != null && bce < 1.5) impl.push('Tutti i profili: BCE accomodante → lunga duration favorita');
   if (inflEU > 3.0) impl.push('Prudente: inflazione EU alta → considera ETF inflation-linked');
-  else if (inflEU != null && inflEU < 1.5) impl.push('Bilanciato/Aggressivo: inflazione bassa → obbligazionario nominale preferito');
+  else if (inflEU != null && inflEU < 1.5) impl.push('Bilanciato/Aggressivo: inflazione bassa → ETF obbligazionario a tasso fisso preferito a inflation-linked');
   if (treasury10y != null && treasury5y != null && (treasury10y - treasury5y) < 0) {
     impl.push('Curva USA invertita → segnale storico di recessione, riduci ciclici');
   }
   if (btpBundSpread != null && btpBundSpread > 200) {
     impl.push(`Spread BTP-Bund ${btpBundSpread} pb → rischio Italia elevato, attenzione obbligazionario IT`);
   }
-  if (eurusd != null && eurusd < 1.05) impl.push('EUR/USD debole → ETF hedged preferibili per esposizione USD');
-  else if (eurusd != null && eurusd > 1.15) impl.push('EUR forte → hedging su USD meno necessario');
+  if (eurusd != null && eurusd < 1.05) {
+    impl.push('EUR/USD debole (USD forte) → ETF in USD non hedged rendono di più in EUR, hedging meno urgente');
+  } else if (eurusd != null && eurusd > 1.15) {
+    impl.push('EUR forte (USD debole) → ETF in USD non hedged perdono valore in EUR, hedging preferibile');
+  }
   const { brent } = dati;
   if (brent != null && brent > 100) impl.push(`Brent $${brent} → petrolio alto, rischio inflazione secondaria, cautela su tagli tassi`);
   else if (brent != null && brent < 60) impl.push(`Brent $${brent} → petrolio basso, deflazione importata, favorisce tagli tassi`);
@@ -169,7 +172,7 @@ async function getMacroDati() {
   const oggi = new Date().toLocaleDateString('it-IT');
 
   // Fetch in parallelo
-  const [vixR, sp500R, t10yR, t5yR, eurusdR, goldR, stoxx50R, fedR, cpiUSAR, cpiEUR, bceR, btpR, bundR] =
+  const [vixR, sp500R, t10yR, t5yR, eurusdR, goldR, brentR, stoxx50R, fedR, cpiUSAR, cpiEUYoYR, cpiEUMoMR, bceR, btpR, bundR] =
     await Promise.allSettled([
       fetchYahoo('^VIX'),
       fetchYahoo('^GSPC'),
@@ -179,12 +182,13 @@ async function getMacroDati() {
       fetchYahoo('GC=F'),           // Oro futures
       fetchYahoo('BZ=F'),           // Brent crude
       fetchYahoo('^STOXX50E'),      // Euro Stoxx 50
-      fetchFREDLast('DFEDTARL'),    // Fed Funds Lower Limit (daily, aggiornato)
-      fetchFREDYoY('CPIAUCSL'),     // CPI USA YoY
-      fetchFREDYoY('CP0000EZ17M086NEST'), // HICP EU YoY
+      fetchFREDLast('DFEDTARL'),    // Fed Funds Lower Limit (daily)
+      fetchFREDYoY('CPIAUCSL'),     // CPI USA YoY (calcolato)
+      fetchFREDLast('CPHPLA01EZM659N'), // HICP EU YoY (già in %, diretto)
+      fetchFREDLast('CPALTT01USM657N'), // CPI USA MoM (% change, già calcolato da FRED)
       fetchBCE(),
-      fetchFREDLast('IRLTLT01ITM156N'), // BTP 10Y (FRED, mensile)
-      fetchFREDLast('IRLTLT01DEM156N'), // Bund 10Y (FRED, mensile)
+      fetchFREDLast('IRLTLT01ITM156N'), // BTP 10Y
+      fetchFREDLast('IRLTLT01DEM156N'), // Bund 10Y
     ]);
 
   const vix = vixR.value?.prezzo ?? null;
@@ -197,7 +201,10 @@ async function getMacroDati() {
   const stoxx50 = stoxx50R.value ?? null;
   const fedFunds = fedR.value?.valore ?? null;
   const cpiUSA = cpiUSAR.value?.yoy ?? null;
-  const inflEU = cpiEUR.value?.yoy ?? null;
+  // HICP EU: serie CPHPLA01EZM659N già in formato YoY %
+  const inflEU = cpiEUYoYR.value?.valore ?? null;
+  // CPI USA MoM: serie FRED già in formato % change mensile
+  const cpiUSAMoM = cpiEUMoMR.value?.valore ?? null;
   const bce = bceR.value ?? null;
   const btp10y = btpR.value?.valore ?? null;
   const bund10y = bundR.value?.valore ?? null;
@@ -222,7 +229,7 @@ async function getMacroDati() {
     stoxx50: stoxx50?.prezzo, stoxx50Perf1d: stoxx50?.perf1d, stoxx50Perf1m: stoxx50?.perf1m,
     bund10y, btp10y, btpBundSpread, btpBundSpreadPct,
     brent: brent?.prezzo, brentPerf1m: brent?.perf1m,
-    fedFunds, cpiUSA, inflEU, bce,
+    fedFunds, cpiUSA, cpiUSAMoM, inflEU, bce,
     stimaBCE, stimaFed,
     implicazioni: generaImplicazioni({ vix, bce, inflEU, inflUSA: cpiUSA, treasury10y, treasury5y, bund10y, btpBundSpread, eurusd, brent: brent?.prezzo }),
     aggiornato: new Date().toISOString(),
@@ -237,6 +244,7 @@ async function getMacroDati() {
     fedFunds != null ? `- Tasso Fed (target lower): ${fedFunds}%` : null,
     bce != null ? `- Tasso BCE: ${bce}%` : null,
     cpiUSA != null ? `- Inflazione USA (CPI YoY): ${cpiUSA}%` : null,
+    cpiUSAMoM != null ? `- Inflazione USA (CPI MoM): ${cpiUSAMoM > 0 ? '+' : ''}${cpiUSAMoM}%` : null,
     inflEU != null ? `- Inflazione EU (HICP YoY): ${inflEU}%` : null,
     vix != null ? `- VIX: ${vix} — ${interpretaVIX(vix)}` : null,
     treasury10y != null ? `- Treasury USA 10Y: ${treasury10y}%` : null,

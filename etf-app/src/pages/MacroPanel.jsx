@@ -27,15 +27,12 @@ function OutlookBadge({ label, outlook }) {
     : 'var(--accent-amber)';
   return (
     <div style={{ background: 'var(--bg-primary)', borderRadius: 8, padding: '9px 13px', border: `1px solid ${colore}44`, flex: 1 }}>
-      <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 4, textTransform: 'uppercase' }}>{label}</div>
-      <div style={{ fontSize: 14, fontWeight: 700, color: colore, marginBottom: 4 }}>{outlook.outlook}</div>
-      <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5 }}>{outlook.dettaglio}</div>
+      <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 3, textTransform: 'uppercase' }}>{label}</div>
+      <div style={{ fontSize: 12, fontWeight: 700, color: colore, marginBottom: 2 }}>{outlook.outlook}</div>
+      <div style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.4 }}>{outlook.dettaglio}</div>
       {outlook.tassoReale != null && (
-        <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6, paddingTop: 6, borderTop: '1px solid var(--border)' }}>
-          📊 Tasso reale (nominale − inflazione): <strong>{outlook.tassoReale}%</strong>
-          <span style={{ marginLeft: 6, color: outlook.tassoReale > 0 ? 'var(--accent-red)' : 'var(--accent-green)' }}>
-            {outlook.tassoReale > 1 ? '— politica restrittiva' : outlook.tassoReale > 0 ? '— lievemente restrittiva' : '— politica accomodante'}
-          </span>
+        <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 3 }}>
+          Tasso reale: {outlook.tassoReale}%
         </div>
       )}
     </div>
@@ -124,9 +121,6 @@ export default function MacroPanel({ token }) {
           <Pill label="Oro" valore={dati.gold != null ? '$' + dati.gold.toLocaleString('it-IT') : null} perf={dati.goldPerf1m} colore="var(--accent-amber)" />
           <Pill label="EUR/USD" valore={dati.eurusd} perf={dati.eurusdPerf1m}
             colore={dati.eurusd < 1.05 ? 'var(--accent-red)' : dati.eurusd > 1.15 ? 'var(--accent-green)' : 'var(--text-primary)'} />
-          <Pill label="Brent (petrolio)" valore={dati.brent != null ? '$' + dati.brent : null} perf={dati.brentPerf1m}
-            colore={dati.brent > 100 ? 'var(--accent-red)' : dati.brent < 60 ? 'var(--accent-green)' : 'var(--accent-amber)'}
-            sub={dati.brent > 100 ? '⚠️ Rischio inflazione' : dati.brent < 60 ? '✓ Basso' : 'Moderato'} />
         </div>
 
         {/* Riga 2: Tassi e rendimenti */}
@@ -136,9 +130,9 @@ export default function MacroPanel({ token }) {
           <Pill label="Tasso BCE" valore={dati.bce} unita="%" colore="var(--accent-amber)" sub="Deposit Facility" />
           <Pill label="Treasury 10Y" valore={dati.treasury10y} unita="%" colore="var(--accent-blue)" sub="USA benchmark" />
           <Pill label="Bund 10Y" valore={dati.bund10y} unita="%" colore="var(--accent-blue)" sub="EU benchmark" />
-          <Pill label="Spread BTP-Bund" valore={dati.btpBundSpread} unita=" pb"
-            colore={dati.btpBundSpread > 250 ? 'var(--accent-red)' : dati.btpBundSpread > 150 ? 'var(--accent-amber)' : 'var(--accent-green)'}
-            sub={dati.btpBundSpread > 250 ? '⚠️ Rischio Italia elevato' : dati.btpBundSpread > 150 ? '⚠ Attenzione' : '✓ Contenuto'} />
+          <Pill label="Spread BTP-Bund" valore={dati.btpBundSpread} unita="%"
+            colore={dati.btpBundSpread > 2.5 ? 'var(--accent-red)' : dati.btpBundSpread > 1.5 ? 'var(--accent-amber)' : 'var(--accent-green)'}
+            sub={dati.btpBundSpread > 2.5 ? '⚠️ Rischio Italia' : dati.btpBundSpread > 1.5 ? 'Attenzione' : 'Contenuto'} />
           <Pill label="Curva USA (10Y-5Y)" valore={dati.curvaUSA} unita="%"
             colore={colorCurva(dati.curvaInfo)}
             sub={dati.curvaInfo?.label + (dati.curvaInfo ? ' — ' + dati.curvaInfo.desc : '')} />
@@ -147,10 +141,10 @@ export default function MacroPanel({ token }) {
         {/* Riga 3: Inflazione */}
         <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Inflazione (YoY)</div>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
-          <Pill label="Inflazione USA (CPI)" valore={dati.cpiUSA} unita="%"
+          <Pill label="CPI USA — YoY" valore={dati.cpiUSA} unita="%"
             colore={dati.cpiUSA > 3 ? 'var(--accent-red)' : dati.cpiUSA > 2 ? 'var(--accent-amber)' : 'var(--accent-green)'}
-            sub={dati.cpiUSA > 3 ? 'Sopra target Fed' : dati.cpiUSA > 2 ? 'Moderata' : 'Vicina al target'} />
-          <Pill label="Inflazione EU (HICP)" valore={dati.inflEU} unita="%"
+            sub={dati.cpiUSAMoM != null ? `MoM: ${dati.cpiUSAMoM > 0 ? '+' : ''}${dati.cpiUSAMoM}%` : (dati.cpiUSA > 3 ? 'Sopra target Fed' : dati.cpiUSA > 2 ? 'Moderata' : 'Vicina al target')} />
+          <Pill label="HICP EU — YoY" valore={dati.inflEU} unita="%"
             colore={dati.inflEU > 3 ? 'var(--accent-red)' : dati.inflEU > 2 ? 'var(--accent-amber)' : 'var(--accent-green)'}
             sub={dati.inflEU > 3 ? 'Sopra target BCE' : dati.inflEU > 2 ? 'Moderata' : 'Vicina al target'} />
         </div>
@@ -162,30 +156,6 @@ export default function MacroPanel({ token }) {
           <OutlookBadge label="Fed — prossime mosse" outlook={dati.stimaFed} />
         </div>
 
-        {/* Legenda indicatori */}
-        <details style={{ marginBottom: 12 }}>
-          <summary style={{ fontSize: 11, color: 'var(--text-muted)', cursor: 'pointer', userSelect: 'none' }}>
-            ℹ️ Come leggere questi indicatori
-          </summary>
-          <div style={{ marginTop: 8, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-            <div style={{ flex: 1, minWidth: 200, background: 'var(--bg-secondary)', borderRadius: 8, padding: '10px 12px', fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-              <strong style={{ color: 'var(--text-primary)', display: 'block', marginBottom: 4 }}>📈 Curva tassi USA (10Y-5Y)</strong>
-              Differenza tra rendimento Treasury 10 anni e 5 anni. Normalmente positiva: gli investitori chiedono un premio per prestare a lungo. Se negativa (invertita) significa che i mercati si aspettano un taglio dei tassi futuro, storicamente segnale di recessione entro 12-18 mesi.
-              <br/><span style={{ color: 'var(--accent-green)' }}>Positiva = normale</span> · <span style={{ color: 'var(--accent-red)' }}>Negativa = allarme</span>
-            </div>
-            <div style={{ flex: 1, minWidth: 200, background: 'var(--bg-secondary)', borderRadius: 8, padding: '10px 12px', fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-              <strong style={{ color: 'var(--text-primary)', display: 'block', marginBottom: 4 }}>📊 Tasso reale</strong>
-              Tasso nominale (Fed/BCE) meno inflazione. Indica quanto è davvero restrittiva la politica monetaria. Un tasso reale positivo frena economia e prestiti. Negativo stimola la crescita ma può alimentare inflazione.
-              <br/><span style={{ color: 'var(--accent-red)' }}>Positivo = restrittivo</span> · <span style={{ color: 'var(--accent-green)' }}>Negativo = stimolante</span>
-            </div>
-            <div style={{ flex: 1, minWidth: 200, background: 'var(--bg-secondary)', borderRadius: 8, padding: '10px 12px', fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-              <strong style={{ color: 'var(--text-primary)', display: 'block', marginBottom: 4 }}>🇮🇹 Spread BTP-Bund (pb)</strong>
-              Differenza in punti base tra rendimento BTP italiano 10Y e Bund tedesco 10Y. Misura il rischio percepito sull'Italia. 100 pb = 1%. Sopra 200 pb = attenzione. Sopra 250 pb = rischio elevato per obbligazionario IT.
-              <br/><span style={{ color: 'var(--accent-green)' }}>&lt;150 pb = stabile</span> · <span style={{ color: 'var(--accent-red)' }}>&gt;250 pb = stress</span>
-            </div>
-          </div>
-        </details>
-
         {/* Implicazioni */}
         {dati.implicazioni?.length > 0 && (
           <div style={{ background: 'var(--bg-secondary)', borderRadius: 8, padding: '10px 14px', border: '1px solid var(--border)' }}>
@@ -193,7 +163,7 @@ export default function MacroPanel({ token }) {
               Implicazioni per i portafogli
             </div>
             {dati.implicazioni.map((imp, i) => (
-              <div key={i} style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4, display: 'flex', gap: 6 }}>
+              <div key={i} style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 3, display: 'flex', gap: 6 }}>
                 <span style={{ color: 'var(--accent-gold)', flexShrink: 0 }}>•</span>
                 <span>{imp}</span>
               </div>
