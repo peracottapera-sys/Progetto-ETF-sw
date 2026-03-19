@@ -4,6 +4,7 @@ import AcquistoModal from './modals/AcquistoModal';
 import VenditaModal from './modals/VenditaModal';
 import AIModal from './modals/AIModal';
 import CreaPortafoglioModal from './modals/CreaPortafoglioModal';
+import MacroPanel from '../MacroPanel';
 
 const API = process.env.REACT_APP_API_URL || (window.location.hostname === 'localhost' ? 'http://localhost:3001' : '');
 
@@ -18,6 +19,7 @@ export default function Dashboard() {
   const [msgAggiornamento, setMsgAggiornamento] = useState('');
   const [showAI, setShowAI] = useState(false);
   const [showCrea, setShowCrea] = useState(false);
+  const [showMacro, setShowMacro] = useState(false);
   const [pendingData, setPendingData] = useState(null);
 
   // Apri automaticamente il modal con il risultato AI proveniente dal PortfolioSelector
@@ -156,6 +158,10 @@ export default function Dashboard() {
               onClick={() => setShowCrea(true)}>
               ✨ Crea con AI
             </button>
+            <button className="btn btn-secondary" style={{ fontSize: 12 }}
+              onClick={() => setShowMacro(m => !m)}>
+              🌍 {showMacro ? 'Nascondi Macro' : 'Macro'}
+            </button>
             <button className="btn btn-primary" style={{ fontSize: 12, background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}
               onClick={() => setShowAI(true)}>
               🤖 Analisi AI
@@ -163,6 +169,10 @@ export default function Dashboard() {
             <button className="btn btn-primary" style={{ fontSize: 12 }}>📊 Genera Report</button>
           </div>
         </div>
+
+        {showMacro && (
+          <MacroPanel token={token} />
+        )}
 
         <div style={{ display: 'flex', gap: 10, marginBottom: 12, flexWrap: 'wrap' }}>
           {stats.map((s, i) => (

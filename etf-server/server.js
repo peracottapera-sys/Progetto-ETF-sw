@@ -179,6 +179,16 @@ app.get('/api/test', async (req, res) => {
   } catch (e) { res.json({ errore: e.message }); }
 });
 
+// ── Macro context endpoint ───────────────────────────────────────────────
+const { getMacroContext, getMacroDati } = require('./routes/macro');
+
+app.get('/api/macro/context', async (req, res) => {
+  try {
+    const { testo, dati } = await getMacroDati();
+    res.json({ ok: true, testo, dati, timestamp: new Date().toISOString() });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // ── Scheduler aggiornamento prezzi 18:00 ─────────────────────────────────
 const { schedulaAggiornamento18 } = require('./routes/catalog');
 

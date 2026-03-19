@@ -180,3 +180,44 @@ async function getMacroContext() {
 }
 
 module.exports = { getMacroContext };
+
+// ── Esporta anche i dati strutturati per il pannello frontend ──────────────
+async function getMacroDati() {
+  const ora = Date.now();
+  if (cache && (ora - cacheTimestamp) < CACHE_TTL_MS) {
+    return { testo: cache, dati: cacheDati };
+  }
+
+  const [vixData, sp500Data, treasury10yData, fedFundsData, cpiUSAData, cpiEUData, tasoBCE] = await Promise.allSettled([
+    fetchYahoo('^VIX'),
+    fetchYahoo('^GSPC'),
+    fetchYahoo('^TNX'),
+    fetchFRED('FEDFUNDS'),
+    fetchFRED('CPIAUCSL'),
+    fetchFRED('CP0000EZ17M086NEST'),
+    fetchBCE(),
+  ]);
+
+  const vix = vixData.status === 'fulfilled' ? vixData.value?.prezzo : null;
+  const sp500 = sp500Data.status === 'fulfilled' ? sp500Data.value : null;
+  const treasury10y = treasury10yData.status === 'fulfilled' ? treasury10yData.value?.prezzo : null;
+  const fedFunds = fedFundsData.status === 'fulfilled' ? fedFundsData.value?.valore : null;
+  const cpiUSA = cpiUSAData.status === 'fulfilled' ? cpiUSAData.value?.valore : null;
+  const inflEU = cpiEUData.status === 'fulfilled' ? cpiEUData.value?.valore : null;
+  const bce = tasoBCE.status === 'fulfilled' ? tasoBCE.value : null;
+
+  const dati = {
+    vix, sp500: sp500?.prezzo, sp500Perf1m: sp500?.perf1m,
+    treasury10y, fedFunds, cpiUSA, inflEU, bce,
+    vixLabel: interpretaVIX(vix),
+    implicazioni: generaImplicazioni({ vix, bce, inflEU, treasury10y }),
+    aggiornato: new Date().toISOString(),
+  };
+
+  const testo = await getMacroContext();
+  cacheDati = dati;
+  return { testo, dati };
+}
+
+let cacheDati = null;
+module.exports = { getMacroContext, getMacroDati };
