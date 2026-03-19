@@ -2,6 +2,7 @@ const express = require('express');
 const Anthropic = require('@anthropic-ai/sdk');
 const axios = require('axios');
 const authMiddleware = require('../middleware/auth');
+const { getMacroContext } = require('./macro');
 console.log('[AI-FILE] caricato da:', __filename, 'righe totali:', require('fs').readFileSync(__filename,'utf8').split('\n').length);
 
 const getAnthropic = () => {
@@ -54,7 +55,7 @@ router.post('/analisi', async (req, res) => {
   if (!portfolio) return res.status(400).json({ error: 'Portfolio mancante' });
   console.log(`[${new Date().toLocaleTimeString()}] Analisi AI: ${portfolio.name}`);
 
-  const macroContext = '';
+  const macroContext = await getMacroContext().catch(() => '');
 
   const etfSelezionatiRaw = portfolio.etfs.filter(e => e.selected);
   const etfNonSelezionati = portfolio.etfs.filter(e => !e.selected);
@@ -491,9 +492,11 @@ router.post('/crea-portafoglio', async (req, res) => {
   const { profilo, orizzonteAnni, capitale, preferenze, escludiDistribuzione, maxUSA } = req.body;
   if (!profilo) return res.status(400).json({ error: 'Dati mancanti' });
 
-  // Carica ETF dal DB filtrati per profilo + notizie macro in parallelo
-  const etfDisponibili = await getEtfPerProfilo(profilo, escludiDistribuzione);
-  const macroContext = '';
+  // Carica ETF dal DB filtrati per profilo + contesto macro in parallelo
+  const [etfDisponibili, macroContext] = await Promise.all([
+    getEtfPerProfilo(profilo, escludiDistribuzione),
+    getMacroContext().catch(() => ''),
+  ]);
   console.log(`[${new Date().toLocaleTimeString()}] Crea portafoglio AI: ${profilo}, ETF disponibili dal DB: ${etfDisponibili.length}, capitale: €${capitale || 'N/D'}`);
 
   const regole = REGOLE_PROFILO[profilo] || REGOLE_PROFILO.Bilanciato;
