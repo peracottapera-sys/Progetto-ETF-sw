@@ -10,22 +10,23 @@ const HEADERS = { 'User-Agent': 'Mozilla/5.0' };
 // ── Dati statici paesi (Trading Economics, aggiornare mensilmente) ─────────
 // Ultimo aggiornamento: marzo 2026
 const PAESI_MACRO = [
-  { paese: 'Stati Uniti',  pil: 29185, crescita: 0.7,  tasso: 3.75, inflazione: 2.4,  disoccupazione: 4.4,  debito: 124.3 },
-  { paese: 'Area Euro',    pil: 16406, crescita: 0.2,  tasso: 2.15, inflazione: 1.9,  disoccupazione: 6.1,  debito: 87.1  },
-  { paese: 'Germania',     pil: 4660,  crescita: 0.3,  tasso: 2.15, inflazione: 1.9,  disoccupazione: 6.3,  debito: 62.2  },
-  { paese: 'Giappone',     pil: 4026,  crescita: 0.3,  tasso: 0.75, inflazione: 1.5,  disoccupazione: 2.7,  debito: 236.7 },
-  { paese: 'Regno Unito',  pil: 3644,  crescita: 0.1,  tasso: 3.75, inflazione: 3.0,  disoccupazione: 5.2,  debito: 93.6  },
-  { paese: 'Francia',      pil: 3162,  crescita: 0.2,  tasso: 2.15, inflazione: 0.9,  disoccupazione: 7.9,  debito: 113.0 },
-  { paese: 'Italia',       pil: 2373,  crescita: 0.3,  tasso: 2.15, inflazione: 1.5,  disoccupazione: 5.1,  debito: 137.1 },
-  { paese: 'Cina',         pil: 18744, crescita: 1.2,  tasso: 3.0,  inflazione: 1.3,  disoccupazione: 5.3,  debito: 88.3  },
-  { paese: 'India',        pil: 3913,  crescita: 2.0,  tasso: 5.25, inflazione: 3.21, disoccupazione: 4.9,  debito: 81.92 },
-  { paese: 'Svizzera',     pil: 937,   crescita: 0.2,  tasso: 0.0,  inflazione: 0.1,  disoccupazione: 3.2,  debito: 15.5  },
-  { paese: 'Canada',        pil: 2241,  crescita: -0.2, tasso: 2.25, inflazione: 1.8,  disoccupazione: 6.7,  debito: 110.8 },
-  { paese: 'Corea del Sud', pil: 1917,  crescita: -0.2, tasso: 2.5,  inflazione: 2.0,  disoccupazione: 2.9,  debito: 46.8  },
-  { paese: 'Australia',     pil: 1752,  crescita: 0.8,  tasso: 4.1,  inflazione: 3.8,  disoccupazione: 4.3,  debito: 43.8  },
-  { paese: 'Spagna',        pil: 1723,  crescita: 0.8,  tasso: 2.15, inflazione: 2.3,  disoccupazione: 9.93, debito: 101.8 },
-  { paese: 'Brasile',       pil: 2179,  crescita: 0.1,  tasso: 14.75,inflazione: 3.81, disoccupazione: 5.4,  debito: 76.5  },
-  { paese: 'Norvegia',      pil: 484,   crescita: -0.3, tasso: 4.0,  inflazione: 2.7,  disoccupazione: 4.6,  debito: 55.1  },
+  // paese, pil(mld$), crescita%, tasso%, inflazione%, disoccupazione%, debito/PIL%, bilancio%, contoCorrente%
+  { paese: 'Stati Uniti',  pil: 29185, crescita: 0.7,  tasso: 3.75, inflazione: 2.4,  disoccupazione: 4.4,  debito: 124.3, bilancio: -6.4,  cc: -3.9  },
+  { paese: 'Cina',         pil: 18744, crescita: 1.2,  tasso: 3.0,  inflazione: 1.3,  disoccupazione: 5.3,  debito: 88.3,  bilancio: -6.5,  cc: 2.2   },
+  { paese: 'Area Euro',    pil: 16406, crescita: 0.2,  tasso: 2.15, inflazione: 1.9,  disoccupazione: 6.1,  debito: 87.1,  bilancio: -3.1,  cc: 1.6   },
+  { paese: 'Germania',     pil: 4660,  crescita: 0.3,  tasso: 2.15, inflazione: 1.9,  disoccupazione: 6.3,  debito: 62.2,  bilancio: -2.7,  cc: 5.8   },
+  { paese: 'Giappone',     pil: 4026,  crescita: 0.3,  tasso: 0.75, inflazione: 1.5,  disoccupazione: 2.7,  debito: 236.7, bilancio: -2.3,  cc: 4.7   },
+  { paese: 'India',        pil: 3913,  crescita: 2.0,  tasso: 5.25, inflazione: 3.21, disoccupazione: 4.9,  debito: 81.92, bilancio: -4.8,  cc: -0.6  },
+  { paese: 'Regno Unito',  pil: 3644,  crescita: 0.1,  tasso: 3.75, inflazione: 3.0,  disoccupazione: 5.2,  debito: 93.6,  bilancio: -5.2,  cc: -2.2  },
+  { paese: 'Francia',      pil: 3162,  crescita: 0.2,  tasso: 2.15, inflazione: 0.9,  disoccupazione: 7.9,  debito: 113.0, bilancio: -5.8,  cc: 0.1   },
+  { paese: 'Italia',       pil: 2373,  crescita: 0.3,  tasso: 2.15, inflazione: 1.5,  disoccupazione: 5.1,  debito: 137.1, bilancio: -3.1,  cc: 1.2   },
+  { paese: 'Brasile',       pil: 2179,  crescita: 0.1,  tasso: 14.75,inflazione: 3.81, disoccupazione: 5.4,  debito: 76.5,  bilancio: -8.5,  cc: -3.02 },
+  { paese: 'Canada',        pil: 2241,  crescita: -0.2, tasso: 2.25, inflazione: 1.8,  disoccupazione: 6.7,  debito: 110.8, bilancio: -1.2,  cc: -1.4  },
+  { paese: 'Corea del Sud', pil: 1917,  crescita: -0.2, tasso: 2.5,  inflazione: 2.0,  disoccupazione: 2.9,  debito: 46.8,  bilancio: -3.9,  cc: 5.3   },
+  { paese: 'Australia',     pil: 1752,  crescita: 0.8,  tasso: 4.1,  inflazione: 3.8,  disoccupazione: 4.3,  debito: 43.8,  bilancio: 0.6,   cc: -2.9  },
+  { paese: 'Spagna',        pil: 1723,  crescita: 0.8,  tasso: 2.15, inflazione: 2.3,  disoccupazione: 9.93, debito: 101.8, bilancio: -3.2,  cc: 3.2   },
+  { paese: 'Svizzera',      pil: 937,   crescita: 0.2,  tasso: 0.0,  inflazione: 0.1,  disoccupazione: 3.2,  debito: 15.5,  bilancio: -0.1,  cc: 5.1   },
+  { paese: 'Norvegia',      pil: 484,   crescita: -0.3, tasso: 4.0,  inflazione: 2.7,  disoccupazione: 4.6,  debito: 55.1,  bilancio: 13.2,  cc: 14.2  },
 ];
 
 // Fallback statici (Trading Economics + fonti ufficiali, aggiornare mensilmente)

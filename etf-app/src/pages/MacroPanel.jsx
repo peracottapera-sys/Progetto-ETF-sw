@@ -54,6 +54,17 @@ function colorVIX(v) {
   return 'var(--accent-red)';
 }
 
+function LinkTE({ href }) {
+  if (!href) return null;
+  return (
+    <a href={href} target="_blank" rel="noopener noreferrer"
+      style={{ marginLeft: 4, color: 'var(--text-muted)', fontSize: 9, textDecoration: 'none', opacity: 0.7 }}
+      title="Approfondisci su Trading Economics">
+      ↗
+    </a>
+  );
+}
+
 function colorCurva(info) {
   if (!info) return 'var(--text-primary)';
   const m = { red: 'var(--accent-red)', orange: 'var(--accent-red)', amber: 'var(--accent-amber)', green: 'var(--accent-green)' };
@@ -135,17 +146,26 @@ export default function MacroPanel({ token }) {
 
         {tab === 'indicatori' && <>
         {/* Riga 1: Volatilità e mercati */}
-        <div style={{ fontSize: 9, color: 'var(--text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Volatilità e Mercati</div>
+        <div style={{ fontSize: 9, color: 'var(--text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.06em', display:'flex', alignItems:'center', gap:4 }}>
+          Volatilità e Mercati
+          <a href="https://tradingeconomics.com/markets" target="_blank" rel="noopener noreferrer" style={{ fontSize:9, color:'var(--text-muted)', opacity:0.6, textDecoration:'none' }}>↗ TE</a>
+        </div>
         <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 8 }}>
           <Pill label="VIX" valore={dati.vix} colore={colorVIX(dati.vix)} sub={dati.vixLabel} />
           <Pill label="Euro Stoxx 50" valore={dati.stoxx50?.toLocaleString('it-IT')} perf={dati.stoxx50Perf1m} />
           <Pill label="Oro" valore={dati.gold != null ? '$' + dati.gold.toLocaleString('it-IT') : null} perf={dati.goldPerf1m} colore="var(--accent-amber)" />
           <Pill label="EUR/USD" valore={dati.eurusd} perf={dati.eurusdPerf1m}
             colore={dati.eurusd < 1.05 ? 'var(--accent-red)' : dati.eurusd > 1.15 ? 'var(--accent-green)' : 'var(--text-primary)'} />
+          <Pill label="Brent" valore={dati.brent != null ? '$'+dati.brent : null} perf={dati.brentPerf1m}
+            colore={dati.brent > 100 ? 'var(--accent-red)' : dati.brent < 60 ? 'var(--accent-green)' : 'var(--accent-amber)'}
+            sub={dati.brent > 100 ? '⚠️ Alto' : '✓ Ok'} />
         </div>
 
         {/* Riga 2: Tassi e rendimenti */}
-        <div style={{ fontSize: 9, color: 'var(--text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Tassi e Rendimenti</div>
+        <div style={{ fontSize: 9, color: 'var(--text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.06em', display:'flex', alignItems:'center', gap:4 }}>
+          Tassi e Rendimenti
+          <a href="https://tradingeconomics.com/bonds" target="_blank" rel="noopener noreferrer" style={{ fontSize:9, color:'var(--text-muted)', opacity:0.6, textDecoration:'none' }}>↗ TE</a>
+        </div>
         <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 8 }}>
           <Pill label="Tasso Fed" valore={dati.fedFunds} unita="%" colore="var(--accent-amber)" sub="Fed Funds Rate" />
           <Pill label="Tasso BCE" valore={dati.bce} unita="%" colore="var(--accent-amber)" sub="Deposit Facility" />
@@ -160,7 +180,10 @@ export default function MacroPanel({ token }) {
         </div>
 
         {/* Riga 3: Inflazione */}
-        <div style={{ fontSize: 9, color: 'var(--text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Inflazione (YoY)</div>
+        <div style={{ fontSize: 9, color: 'var(--text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.06em', display:'flex', alignItems:'center', gap:4 }}>
+          Inflazione (YoY)
+          <a href="https://tradingeconomics.com/country-list/inflation-rate" target="_blank" rel="noopener noreferrer" style={{ fontSize:9, color:'var(--text-muted)', opacity:0.6, textDecoration:'none' }}>↗ TE</a>
+        </div>
         <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 8 }}>
           <Pill label="Inflazione USA (CPI)" valore={dati.cpiUSA} unita="%"
             colore={dati.cpiUSA > 3 ? 'var(--accent-red)' : dati.cpiUSA > 2 ? 'var(--accent-amber)' : 'var(--accent-green)'}
@@ -171,7 +194,10 @@ export default function MacroPanel({ token }) {
         </div>
 
         {/* Riga 4: Outlook politica monetaria */}
-        <div style={{ fontSize: 9, color: 'var(--text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Outlook Politica Monetaria</div>
+        <div style={{ fontSize: 9, color: 'var(--text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.06em', display:'flex', alignItems:'center', gap:4 }}>
+          Outlook Politica Monetaria
+          <a href="https://tradingeconomics.com/country-list/interest-rate" target="_blank" rel="noopener noreferrer" style={{ fontSize:9, color:'var(--text-muted)', opacity:0.6, textDecoration:'none' }}>↗ TE</a>
+        </div>
         <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 8 }}>
           <OutlookBadge label="BCE — prossime mosse" outlook={dati.stimaBCE} />
           <OutlookBadge label="Fed — prossime mosse" outlook={dati.stimaFed} />
@@ -200,27 +226,31 @@ export default function MacroPanel({ token }) {
         {/* Tab Paesi */}
         {tab === 'paesi' && dati.paesiMacro && (
           <div>
-            <div style={{ fontSize: 9, color: 'var(--text-muted)', marginBottom: 6 }}>
-              Fonte: Trading Economics · Aggiornamento mensile · PIL in mld$
+            <div style={{ fontSize: 9, color: 'var(--text-muted)', marginBottom: 6, display:'flex', alignItems:'center', gap:8 }}>
+              <span>Fonte: Trading Economics · Aggiornamento mensile</span>
+              <a href="https://tradingeconomics.com/matrix" target="_blank" rel="noopener noreferrer"
+                style={{ color:'var(--accent-blue)', textDecoration:'none', fontSize:9 }}>↗ Approfondisci su TE</a>
             </div>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 10 }}>
               <thead>
-                <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                  {['Paese','PIL','Cresc.%','Tasso%','Infl.%','Disoc.%','Deb/PIL%'].map(h => (
-                    <th key={h} style={{ padding: '3px 6px', textAlign: h === 'Paese' ? 'left' : 'right', color: 'var(--text-muted)', fontWeight: 600, fontSize: 9, textTransform: 'uppercase' }}>{h}</th>
+                <tr style={{ borderBottom: '2px solid var(--border)' }}>
+                  {[['Paese','left'],['PIL $T','right'],['Cresc.%','right'],['Tasso%','right'],['Infl.%','right'],['Disoc.%','right'],['Deb/PIL%','right'],['Bil.%','right'],['C/C%','right']].map(([h,a]) => (
+                    <th key={h} style={{ padding: '5px 6px', textAlign: a, color: 'var(--text-primary)', fontWeight: 700, fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.03em' }}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {dati.paesiMacro.map((p, i) => (
                   <tr key={i} style={{ borderBottom: '1px solid var(--border)', background: i % 2 === 0 ? 'transparent' : 'var(--bg-secondary)' }}>
-                    <td style={{ padding: '4px 6px', fontWeight: 600 }}>{p.paese}</td>
-                    <td style={{ padding: '4px 6px', textAlign: 'right', color: 'var(--text-muted)' }}>{(p.pil/1000).toFixed(0)}T</td>
+                    <td style={{ padding: '4px 6px', fontWeight: 600, fontSize: 11 }}>{p.paese}</td>
+                    <td style={{ padding: '4px 6px', textAlign: 'right', color: 'var(--text-muted)' }}>{(p.pil/1000).toFixed(1)}</td>
                     <td style={{ padding: '4px 6px', textAlign: 'right', color: p.crescita > 1 ? 'var(--accent-green)' : p.crescita < 0 ? 'var(--accent-red)' : 'var(--text-primary)' }}>{p.crescita}</td>
                     <td style={{ padding: '4px 6px', textAlign: 'right', color: p.tasso > 5 ? 'var(--accent-red)' : p.tasso < 1 ? 'var(--accent-green)' : 'var(--text-primary)' }}>{p.tasso}</td>
                     <td style={{ padding: '4px 6px', textAlign: 'right', color: p.inflazione > 3 ? 'var(--accent-red)' : p.inflazione > 2 ? 'var(--accent-amber)' : 'var(--accent-green)' }}>{p.inflazione}</td>
                     <td style={{ padding: '4px 6px', textAlign: 'right', color: p.disoccupazione > 8 ? 'var(--accent-red)' : 'var(--text-primary)' }}>{p.disoccupazione}</td>
                     <td style={{ padding: '4px 6px', textAlign: 'right', color: p.debito > 120 ? 'var(--accent-red)' : p.debito > 90 ? 'var(--accent-amber)' : 'var(--text-primary)' }}>{p.debito}</td>
+                    <td style={{ padding: '4px 6px', textAlign: 'right', color: p.bilancio > 0 ? 'var(--accent-green)' : p.bilancio < -5 ? 'var(--accent-red)' : 'var(--accent-amber)' }}>{p.bilancio}</td>
+                    <td style={{ padding: '4px 6px', textAlign: 'right', color: p.cc > 3 ? 'var(--accent-green)' : p.cc < -3 ? 'var(--accent-red)' : 'var(--text-primary)' }}>{p.cc}</td>
                   </tr>
                 ))}
               </tbody>
