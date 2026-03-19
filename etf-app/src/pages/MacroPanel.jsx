@@ -151,9 +151,9 @@ export default function MacroPanel({ token }) {
           <Pill label="Tasso BCE" valore={dati.bce} unita="%" colore="var(--accent-amber)" sub="Deposit Facility" />
           <Pill label="Treasury 10Y" valore={dati.treasury10y} unita="%" colore="var(--accent-blue)" sub="USA benchmark" />
           <Pill label="Bund 10Y" valore={dati.bund10y} unita="%" colore="var(--accent-blue)" sub="EU benchmark" />
-          <Pill label="Spread BTP-Bund" valore={dati.btpBundSpread} unita="%"
-            colore={dati.btpBundSpread > 2.5 ? 'var(--accent-red)' : dati.btpBundSpread > 1.5 ? 'var(--accent-amber)' : 'var(--accent-green)'}
-            sub={dati.btpBundSpread > 2.5 ? '⚠️ Rischio Italia' : dati.btpBundSpread > 1.5 ? 'Attenzione' : 'Contenuto'} />
+          <Pill label="Spread BTP-Bund" valore={dati.btpBundSpread} unita=" pb"
+            colore={dati.btpBundSpread > 250 ? 'var(--accent-red)' : dati.btpBundSpread > 150 ? 'var(--accent-amber)' : 'var(--accent-green)'}
+            sub={dati.btpBundSpread > 250 ? '⚠️ Rischio Italia' : dati.btpBundSpread > 150 ? '⚠ Attenzione' : '✓ Contenuto'} />
           <Pill label="Curva USA (10Y-5Y)" valore={dati.curvaUSA} unita="%"
             colore={colorCurva(dati.curvaInfo)}
             sub={dati.curvaInfo?.label + (dati.curvaInfo ? ' — ' + dati.curvaInfo.desc : '')} />
