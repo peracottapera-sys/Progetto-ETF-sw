@@ -20,14 +20,20 @@ const PAESI_MACRO = [
   { paese: 'Cina',         pil: 18744, crescita: 1.2,  tasso: 3.0,  inflazione: 1.3,  disoccupazione: 5.3,  debito: 88.3  },
   { paese: 'India',        pil: 3913,  crescita: 2.0,  tasso: 5.25, inflazione: 3.21, disoccupazione: 4.9,  debito: 81.92 },
   { paese: 'Svizzera',     pil: 937,   crescita: 0.2,  tasso: 0.0,  inflazione: 0.1,  disoccupazione: 3.2,  debito: 15.5  },
+  { paese: 'Canada',        pil: 2241,  crescita: -0.2, tasso: 2.25, inflazione: 1.8,  disoccupazione: 6.7,  debito: 110.8 },
+  { paese: 'Corea del Sud', pil: 1917,  crescita: -0.2, tasso: 2.5,  inflazione: 2.0,  disoccupazione: 2.9,  debito: 46.8  },
+  { paese: 'Australia',     pil: 1752,  crescita: 0.8,  tasso: 4.1,  inflazione: 3.8,  disoccupazione: 4.3,  debito: 43.8  },
+  { paese: 'Spagna',        pil: 1723,  crescita: 0.8,  tasso: 2.15, inflazione: 2.3,  disoccupazione: 9.93, debito: 101.8 },
+  { paese: 'Brasile',       pil: 2179,  crescita: 0.1,  tasso: 14.75,inflazione: 3.81, disoccupazione: 5.4,  debito: 76.5  },
+  { paese: 'Norvegia',      pil: 484,   crescita: -0.3, tasso: 4.0,  inflazione: 2.7,  disoccupazione: 4.6,  debito: 55.1  },
 ];
 
 // Fallback statici (Trading Economics + fonti ufficiali, aggiornare mensilmente)
 // Usati se le API non rispondono dal container Railway
 const INFL_EU_FALLBACK   = 1.9;   // HICP Area Euro, feb 2026
 const FED_FUNDS_FALLBACK = 3.5;   // Fed Funds lower limit, marzo 2026
-const BUND_10Y_FALLBACK  = 2.65;  // Bund 10Y, mar 2026 (approssimato)
-const BTP_10Y_FALLBACK   = 3.22;  // BTP 10Y, mar 2026 (approssimato)
+const BUND_10Y_FALLBACK  = 2.80;  // Bund 10Y, mar 2026
+const BTP_10Y_FALLBACK   = 3.63;  // BTP 10Y, mar 2026 → spread ~83 pb
 const CPI_USA_FALLBACK   = 2.8;   // CPI USA YoY, feb 2026
 
 let cache = null;
