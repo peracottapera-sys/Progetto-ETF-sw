@@ -160,13 +160,12 @@ export default function Dashboard() {
             </button>
             <button className="btn btn-secondary" style={{ fontSize: 12 }}
               onClick={() => setShowMacro(m => !m)}>
-              🌍 {showMacro ? 'Nascondi Macro' : 'Macro'}
+              📊 {showMacro ? 'Chiudi Indicatori' : 'Indicatori'}
             </button>
             <button className="btn btn-primary" style={{ fontSize: 12, background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}
               onClick={() => setShowAI(true)}>
               🤖 Analisi AI
             </button>
-            <button className="btn btn-primary" style={{ fontSize: 12 }}>📊 Genera Report</button>
           </div>
         </div>
 
