@@ -93,7 +93,7 @@ module.exports = (pool) => {
       if (!type || type === 'SELL') {
         let sql = `SELECT v.id, v.data_vendita AS date, 'SELL' AS type, v.isin AS ticker,
                    ec.name AS name, v.quantita AS quantity, v.quotazione_vendita AS price,
-                   ROUND((v.quotazione_vendita - v.quotazione_acquisto) * v.quantita, 2) AS realizedpl,
+                   ROUND(((v.quotazione_vendita - v.quotazione_acquisto) * v.quantita)::numeric, 2) AS realizedpl,
                    v.quotazione_acquisto AS costbasisfIFO, v.note AS notes
                    FROM vendite v LEFT JOIN etf_catalog ec ON v.isin = ec.isin
                    WHERE v.portfolio_id = $1 AND v.data_vendita BETWEEN $2 AND $3`;
