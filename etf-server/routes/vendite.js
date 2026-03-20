@@ -1,5 +1,6 @@
 const express = require('express');
 const authMiddleware = require('../middleware/auth');
+const { log, EVENTI } = require('./logger');
 
 module.exports = (pool) => {
   const router = express.Router({ mergeParams: true });
@@ -132,6 +133,7 @@ module.exports = (pool) => {
     } catch (e) { await client.query('ROLLBACK'); throw e; }
     finally { client.release(); }
 
+    log(EVENTI.VENDITA, { portfolioId: req.params.id, isin, quantita: qVenduta, prezzoVendita: qVendita, prezzoAcquisto: acq.quotazione_acquisto, plLordo: parseFloat(plLordo.toFixed(2)), tasse: parseFloat(tasse.toFixed(2)), data: data_vendita }, req.user?.username).catch(() => {});
     res.json({ ok: true, quantita_residua: qResidua, pl_lordo: plLordo, pl_netto: plNetto, tasse, minus_usata: minusUsata, minus_generata: minusGenerata, minus_disponibili_dopo: nuoveMinus, vendita_totale: qResidua <= 0 });
   });
 
@@ -160,6 +162,7 @@ module.exports = (pool) => {
       await client.query('COMMIT');
     } catch (e) { await client.query('ROLLBACK'); throw e; }
     finally { client.release(); }
+    log(EVENTI.ANNULLA_VENDITA, { portfolioId: req.params.id, venditaId: req.params.vendita_id, isin: v.isin }, req.user?.username).catch(() => {});
     res.json({ ok: true });
   });
 

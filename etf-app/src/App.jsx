@@ -7,6 +7,7 @@ import Dashboard from './pages/Dashboard';
 import Performance from './pages/Performance';
 import { Settings, Report } from './pages/SettingsReport';
 import Reports from './pages/Reports';
+import AdminLogs from './pages/AdminLogs';
 
 function AppInner() {
   const { currentUser, currentPortfolio } = useApp();
@@ -21,6 +22,7 @@ function AppInner() {
     report: <Report />,
     storico: <Reports />,
     settings: <Settings />,
+    logs: <AdminLogs />,
   };
 
   return (

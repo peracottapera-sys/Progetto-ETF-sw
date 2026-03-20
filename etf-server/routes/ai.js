@@ -2,7 +2,7 @@ const express = require('express');
 const Anthropic = require('@anthropic-ai/sdk');
 const axios = require('axios');
 const authMiddleware = require('../middleware/auth');
-const { getMacroContext } = require('./macro');
+const { log, EVENTI } = require('./logger');
 console.log('[AI-FILE] caricato da:', __filename, 'righe totali:', require('fs').readFileSync(__filename,'utf8').split('\n').length);
 
 const getAnthropic = () => {
@@ -54,8 +54,9 @@ router.post('/analisi', async (req, res) => {
   const { portfolio } = req.body;
   if (!portfolio) return res.status(400).json({ error: 'Portfolio mancante' });
   console.log(`[${new Date().toLocaleTimeString()}] Analisi AI: ${portfolio.name}`);
+  log(EVENTI.AI_ANALISI, { portafoglio: portfolio.name, profilo: portfolio.riskProfile, obiettivo: opzioni?.obiettivo || 'completa' }, req.user?.username).catch(() => {});
 
-  const macroContext = await getMacroContext().catch(() => '');
+  const macroContext = '';
 
   const etfSelezionatiRaw = portfolio.etfs.filter(e => e.selected);
   const etfNonSelezionati = portfolio.etfs.filter(e => !e.selected);
@@ -492,12 +493,11 @@ router.post('/crea-portafoglio', async (req, res) => {
   const { profilo, orizzonteAnni, capitale, preferenze, escludiDistribuzione, maxUSA } = req.body;
   if (!profilo) return res.status(400).json({ error: 'Dati mancanti' });
 
-  // Carica ETF dal DB filtrati per profilo + contesto macro in parallelo
-  const [etfDisponibili, macroContext] = await Promise.all([
-    getEtfPerProfilo(profilo, escludiDistribuzione),
-    getMacroContext().catch(() => ''),
-  ]);
+  // Carica ETF dal DB filtrati per profilo + notizie macro in parallelo
+  const etfDisponibili = await getEtfPerProfilo(profilo, escludiDistribuzione);
+  const macroContext = '';
   console.log(`[${new Date().toLocaleTimeString()}] Crea portafoglio AI: ${profilo}, ETF disponibili dal DB: ${etfDisponibili.length}, capitale: €${capitale || 'N/D'}`);
+  log(EVENTI.AI_CREA_PORTAFOGLIO, { profilo, capitale: capitale || null, maxUSA, nEtfDisponibili: etfDisponibili.length }, req.user?.username).catch(() => {});
 
   const regole = REGOLE_PROFILO[profilo] || REGOLE_PROFILO.Bilanciato;
   const conCapitale = capitale && parseFloat(capitale) > 0;

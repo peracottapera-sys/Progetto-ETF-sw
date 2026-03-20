@@ -2,6 +2,7 @@ const express = require('express');
 const bcrypt  = require('bcryptjs');
 const jwt     = require('jsonwebtoken');
 const authMiddleware = require('../middleware/auth');
+const { log, EVENTI } = require('./logger');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev_only_secret_change_in_production';
 
@@ -17,6 +18,7 @@ module.exports = (pool) => {
       return res.status(401).json({ error: 'Username o password errati' });
     const token = jwt.sign({ id: user.id, username: user.username, email: user.email }, JWT_SECRET, { expiresIn: '24h' });
     console.log(`[${new Date().toLocaleTimeString()}] Login: ${username}`);
+    log(EVENTI.LOGIN, { username }, username).catch(() => {});
     res.json({ token, user: { id: user.id, username: user.username, email: user.email } });
   });
 
@@ -30,6 +32,7 @@ module.exports = (pool) => {
     await pool.query('INSERT INTO users (id, username, password, email) VALUES ($1, $2, $3, $4)', [id, username, hash, email || null]);
     const token = jwt.sign({ id, username, email }, JWT_SECRET, { expiresIn: '24h' });
     console.log(`[${new Date().toLocaleTimeString()}] Registrazione: ${username}`);
+    log(EVENTI.REGISTER, { username, email: email || null }, username).catch(() => {});
     res.json({ token, user: { id, username, email } });
   });
 
