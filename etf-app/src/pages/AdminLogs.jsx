@@ -8,7 +8,7 @@ const EVENTO_EMOJI = {
   CREA_PORTAFOGLIO: '📁', ELIMINA_PORTAFOGLIO: '🗑️', MODIFICA_PORTAFOGLIO: '✏️',
   ACQUISTO: '🛒', VENDITA: '💰', ELIMINA_ACQUISTO: '↩️', ANNULLA_VENDITA: '↩️',
   AI_ANALISI: '🤖', AI_CREA_PORTAFOGLIO: '✨', AI_APPLICA: '✅',
-  AGGIORNA_PREZZI_MANUALE: '🔄', AGGIORNA_PREZZI_AUTO: '⏰', AGGIORNA_PREZZI_SELETTIVO: '📊',
+  AGGIORNA_PREZZI_MANUALE: '🔄', AGGIORNA_PREZZI_AUTO: '⏰', AGGIORNA_PREZZI_SELETTIVO: '🔄',
   SERVER_START: '🚀', SERVER_ERROR: '❌',
 };
 
@@ -45,6 +45,7 @@ export default function AdminLogs() {
     try {
       const params = new URLSearchParams({ limit: 200 });
       if (filtroEvento) params.set('evento', filtroEvento);
+      // Nota: filtri come 'AI_', '_PORTAFOGLIO', 'AGGIORNA_PREZZI' sono prefissi parziali
       if (filtroUtente) params.set('utente', filtroUtente);
       const res = await fetch(`${API}/api/admin/logs?${params}`, {
         headers: { Authorization: `Bearer ${token}` },

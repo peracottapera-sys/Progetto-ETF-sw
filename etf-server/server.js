@@ -202,7 +202,7 @@ app.get('/api/admin/logs', authMiddleware, async (req, res) => {
     let sql = `SELECT id, ts, evento, utente, dettagli FROM app_logs`;
     const params = [];
     const where = [];
-    if (evento) { params.push(evento); where.push(`evento = $${params.length}`); }
+    if (evento) { params.push(`${evento}%`); where.push(`evento ILIKE $${params.length}`); }
     if (utente) { params.push(`%${utente}%`); where.push(`utente ILIKE $${params.length}`); }
     if (where.length) sql += ' WHERE ' + where.join(' AND ');
     params.push(limit);
