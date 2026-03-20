@@ -1,5 +1,6 @@
 const express = require('express');
 const authMiddleware = require('../middleware/auth');
+const { log, EVENTI } = require('./logger');
 
 // Anno nascita fallback (non in etf_catalog)
 const ETF_ANNO_MAP = {
@@ -210,6 +211,7 @@ async function aggiornaPrezziSelettivo(pool, fetchETF, isins, motivo = 'manual')
     await new Promise(r => setTimeout(r, 300));
   }
   console.log(`[update-selettivo] Completato: ${ok} OK, ${err} errori`);
+  log(EVENTI.AGGIORNA_PREZZI_SELETTIVO, { ok, err, totale: isins.length, motivo }).catch(() => {});
   return { ok, err };
 }
 
@@ -243,6 +245,7 @@ async function aggiornaPrezziCompleto(pool, fetchETF, motivo = 'scheduled') {
   }
   await pool.query("INSERT INTO system_config(key,value) VALUES('last_price_update',$1) ON CONFLICT(key) DO UPDATE SET value=EXCLUDED.value", [oggi]);
   console.log(`[auto-update] Completato: ${ok} OK, ${err} errori\n`);
+  log(EVENTI.AGGIORNA_PREZZI_AUTO, { ok, err, totale: etfs.length, data: oggi, motivo }).catch(() => {});
   return { ok, err, data: oggi };
 }
 

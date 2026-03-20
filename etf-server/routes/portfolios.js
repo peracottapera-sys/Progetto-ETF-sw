@@ -1,5 +1,6 @@
 const express = require('express');
 const authMiddleware = require('../middleware/auth');
+const { log, EVENTI } = require('./logger');
 
 module.exports = (pool) => {
   const router = express.Router();
@@ -19,6 +20,7 @@ module.exports = (pool) => {
     await pool.query('INSERT INTO portfolios (id, user_id, name, risk_profile, max_usa) VALUES ($1, $2, $3, $4, $5)',
       [id, req.user.id, name, riskProfile, maxUSA || 'No max']);
     console.log(`[${new Date().toLocaleTimeString()}] Portafoglio creato: ${name}`);
+    log(EVENTI.CREA_PORTAFOGLIO, { portfolioId: id, nome: name, profilo: riskProfile, maxUSA: maxUSA || 'No max' }, req.user?.username).catch(() => {});
     res.json({ id, name, riskProfile, maxUSA });
   });
 
@@ -36,6 +38,7 @@ module.exports = (pool) => {
     const { rows } = await pool.query('SELECT id FROM portfolios WHERE id = $1 AND user_id = $2', [req.params.id, req.user.id]);
     if (!rows[0]) return res.status(404).json({ error: 'Portafoglio non trovato' });
     await pool.query('DELETE FROM portfolios WHERE id = $1', [req.params.id]);
+    log(EVENTI.ELIMINA_PORTAFOGLIO, { portfolioId: req.params.id }, req.user?.username).catch(() => {});
     res.json({ ok: true });
   });
 
@@ -163,11 +166,13 @@ module.exports = (pool) => {
     const { rows: p } = await pool.query('SELECT id FROM portfolios WHERE id = $1 AND user_id = $2', [req.params.id, req.user.id]);
     if (!p[0]) return res.status(404).json({ error: 'Portafoglio non trovato' });
     await pool.query('DELETE FROM acquisti WHERE portfolio_id = $1 AND isin = $2', [req.params.id, isin]);
-    if (quantita && quotazioneAcquisto)
+    if (quantita && quotazioneAcquisto) {
       await pool.query(
         'INSERT INTO acquisti (portfolio_id, isin, quantita, quotazione_acquisto, data_acquisto) VALUES ($1, $2, $3, $4, $5)',
         [req.params.id, isin, quantita, quotazioneAcquisto, dataAcquisto]
       );
+      log(EVENTI.ACQUISTO, { portfolioId: req.params.id, isin, quantita, prezzo: quotazioneAcquisto, data: dataAcquisto }, req.user?.username).catch(() => {});
+    }
     res.json({ ok: true });
   });
 

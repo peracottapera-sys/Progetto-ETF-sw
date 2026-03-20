@@ -6,6 +6,8 @@ const { Pool } = require('pg');
 const path    = require('path');
 const fs      = require('fs');
 
+const { log, setPool, EVENTI } = require('./routes/logger');
+
 const app  = express();
 const PORT = process.env.PORT || 3001;
 
@@ -95,6 +97,16 @@ async function initDB() {
       note TEXT,
       created_at TIMESTAMPTZ DEFAULT NOW()
     );
+    CREATE TABLE IF NOT EXISTS app_logs (
+      id SERIAL PRIMARY KEY,
+      ts TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      evento TEXT NOT NULL,
+      utente TEXT,
+      dettagli JSONB,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    );
+    CREATE INDEX IF NOT EXISTS idx_app_logs_ts ON app_logs(ts DESC);
+    CREATE INDEX IF NOT EXISTS idx_app_logs_evento ON app_logs(evento);
     CREATE TABLE IF NOT EXISTS etf_catalog (
       isin TEXT PRIMARY KEY,
       name TEXT,
@@ -179,6 +191,27 @@ app.get('/api/test', async (req, res) => {
   } catch (e) { res.json({ errore: e.message }); }
 });
 
+// ── App Logs endpoint ────────────────────────────────────────────────────
+const authMiddleware = require('./middleware/auth');
+
+app.get('/api/admin/logs', authMiddleware, async (req, res) => {
+  try {
+    const limit = Math.min(parseInt(req.query.limit) || 200, 500);
+    const evento = req.query.evento || null;
+    const utente = req.query.utente || null;
+    let sql = `SELECT id, ts, evento, utente, dettagli FROM app_logs`;
+    const params = [];
+    const where = [];
+    if (evento) { params.push(evento); where.push(`evento = $${params.length}`); }
+    if (utente) { params.push(`%${utente}%`); where.push(`utente ILIKE $${params.length}`); }
+    if (where.length) sql += ' WHERE ' + where.join(' AND ');
+    params.push(limit);
+    sql += ` ORDER BY ts DESC LIMIT $${params.length}`;
+    const { rows } = await pool.query(sql, params);
+    res.json({ ok: true, logs: rows, totale: rows.length });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // ── Macro context endpoint ───────────────────────────────────────────────
 const { getMacroContext, getMacroDati } = require('./routes/macro');
 
@@ -202,6 +235,11 @@ if (fs.existsSync(distPath)) {
 
 // ── Start ─────────────────────────────────────────────────────────────────
 initDB().then(() => {
+  // Inizializza logger con pool DB
+  const { setPool } = require('./routes/logger');
+  setPool(pool);
+  log(EVENTI.SERVER_START, { porta: PORT, env: process.env.NODE_ENV || 'production' });
+
   schedulaAggiornamento18(pool, fetchETF);
   app.listen(PORT, () => {
     console.log(`\n🚀 ETF Server avviato su http://localhost:${PORT}`);
