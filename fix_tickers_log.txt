@@ -1,0 +1,2585 @@
+Connessione a Railway DB...
+ETF da verificare: 2573
+[1/2573] CSPX.AS              OK 610.528
+[2/2573] IWDA.AS              OK 109.52
+[3/2573] VWCE.DE              OK 143.84
+[4/2573] SGLD.MI              OK 386.48
+[5/2573] AEME.MI              OK 76.59
+[6/2573] SPXS.MI              OK 11.37
+[7/2573] VWCE.DE              OK 143.84
+[8/2573] SGLD.MI              OK 386.48
+[9/2573] VUSA.AS              OK 107.799
+[10/2573] IUSQ.DE              OK 92.01
+[11/2573] VWRL.AS              OK 140.0
+[12/2573] XEON.DE              OK 148.675
+[13/2573] CSNDX.MI             OK 1201.27
+[14/2573] MEUD.PA              OK 281.7
+[15/2573] ISF.L                OK 982.1
+[16/2573] CSP1.AS              
+  FAIL - Nessun ticker trovato per IE0031442068 (iShares Core S&P 500 UCITS ETF USD (Dist)
+[17/2573] XDWD.DE              OK 119.69
+[18/2573] SPY5.MI              OK 571.0
+[19/2573] IB01.L               OK 119.7
+[20/2573] IESE.MI              OK 67.61
+[21/2573] SWRD.MI              OK 40.035
+[22/2573] SGAS.MI              OK 19.292
+[23/2573] SP5C.MI              OK 411.8
+[24/2573] OM3L.DE              OK 9.804
+[25/2573] QDVE.DE              OK 33.66
+[26/2573] HMWD.MI              OK 37.265
+[27/2573] MWRD.MI              OK 137.45
+[28/2573] GOLD.AS              OK 184.097
+[29/2573] SP5A.MI              OK 14.016
+[30/2573] IMEU.MI              OK 36.155
+[31/2573] I500.MI              OK 9.49
+[32/2573] XMME.MI              OK 67.978
+[33/2573] XD9U.MI              OK 167.3
+[34/2573] XDEW.MI              OK 92.02
+[35/2573] IEAG.AS              OK 106.81
+[36/2573] EXSA.MI              OK 57.64
+[37/2573] EQQQ.MI              OK 511.79
+[38/2573] JREU.MI              OK 56.97
+[39/2573] SPXD.MI              OK 52.68
+[40/2573] EXS1.MI              OK 187.9
+[41/2573] SPYX.DE              OK 123.3
+[42/2573] DFNS.MI              OK 61.49
+[43/2573] PHAU.MI              OK 373.19
+[44/2573] EMEG.MI              OK 6.946
+[45/2573] IUES.AS              OK 135.6
+[46/2573] WLD.MI               OK 369.52
+[47/2573] IEEM.MI              OK 49.105
+[48/2573] VHYL.MI              OK 72.53
+[49/2573] XZMU.MI              OK 61.1
+[50/2573] HSPD.MI              OK 57.4
+[51/2573] WRDA.MI              OK 34.09
+[52/2573] IWRD.MI              OK 79.01
+[53/2573] XMEU.MI              OK 105.76
+[54/2573] EDME.MI              OK 10.14
+[55/2573] EMIM.AS              OK 40.315
+[56/2573] EXW1.DE              OK 56.42
+[57/2573] XGDU.MI              OK 62.0
+[58/2573] TDIV.MI              OK 51.45
+[59/2573] XDAX.MI              OK 212.75
+[60/2573] IUSN.DE              OK 7.915
+[61/2573] MXUS.MI              OK 166.94
+[62/2573] CSBGU7.MI            OK 123.72
+[63/2573] SPPW.DE              OK 40.011
+[64/2573] SUSW.MI              OK 11.898
+[65/2573] XESC.MI              OK 98.2
+[66/2573] CSEMU.MI             OK 213.5
+[67/2573] SMSWLD.MI            OK 117.59
+[68/2573] XAIX.MI              OK 152.39
+[69/2573] CSEMAS.MI            OK 215.55
+[70/2573] MEUR.DE              OK 109.18
+[71/2573] XESX.MI              OK 58.14
+[72/2573] EMMUSC.MI            OK 13.742
+[73/2573] XZW0.MI              OK 41.845
+[74/2573] EUE.MI               OK 56.9
+[75/2573] IHYG.MI              OK 89.43
+[76/2573] XMAW.MI              OK 42.95
+[77/2573] AYEM.DE              OK 7.728
+[78/2573] SMART.MI             OK 108.67
+[79/2573] SGBS.MI              OK 384.64
+[80/2573] EXUS.MI              OK 35.385
+[81/2573] VHVE.MI              OK 113.5
+[82/2573] IWVL.AS              
+  FAIL - Nessun ticker trovato per IE00BP3QZB59 (iShares Edge MSCI World Value Factor UCI)
+[83/2573] JREG.MI              OK 50.79
+[84/2573] VUKE.MI              OK 50.5
+[85/2573] SEML.MI              OK 39.445
+[86/2573] IBCI.AS              OK 234.56
+[87/2573] SPP5.DE              OK 8.8346
+[88/2573] XBLC.MI              OK 161.07
+[89/2573] LCJP.MI              OK 19.894
+[90/2573] BNKE.MI              OK 293.6
+[91/2573] WDEF.MI              OK 33.4
+[92/2573] XMWO.MI              OK 117.24
+[93/2573] XSXD.MI              OK 12.476
+[94/2573] IWDE.AS              OK 103.825
+[95/2573] ECRP.MI              OK 53.54
+[96/2573] SLMC.DE              OK 9.69
+[97/2573] SPY4.MI              OK 89.93
+[98/2573] IS0E.DE              OK 33.175
+[99/2573] SAWD.MI              OK 10.2
+[100/2573] NDIA.MI              OK 7.215
+[101/2573] SUOE.MI              OK 4.705
+[102/2573] R2US.MI              OK 62.41
+[103/2573] IMIE.MI              OK 9.89
+[104/2573] GBS.MI               OK 367.25
+[105/2573] VEUR.MI              OK 44.97
+[106/2573] UST.MI               OK 85.15
+[107/2573] EMNU.DE              OK 7.476
+[108/2573] XMJP.MI              OK 90.11
+[109/2573] XDWL.DE              OK 99.35
+[110/2573] E127.MI              OK 55.25
+[111/2573] XDWT.MI              OK 94.7
+[112/2573] 4BRZ.MI              OK 43.785
+[113/2573] ISPA.DE              OK 35.75
+[114/2573] EXCH.MI              OK 6.508
+[115/2573] XMUS.MI              OK 170.05
+[116/2573] LEMA.MI              OK 63.0
+[117/2573] 500X.MI              OK 41.345
+[118/2573] IWQU.MI              OK 67.66
+[119/2573] LU1437015735.AS      OK 86.7019
+[120/2573] GDX.MI               OK 81.14
+[121/2573] MSE.MI               OK 62.54
+[122/2573] SMH.MI               OK 59.77
+[123/2573] SE15.MI              OK 106.07
+[124/2573] EMUAA.MI             OK 37.085
+[125/2573] XSPX.MI              OK 114.59
+[126/2573] EMXC.MI              OK 32.77
+[127/2573] ENWD.MI              OK 9.25
+[128/2573] CMOD.MI              OK 28.34
+[129/2573] JPNA.MI              OK 26.355
+[130/2573] WSREUA.MI            OK 153.0
+[131/2573] XDEV.DE              OK 55.85
+[132/2573] EXV1.DE              OK 32.525
+[133/2573] EHYA.MI              OK 5.759
+[134/2573] IGLT.MI              OK 11.272
+[135/2573] ERNE.MI              OK 100.72
+[136/2573] AEEM.PA              OK 6.4803
+[137/2573] XSX6.MI              OK 149.3
+[138/2573] IEMB.MI              OK 78.52
+[139/2573] VEVE.MI              OK 108.79
+[140/2573] C50.MI               OK 147.38
+[141/2573] LU1437017350.AS      OK 61.337
+[142/2573] SXRW.DE              OK 235.4
+[143/2573] IWMO.MI              OK 82.08
+[144/2573] E50ESG.MI            OK 20.19
+[145/2573] IEAA.MI              OK 5.323
+[146/2573] PHAG.MI              OK 56.49
+[147/2573] HMEM.MI              OK 12.56
+[148/2573] AGGH.AS              OK 4.9041
+[149/2573] EEUE.MI              OK 18.218
+[150/2573] ICGA.DE              OK 4.943
+[151/2573] CSUS.MI              OK 590.15
+[152/2573] VGEA.MI              OK 23.815
+[153/2573] XNAS.DE              OK 48.545
+[154/2573] IE000KXCEXR3.PA      OK 117.306
+[155/2573] RBOT.MI              OK 13.572
+[156/2573] LQDE.MI              OK 87.54
+[157/2573] VERX.AS              OK 44.72
+[158/2573] CSPXJ.MI             OK 198.88
+[159/2573] XXSC.MI              OK 65.97
+[160/2573] MINT.MI              OK 86.62
+[161/2573] USDV.MI              OK 69.53
+[162/2573] XZMJ.MI              OK 24.345
+[163/2573] CB3.MI               OK 219.48
+[164/2573] EQAC.MI              OK 358.22
+[165/2573] IESE.MI              OK 67.49
+[166/2573] WEBG.DE              OK 11.544
+[167/2573] XDWH.MI              OK 47.8
+[168/2573] ECRP3.MI             OK 53.83
+[169/2573] WEBH.MI              OK 36.905
+[170/2573] ESEE.MI              OK 28.86
+[171/2573] ENMU.MI              OK 9.096
+[172/2573] VECP.MI              OK 47.8
+[173/2573] IBTM.MI              OK 151.17
+[174/2573] VUKG.DE              OK 61.85
+[175/2573] FEMR.MI              OK 5.448
+[176/2573] JREE.MI              OK 49.585
+[177/2573] IUSN.DE              OK 7.915
+[178/2573] XAD5.MI              OK 383.61
+[179/2573] EXSI.MI              OK 59.72
+[180/2573] NATO.MI              OK 17.308
+[181/2573] LEONIA.MI            OK 113.312
+[182/2573] FLXK.MI              OK 62.48
+[183/2573] ESGU.MI              OK 85.06
+[184/2573] UKGBPB.MI            OK 47.055
+[185/2573] 5ESG.MI              OK 79.33
+[186/2573] CMXUS.MI             OK 228.33
+[187/2573] 10AP.L               OK 7.626384
+[188/2573] SPX.MI               OK 58.42
+[189/2573] QDVI.DE              OK 11.908
+[190/2573] WSRI.MI              OK 101.77
+[191/2573] VUCE.MI              OK 52.66
+[192/2573] X13E.MI              OK 172.8
+[193/2573] E500.MI              OK 50.24
+[194/2573] BNK.MI               OK 55.67
+[195/2573] XUSW.DE              OK 103.78
+[196/2573] VECA.MI              OK 52.74
+[197/2573] WELE.MI              OK 12.196
+[198/2573] VNRT.AS              OK 138.88
+[199/2573] INRG.MI              OK 9.258
+[200/2573] PABEZ.MI             OK 37.1
+[201/2573] ERNX.DE              OK 5.543
+[202/2573] SUAS.MI              OK 15.07
+[203/2573] EXI2.DE              OK 96.49
+[204/2573] IS00.DE              OK 30.08
+[205/2573] XUSE.MI              OK 5.52
+[206/2573] EXX1.DE              OK 23.35
+[207/2573] SW2CHB.MI            OK 31.985
+[208/2573] VJPN.MI              OK 39.78
+[209/2573] CSUSS.MI             OK 514.59
+[210/2573] FWRA.MI              OK 7.084
+[211/2573] JEPQ.MI              OK 21.99
+[212/2573] IEVL.MI              OK 12.03
+[213/2573] AGGH.MI              OK 4.902
+[214/2573] XDWF.MI              OK 34.825
+[215/2573] CEU.MI               OK 391.75
+[216/2573] GLDA.DE              OK 159.68
+[217/2573] XDEQ.MI              OK 68.9
+[218/2573] ITPS.MI              OK 222.42
+[219/2573] VWCG.MI              OK 53.26
+[220/2573] AE5B.DE              OK 121.54
+[221/2573] SUSE.MI              OK 4.956
+[222/2573] QDVG.DE              OK 10.134
+[223/2573] A500.MI              OK 113.19
+[224/2573] IUS3.DE              OK 85.64
+[225/2573] EMMEUA.MI            OK 125.5
+[226/2573] XGLE.MI              OK 221.03
+[227/2573] MVOL.MI              OK 63.54
+[228/2573] JBEM.MI              OK 9.438
+[229/2573] IBGX.MI              OK 159.84
+[230/2573] USAUSW.MI            OK 33.325
+[231/2573] SECA.MI              OK 4.3555
+[232/2573] ETFJAP.MI            OK 32.53
+[233/2573] WEBP.DE              OK 24.255
+[234/2573] TNOW.MI              OK 902.85
+[235/2573] EMBE.MI              OK 67.31
+[236/2573] ISPY.MI              OK 26.29
+[237/2573] SRIC3.MI             OK 9.706
+[238/2573] ESEG.MI              OK 8.66
+[239/2573] VNRA.MI              OK 143.23
+[240/2573] CSBGE3.MI            OK 115.39
+[241/2573] XRS2.MI              OK 317.03
+[242/2573] EM13.MI              OK 126.99
+[243/2573] 36BZ.DE              OK 4.976
+[244/2573] EXS3.MI              OK 246.35
+[245/2573] VDCA.MI              OK 53.3
+[246/2573] SPXE.MI              OK 15.996
+[247/2573] MSRUSA.MI            OK 16.176
+[248/2573] USESG.MI             OK 224.89
+[249/2573] SXRC.DE              OK 137.79
+[250/2573] AWESG.MI             OK 18.478
+[251/2573] IS02.DE              OK 5.5248
+[252/2573] IHYU.MI              OK 81.39
+[253/2573] ACWIA.MI             OK 198.38
+[254/2573] GEMU.MI              OK 9.759
+[255/2573] SEME.MI              OK 11.192
+[256/2573] IBCX.MI              OK 122.94
+[257/2573] IBTS.AS              OK 109.79
+[258/2573] IBCX.AS              OK 123.02
+[259/2573] XB4F.MI              OK 141.23
+[260/2573] IH2O.MI              OK 64.14
+[261/2573] ACWI.MI              OK 522.75
+[262/2573] SMARTU.MI            OK 1123.758
+[263/2573] EM35.MI              OK 151.05
+[264/2573] VDST.MI              OK 50.68
+[265/2573] QDVE.DE              OK 33.665
+[266/2573] VAPX.MI              OK 32.645
+[267/2573] NUCL.MI              OK 50.01
+[268/2573] VAGF.MI              OK 23.615
+[269/2573] IJPN.MI              OK 18.946
+[270/2573] JEST.MI              OK 109.15
+[271/2573] IBGS.MI              OK 139.99
+[272/2573] VGWE.AS              OK 82.55
+[273/2573] SXRS.DE              OK 8.495
+[274/2573] XD5E.MI              OK 60.46
+[275/2573] EUPC.DE              OK 1370.4
+[276/2573] EXVM.MI              OK 76.29
+[277/2573] DXUS.MI              OK 5.607
+[278/2573] WGLD.MI              OK 398.94
+[279/2573] JREM.MI              OK 37.735
+[280/2573] CBUK.DE              OK 4.145
+[281/2573] XHYA.MI              OK 23.635
+[282/2573] INFR.MI              OK 33.39
+[283/2573] XZE5.MI              OK 47.37
+[284/2573] CSCA.MI              OK 240.63
+[285/2573] IPRP.AS              OK 30.585
+[286/2573] AEGE.MI              OK 4.593
+[287/2573] CORP.MI              OK 76.69
+[288/2573] SGAJ.DE              OK 7.341
+[289/2573] CBUC.DE              OK 6.633
+[290/2573] VMID.DE              OK 38.0
+[291/2573] GDIG.MI              OK 50.51
+[292/2573] ESGWO.MI             OK 95.94
+[293/2573] NESG.MI              OK 60.55
+[294/2573] IE000O5FBC47.PA      OK 27.113
+[295/2573] SPESG.MI             OK 42.015
+[296/2573] XDJP.MI              OK 29.72
+[297/2573] XSMI.MI              OK 141.36
+[298/2573] EMUEUA.MI            OK 189.2
+[299/2573] VFEA.MI              OK 67.98
+[300/2573] IEAG.MI              OK 106.71
+[301/2573] FLXI.MI              OK 34.115
+[302/2573] XDW0.MI              OK 63.09
+[303/2573] IUSL.DE              OK 74.77
+[304/2573] DXWO.MI              OK 5.696
+[305/2573] LTAM.MI              OK 17.73
+[306/2573] RMAU.MI              OK 40.05
+[307/2573] JRGD.DE              OK 47.95
+[308/2573] XDEM.MI              OK 69.08
+[309/2573] IWLE.DE              OK 9.4892
+[310/2573] IE000QQ8Z0D8.PA      OK 397.661
+[311/2573] IE3E.MI              OK 5.491
+[312/2573] NQSE.DE              OK 14.192
+[313/2573] WSRUS.MI             OK 31.065
+[314/2573] UDHY.DE              OK 4.0625
+[315/2573] ANAU.MI              OK 18.342
+[316/2573] XZEM.MI              OK 54.78
+[317/2573] EJAP.DE              OK 17.722
+[318/2573] WAT.MI               OK 67.48
+[319/2573] XLKS.MI              OK 690.78
+[320/2573] GBSE.MI              OK 24.53
+[321/2573] LYTR.DE              OK 34.43
+[322/2573] SXRI.F               OK 99.21
+[323/2573] SRIC5.MI             OK 9.294
+[324/2573] EMSRI.MI             OK 60.97
+[325/2573] IBCI.MI              OK 234.66
+[326/2573] HMWA.MI              OK 35.995
+[327/2573] ICOV.MI              OK 140.88
+[328/2573] FLXC.MI              OK 26.455
+[329/2573] ACWIE.MI             OK 245.13
+[330/2573] XUTC.MI              OK 112.35
+[331/2573] EUDV.MI              OK 27.725
+[332/2573] SUA0.MI              OK 5.323
+[333/2573] ESIH.DE              OK 6.809
+[334/2573] EMRG.MI              OK 76.56
+[335/2573] EM710.MI             OK 168.33
+[336/2573] AASI.MI              OK 47.91
+[337/2573] ESIN.DE              OK 8.718
+[338/2573] QDVB.DE              OK 14.074
+[339/2573] DFND.MI              OK 8.352
+[340/2573] XZEW.MI              OK 45.855
+[341/2573] FR0013041530.PA      OK 101.89
+[342/2573] XDEE.MI              OK 10.894
+[343/2573] XNAS.MI              OK 48.56
+[344/2573] ZPRS.DE              OK 111.74
+[345/2573] IMIB.MI              OK 26.525
+[346/2573] CEBZ.DE              OK 6.091
+[347/2573] MGIN.MI              OK 33.385
+[348/2573] COPA.MI              OK 41.115
+[349/2573] 2B7J.DE              OK 8.823
+[350/2573] EMLD.MI              OK 49.245
+[351/2573] CG1.MI               OK 404.35
+[352/2573] SPHC.MI              OK 181.93
+[353/2573] SILV.MI              OK 34.25
+[354/2573] AME6.DE              OK 143.14
+[355/2573] EEMK.MI              OK 14.352
+[356/2573] SLMA.DE              OK 9.8
+[357/2573] XCHA.MI              OK 17.004
+[358/2573] IQSA.MI              OK 81.23
+[359/2573] VDTA.MI              OK 23.5
+[360/2573] UBU7.AS              OK 93.004
+[361/2573] STQX.MI              OK 401.55
+[362/2573] HSTE.MI              OK 5.835
+[363/2573] MWOE.DE              OK 13.772
+[364/2573] H50E.MI              OK 58.75
+[365/2573] IB28.MI              OK 5.122
+[366/2573] SPXH.MI              OK 318.41
+[367/2573] WOEE.MI              OK 5.451
+[368/2573] IUKD.MI              OK 10.95
+[369/2573] IBC3.DE              OK 5.4252
+[370/2573] X9I1.F               OK 11.916
+[371/2573] IE00B6SPMN59.MI      OK 68.25
+[372/2573] AFRN.MI              OK 111.69
+[373/2573] CLEM.MI              OK 64.03
+[374/2573] IS3J.DE              OK 86.348
+[375/2573] OM3Y.DE              OK 6.639
+[376/2573] WRDEUA.MI            OK 373.65
+[377/2573] GDXJ.MI              OK 87.18
+[378/2573] XGDE.MI              OK 56.76
+[379/2573] GRID.MI              OK 49.315
+[380/2573] PABWD.MI             OK 80.42
+[381/2573] ANX.MI               OK 239.24
+[382/2573] 4UBF.DE              OK 14.9905
+[383/2573] LOCK.MI              OK 8.563
+[384/2573] GLDV.MI              OK 32.19
+[385/2573] UBSPX.MI             OK 109.47
+[386/2573] ESIF.DE              OK 13.54
+[387/2573] X1G.MI               OK 231.12
+[388/2573] CSBGE7.MI            OK 132.9
+[389/2573] JPNEUA.MI            OK 59.78
+[390/2573] DAXX.MI              OK 207.45
+[391/2573] IDVY.MI              OK 23.23
+[392/2573] CRUD.MI              OK 12.662
+[393/2573] IEUX.MI              OK 49.525
+[394/2573] VERE.MI              OK 53.24
+[395/2573] EGOV.MI              OK 49.2
+[396/2573] SLUS.DE              OK 10.79
+[397/2573] IBB1.DE              OK 3.9741
+[398/2573] ENAM.MI              OK 26.01
+[399/2573] CMU.MI               OK 338.8
+[400/2573] EBBB.MI              OK 54.57
+[401/2573] EMESG.MI             OK 63.73
+[402/2573] EMAE.MI              OK 93.19
+[403/2573] AIAI.MI              OK 23.525
+[404/2573] BITC.AS              OK 42.482
+[405/2573] VJPA.MI              OK 36.94
+[406/2573] VETY.MI              OK 21.605
+[407/2573] WSRIA.MI             OK 20.905
+[408/2573] IFFF.MI              OK 61.5
+[409/2573] JEPG.MI              OK 23.0
+[410/2573] SRIC.MI              OK 10.524
+[411/2573] TREX.MI              OK 30.815
+[412/2573] 5MVL.DE              OK 69.42
+[413/2573] XEOD.DE              OK 126.754
+[414/2573] TSWE.MI              OK 36.8
+[415/2573] XWEH.MI              OK 46.025
+[416/2573] FUSD.MI              OK 10.392
+[417/2573] EJPY.MI              OK 7.581
+[418/2573] 36BA.DE              OK 3.9414
+[419/2573] LGQG.DE              OK 321.1
+[420/2573] QDVW.DE              OK 7.128
+[421/2573] WEBN.MI              OK 11.07
+[422/2573] EUNS.DE              OK 105.22
+[423/2573] CCUSAS.MI            OK 115.67
+[424/2573] X710.MI              OK 250.66
+[425/2573] ETFGLO.MI            OK 37.535
+[426/2573] EGRI.MI              OK 45.3
+[427/2573] AWDU.MI              OK 10.074
+[428/2573] CRPE.MI              OK 154.0
+[429/2573] EEMU.MI              OK 17.904
+[430/2573] GOVH.MI              OK 46.71
+[431/2573] CHIP.MI              OK 76.88
+[432/2573] GISG.MI              
+  FAIL - Nessun ticker trovato per LU1650491282 (Amundi Euro Government Inflation-Linked )
+[433/2573] IJPN.AS              OK 18.897
+[434/2573] 8PSB.DE              OK 59.485
+[435/2573] CBUE.DE              OK 4.1749
+[436/2573] XHYG.MI              OK 15.5465
+[437/2573] REMX.MI              OK 14.1
+[438/2573] EMSA.MI              OK 5.373
+[439/2573] IBGS.AS              OK 139.99
+[440/2573] ETFCOR.MI            OK 18.652
+[441/2573] QDVF.DE              OK 10.79
+[442/2573] USAEUY.MI            OK 138.9
+[443/2573] IBCQ.DE              OK 85.328
+[444/2573] MWEQ.MI              OK 5.314
+[445/2573] SXLK.MI              OK 123.28
+[446/2573] 5ESGE.MI             OK 36.68
+[447/2573] EUNY.DE              OK 16.38
+[448/2573] XZEU.MI              OK 31.875
+[449/2573] FUSR.MI              OK 10.254
+[450/2573] SDJE50.MI            OK 143.36
+[451/2573] X57E.MI              OK 233.42
+[452/2573] SGLE.MI              OK 105.55
+[453/2573] WBTC.PA              OK 14.615
+[454/2573] XCAN.MI              OK 99.08
+[455/2573] JUHE.MI              OK 52.11
+[456/2573] XCS6.MI              OK 16.148
+[457/2573] EACW.MI              OK 23.355
+[458/2573] IJPE.MI              OK 123.81
+[459/2573] 2B7S.DE              OK 5.0686
+[460/2573] LGUS.MI              OK 23.01
+[461/2573] ETFGOV.MI            OK 16.898
+[462/2573] GCVE.MI              OK 49.315
+[463/2573] XY4P.MI              OK 179.29
+[464/2573] XUTD.MI              OK 167.9
+[465/2573] EUREUA.MI            OK 94.95
+[466/2573] EUSRI.MI             OK 81.2
+[467/2573] IU5C.DE              OK 11.944
+[468/2573] AIGI.MI              OK 15.412
+[469/2573] IE00058MW3M8.PA      OK 63.755
+[470/2573] X500.MI              OK 31.4
+[471/2573] XUTE.MI              OK 90.67
+[472/2573] ESGE.MI              OK 36.765
+[473/2573] SYBG.DE              OK 48.521
+[474/2573] SP5EUY.MI            OK 93.95
+[475/2573] ETSZ.DE              OK 18.942
+[476/2573] INAA.MI              OK 105.7
+[477/2573] IUS2.DE              OK 6.101
+[478/2573] EUNX.DE              OK 81.828
+[479/2573] SLMG.DE              OK 4.8539
+[480/2573] SS1EUA.MI            OK 11.676
+[481/2573] 2B7A.DE              OK 9.87
+[482/2573] IEXF.MI              OK 107.73
+[483/2573] S6DW.DE              OK 9.185
+[484/2573] ENCO.MI              OK 15.72
+[485/2573] IWDP.MI              OK 21.31
+[486/2573] COPX.MI              OK 48.23
+[487/2573] SPEQ.MI              OK 56.71
+[488/2573] XUHC.DE              OK 50.96
+[489/2573] CSEMUS.MI            OK 324.95
+[490/2573] IITB.MI              OK 149.66
+[491/2573] CIBR.MI              OK 34.17
+[492/2573] INDI.MI              OK 24.14
+[493/2573] XDPU.MI              OK 10.992
+[494/2573] IWDS.MI              OK 5.68
+[495/2573] LWCR.MI              OK 540.37
+[496/2573] GERD.MI              OK 13.054
+[497/2573] EM1015.MI            OK 198.86
+[498/2573] IVOA.MI              OK 5.603
+[499/2573] EMND.DE              OK 8.68
+[500/2573] XSX7.DE              OK 90.48
+[501/2573] 5MVW.DE              OK 8.427
+[502/2573] YCSH.MI              OK 15.4481
+[503/2573] WSLV.MI              OK 62.07
+[504/2573] RIEU.MI              OK 17.994
+[505/2573] VNGA80.MI            OK 39.005
+[506/2573] IPRP.MI              OK 30.76
+[507/2573] EXV8.DE              OK 82.84
+[508/2573] IS04.DE              OK 2.806
+[509/2573] BRNT.MI              OK 73.08
+[510/2573] GOVS.MI              OK 51.85
+[511/2573] LU1861132840.AS      OK 84.341
+[512/2573] XDN0.DE              OK 49.245
+[513/2573] LGGL.MI              OK 20.725
+[514/2573] ITWN.MI              OK 115.71
+[515/2573] EMCR.MI              OK 77.2
+[516/2573] XZWE.MI              OK 77.17
+[517/2573] ETFUSA.MI            OK 43.28
+[518/2573] EMKT.MI              OK 15.996
+[519/2573] HMCH.MI              OK 6.68
+[520/2573] EXH9.DE              OK 56.91
+[521/2573] ROBO.MI              OK 24.6
+[522/2573] USEE.MI              OK 5.39
+[523/2573] XUCM.DE              OK 73.7
+[524/2573] HEAL.MI              OK 7.397
+[525/2573] MDBE.MI              OK 10.182
+[526/2573] AEMD.MI              OK 63.28
+[527/2573] SXRQ.MI              OK 151.83
+[528/2573] IBGM.MI              OK 185.06
+[529/2573] HEMA.MI              OK 13.784
+[530/2573] JEDI.MI              OK 73.2
+[531/2573] LGEU.MI              OK 19.636
+[532/2573] INDGW.MI             OK 16.466
+[533/2573] EXSH.MI              OK 23.415
+[534/2573] WTEC.MI              OK 177.74
+[535/2573] EFRN.DE              OK 5.0622
+[536/2573] AT1.MI               OK 25.56
+[537/2573] AUCO.MI              OK 89.79
+[538/2573] HLT.MI               OK 145.38
+[539/2573] HYLD.MI              OK 76.18
+[540/2573] WTAI.MI              OK 75.04
+[541/2573] XDGU.MI              OK 11.03
+[542/2573] QDVX.DE              OK 6.461
+[543/2573] EMEE.MI              OK 6.164
+[544/2573] XEWE.MI              OK 12.066
+[545/2573] V50D.DE              OK 88.87
+[546/2573] C3M.MI               OK 125.92
+[547/2573] X03G.MI              OK 174.33
+[548/2573] IB27.MI              OK 5.57
+[549/2573] XGSD.MI              OK 34.69
+[550/2573] IE1A.DE              OK 5.4348
+[551/2573] FXC.MI               OK 88.66
+[552/2573] H41J.DE              OK 22.525
+[553/2573] ENER.MI              OK 38.675
+[554/2573] XMAS.DE              OK 74.0
+[555/2573] JRGE.MI              OK 49.3
+[556/2573] CM9.MI               OK 631.0
+[557/2573] EMWE.MI              OK 20.515
+[558/2573] PJSR.MI              OK 106.453
+[559/2573] RSPS.MI              OK 4.602
+[560/2573] CONV.MI              OK 54.92
+[561/2573] CBUJ.DE              OK 4.9042
+[562/2573] IUSV.DE              OK 2.869
+[563/2573] MVEU.MI              OK 70.67
+[564/2573] ZPDJ.DE              OK 66.864
+[565/2573] CD91.DE              OK 60.02
+[566/2573] GOVA.MI              OK 25.77
+[567/2573] GLAG.MI              OK 22.175
+[568/2573] STNX.MI              OK 295.65
+[569/2573] SAUA.MI              OK 7.347
+[570/2573] CANEUA.MI            OK 51.26
+[571/2573] STUX.MI              OK 255.1
+[572/2573] CAPU.MI              OK 1370.45
+[573/2573] LCUK.MI              OK 12.14
+[574/2573] AJEUAS.MI            OK 207.16
+[575/2573] EXIE.DE              OK 6.918
+[576/2573] SDHY.MI              OK 74.5
+[577/2573] XDWI.MI              OK 69.08
+[578/2573] 2B70.DE              OK 7.151
+[579/2573] MATW.MI              OK 13.624
+[580/2573] ESREUA.MI            OK 126.82
+[581/2573] XPAM.F               OK 7.808
+[582/2573] HLTW.MI              OK 460.7
+[583/2573] HMXJ.MI              OK 14.256
+[584/2573] QDVP.DE              OK 3.6615
+[585/2573] IKOR.MI              OK 54.77
+[586/2573] ZPRV.DE              OK 69.09
+[587/2573] XREA.DE              OK 57.32
+[588/2573] LGJP.MI              OK 15.754
+[589/2573] VMIG.MI              OK 46.265
+[590/2573] UQLTD.MI             OK 50.98
+[591/2573] ETDD.DE              OK 18.076
+[592/2573] SXLE.MI              OK 41.21
+[593/2573] XGSH.MI              OK 208.98
+[594/2573] XCS7.MI              OK 8.136
+[595/2573] IEMO.MI              OK 14.298
+[596/2573] ALAT.MI              OK 20.12
+[597/2573] IB1T.DE              OK 6.109
+[598/2573] CBU5.DE              OK 100.165
+[599/2573] JPSA.MI              OK 107.25
+[600/2573] 500H.MI              OK 155.64
+[601/2573] FTS100.MI            OK 21.045
+[602/2573] ETFCRP.MI            OK 19.962
+[603/2573] METL.MI              OK 7.95
+[604/2573] EUCO.MI              OK 52.59
+[605/2573] STZX.MI              OK 127.14
+[606/2573] XMEM.MI              OK 62.02
+[607/2573] STHE.MI              OK 71.8
+[608/2573] BTP10.MI             OK 151.64
+[609/2573] V3AA.MI              OK 6.469
+[610/2573] RARE.MI              OK 51.55
+[611/2573] EXH1.DE              OK 54.11
+[612/2573] XUFN.DE              OK 30.995
+[613/2573] VNGA60.MI            OK 33.92
+[614/2573] XDWS.MI              OK 46.02
+[615/2573] COMF.MI              OK 26.725
+[616/2573] RS2K.MI              OK 321.2
+[617/2573] EXV4.DE              OK 108.68
+[618/2573] CE8G.DE              OK 662.1
+[619/2573] IBGL.MI              OK 163.86
+[620/2573] IQQL.DE              OK 25.9
+[621/2573] EMXU.DE              OK 49.22
+[622/2573] SAGE.MI              OK 8.881
+[623/2573] SEUC.MI              OK 29.755
+[624/2573] NDXH.MI              OK 550.83
+[625/2573] PSREUA.MI            OK 74.4
+[626/2573] JT13.MI              OK 6.337
+[627/2573] BTCE.DE              OK 54.41
+[628/2573] JREB.MI              OK 107.42
+[629/2573] FGQI.MI              OK 8.96
+[630/2573] PRAR.DE              OK 17.9305
+[631/2573] XAD6.MI              OK 578.69
+[632/2573] XDEB.MI              OK 42.605
+[633/2573] PJS1.MI              OK 97.494
+[634/2573] E50EUA.MI            OK 56.54
+[635/2573] YINA2.MI             OK 9.652
+[636/2573] 3SUD.DE              OK 5.149
+[637/2573] IBGY.MI              OK 142.52
+[638/2573] BCHN.MI              OK 129.5
+[639/2573] TRXE.MI              OK 30.735
+[640/2573] XQUI.MI              OK 323.2
+[641/2573] XDWM.MI              OK 61.74
+[642/2573] IEQU.MI              OK 11.006
+[643/2573] WELU.DE              OK 20.48
+[644/2573] HWDE.MI              OK 37.165
+[645/2573] 10AI.DE              OK 73.82
+[646/2573] TIP1A.MI             OK 14.08
+[647/2573] ASREUA.MI            OK 211.95
+[648/2573] IB26.MI              OK 5.054
+[649/2573] LGAP.MI              OK 14.874
+[650/2573] GOM.MI               OK 42.7
+[651/2573] AEJ.MI               OK 84.63
+[652/2573] CEUD.MI              OK 7.723
+[653/2573] VDEA.MI              OK 53.74
+[654/2573] SWRE.MI              OK 14.174
+[655/2573] SXLF.MI              OK 49.77
+[656/2573] SLMB.DE              OK 8.231
+[657/2573] PHPT.MI              OK 155.01
+[658/2573] USEUWH.MI            OK 49.865
+[659/2573] XPXJ.MI              OK 79.27
+[660/2573] SNAY.PA              OK 99.937
+[661/2573] XASX.DE              OK 5.39
+[662/2573] AWSRIE.MI            OK 18.774
+[663/2573] H50A.MI              OK 69.57
+[664/2573] VUTY.MI              OK 18.586
+[665/2573] SXRH.DE              OK 4.3207
+[666/2573] DECR.DE              OK 46.11
+[667/2573] XDWU.MI              OK 42.375
+[668/2573] IFSW.MI              OK 11.972
+[669/2573] EM57.MI              OK 159.17
+[670/2573] X7PS.MI              OK 191.88
+[671/2573] EMGH.MI              OK 11.688
+[672/2573] EUED.DE              OK 5.0136
+[673/2573] H4Z7.DE              OK 24.835
+[674/2573] MSRUSB.MI            OK 21.4
+[675/2573] WDESG.MI             OK 211.91
+[676/2573] BATT.MI              OK 26.515
+[677/2573] EMU.MI               OK 72.88
+[678/2573] CEBE.MI              OK 5.522
+[679/2573] IS3H.DE              OK 70.32
+[680/2573] ZPRX.DE              OK 59.91
+[681/2573] WITS.MI              OK 13.668
+[682/2573] IBCJ.DE              OK 28.48
+[683/2573] VGEK.DE              OK 41.565
+[684/2573] VUCP.MI              OK 41.01
+[685/2573] Q8Y0.DE              OK 23.78
+[686/2573] ETFMIB.MI            OK 43.7
+[687/2573] SDIV.MI              OK 8.77
+[688/2573] MEU.MI               OK 218.0
+[689/2573] WLDH.MI              OK 232.24
+[690/2573] CRPA.MI              OK 5.119
+[691/2573] EXS2.DE              OK 30.345
+[692/2573] WSC.MI               OK 9.953
+[693/2573] EMNJ.DE              OK 6.801
+[694/2573] GGRA.MI              OK 37.995
+[695/2573] WELK.DE              OK 16.552
+[696/2573] QUS5.DE              OK 9.709
+[697/2573] HSUD.MI              OK 30.485
+[698/2573] PFT.MI               OK 34.165
+[699/2573] EUES.MI              OK 5.499
+[700/2573] ESPO.MI              OK 51.59
+[701/2573] INXG.MI              OK 13.266
+[702/2573] 7USH.DE              OK 43.02
+[703/2573] EXSE.DE              OK 35.26
+[704/2573] 2B7C.DE              OK 11.946
+[705/2573] OG35.MI              OK 202.82
+[706/2573] STWX.MI              OK 218.1
+[707/2573] QDVK.DE              OK 13.254
+[708/2573] DXG3.MI              OK 5.107
+[709/2573] XCS5.MI              OK 15.6
+[710/2573] DGTL.MI              OK 8.311
+[711/2573] URNU.MI              OK 25.68
+[712/2573] EUN.MI               OK 49.98
+[713/2573] AGED.MI              OK 7.9
+[714/2573] FLQA.MI              OK 30.165
+[715/2573] DJMC.MI              OK 78.48
+[716/2573] DXEU.MI              OK 5.677
+[717/2573] ARMR.MI              OK 29.245
+[718/2573] CBSEU.MI             OK 12.846
+[719/2573] PRAB.DE              OK 21.52
+[720/2573] AWSRIA.MI            OK 21.905
+[721/2573] TIGR.MI              OK 6.72
+[722/2573] IFSE.MI              OK 11.858
+[723/2573] C40.MI               OK 132.32
+[724/2573] LCCN.MI              OK 18.472
+[725/2573] SXRF.DE              OK 4.2199
+[726/2573] QYLD.MI              OK 14.06
+[727/2573] CSBGU3.MI            OK 108.02
+[728/2573] IUKP.MI              OK 4.663
+[729/2573] VEMT.MI              OK 37.305
+[730/2573] GLUG.MI              OK 17.396
+[731/2573] GLAE.MI              OK 25.745
+[732/2573] EXH4.DE              OK 106.0
+[733/2573] DXG5.MI              OK 5.095
+[734/2573] IAPD.MI              OK 26.215
+[735/2573] CANA.MI              OK 23.645
+[736/2573] EFRB.DE              OK 5.1372
+[737/2573] 30IG.MI              OK 5.067
+[738/2573] EXSB.DE              OK 22.4
+[739/2573] 5ESE.MI              OK 76.7
+[740/2573] SNA2.DE              OK 3.6818
+[741/2573] DGRA.MI              OK 45.115
+[742/2573] GEU3C.MI             OK 10.738
+[743/2573] WHEA.MI              OK 55.34
+[744/2573] 5UOA.DE              OK 4.5276
+[745/2573] SB5.MI               OK 12.796
+[746/2573] BBIL.MI              OK 102.97
+[747/2573] WEXE.DE              OK 10.748
+[748/2573] EXI1.DE              OK 151.92
+[749/2573] X03F.DE              OK 169.04
+[750/2573] QDVD.DE              OK 49.72
+[751/2573] LCAS.MI              OK 13.936
+[752/2573] EXSD.DE              OK 60.95
+[753/2573] IITB.MI              OK 149.66
+[754/2573] EUAG.MI              OK 54.12
+[755/2573] EUEE.MI              OK 5.925
+[756/2573] CSKR.MI              OK 320.99
+[757/2573] JNKE.MI              OK 50.18
+[758/2573] 600X.MI              OK 34.13
+[759/2573] HYEP.MI              OK 5.185
+[760/2573] UEEF.DE              OK 5.6664
+[761/2573] C024.DE              OK 159.72
+[762/2573] JREZ.MI              OK 39.75
+[763/2573] IUCB.MI              OK 25.81
+[764/2573] SDJ600.MI            OK 146.18
+[765/2573] XB4D.DE              OK 7.0704
+[766/2573] WHCS.MI              OK 6.362
+[767/2573] IUSP.MI              OK 26.4
+[768/2573] EDEG.DE              OK 10.1833
+[769/2573] CNYB.MI              OK 4.786
+[770/2573] SESR.MI              OK 32.995
+[771/2573] GAGG.MI              OK 48.745
+[772/2573] UCRP.MI              OK 53.93
+[773/2573] EQEU.MI              OK 419.93
+[774/2573] 2B7D.DE              OK 8.524
+[775/2573] EST.MI               OK 37.775
+[776/2573] XD3E.MI              OK 27.68
+[777/2573] XD9E.MI              OK 131.04
+[778/2573] EGE.MI               OK 10.526
+[779/2573] PAVE.MI              OK 40.265
+[780/2573] 2BTC.DE              OK 20.298
+[781/2573] BRIJ.MI              OK 19.508
+[782/2573] EXV6.DE              OK 71.34
+[783/2573] SXLV.MI              OK 39.11
+[784/2573] CC4.MI               OK 225.0
+[785/2573] IS3L.DE              OK 85.964
+[786/2573] IBC5.DE              OK 5.405
+[787/2573] IITA.MI              OK 5.691
+[788/2573] VDCE.MI              OK 55.3
+[789/2573] SPEEU.MI             OK 16.312
+[790/2573] V3AL.MI              OK 6.056
+[791/2573] S5SD.DE              OK 38.985
+[792/2573] IS3V.DE              OK 4.5632
+[793/2573] WNRG.MI              OK 64.51
+[794/2573] MGT.MI               OK 91.74
+[795/2573] WLDC.MI              OK 16.36
+[796/2573] IS0D.DE              OK 31.62
+[797/2573] EMNE.DE              OK 7.994
+[798/2573] SCWX.MI              OK 10.308
+[799/2573] XJSE.MI              OK 6.1
+[800/2573] EMIGE.MI             OK 11.182
+[801/2573] HPAW.MI              OK 28.65
+[802/2573] XSGI.MI              OK 69.71
+[803/2573] SRSA.MI              OK 48.845
+[804/2573] SAUS.MI              OK 51.96
+[805/2573] DEFS.MI              OK 6.062
+[806/2573] STHY.MI              OK 80.9
+[807/2573] VDTE.MI              OK 25.46
+[808/2573] IBCC.DE              OK 4.2749
+[809/2573] XDPE.MI              OK 92.21
+[810/2573] SXLI.MI              OK 61.24
+[811/2573] USFRN.MI             OK 117.76
+[812/2573] ASOL.AS              OK 59.1951
+[813/2573] IEGS.MI              OK 5.087
+[814/2573] KOR.MI               OK 128.68
+[815/2573] USSRI.MI             OK 18.198
+[816/2573] USVEUY.MI            OK 106.85
+[817/2573] ESIS.DE              OK 5.678
+[818/2573] EXH5.DE              OK 47.885
+[819/2573] WEMT2.MI             OK 15.156
+[820/2573] NRAM.MI              OK 151.54
+[821/2573] ISJP.MI              OK 46.95
+[822/2573] AINF.MI              
+  FAIL - Nessun ticker trovato per IE000X59ZHE2 (iShares AI Infrastructure UCITS ETF USD )
+[823/2573] XG01.MI              OK 34.74
+[824/2573] X35E.MI              OK 205.86
+[825/2573] DAPP.MI              OK 10.002
+[826/2573] SLMD.DE              OK 8.066
+[827/2573] JSEU.MI              OK 32.09
+[828/2573] QNTM.MI              OK 20.22
+[829/2573] CU2.MI               OK 682.73
+[830/2573] FLXD.MI              
+  FAIL - Nessun ticker trovato per IE00BF2B0L69 (Franklin European Quality Dividend UCITS)
+[831/2573] CBUS.MI              OK 12.766
+[832/2573] MDBA.MI              OK 10.792
+[833/2573] GUARD.MI             OK 11.5
+[834/2573] SPYF.DE              OK 99.7
+[835/2573] COPM.MI              OK 7.864
+[836/2573] TIPU.MI              OK 101.47
+[837/2573] USAEUA.MI            OK 550.95
+[838/2573] XMEX.MI              OK 7.278
+[839/2573] CSNKY.MI             OK 293.09
+[840/2573] SP20.MI              OK 4.951
+[841/2573] CINA.MI              OK 102.08
+[842/2573] DXS0.DE              OK 228.7
+[843/2573] PRAJ.DE              OK 32.305
+[844/2573] HSPA.MI              OK 56.09
+[845/2573] CBUG.AS              OK 4.5739
+[846/2573] SUJP.MI              OK 6.827
+[847/2573] IS3B.DE              OK 101.31
+[848/2573] XDDX.DE              OK 142.48
+[849/2573] ESGUSA.MI            OK 98.69
+[850/2573] XWTS.MI              OK 27.595
+[851/2573] 36B5.DE              OK 5.692
+[852/2573] ECR1.MI              OK 54.66
+[853/2573] IUSE.MI              OK 136.1
+[854/2573] AWDSE.MI             OK 11.598
+[855/2573] DJSC.MI              OK 46.94
+[856/2573] IUSS.DE              OK 5.445
+[857/2573] QDVA.DE              OK 14.62
+[858/2573] SNAV.DE              OK 4.355
+[859/2573] LCEU.MI              OK 264.5
+[860/2573] AHYE.MI              OK 261.14
+[861/2573] YIEG.MI              OK 10.012
+[862/2573] AWDE.MI              OK 10.892
+[863/2573] YIUS2.MI             OK 9.561
+[864/2573] SPYX.DE              OK 123.64
+[865/2573] XDEP.MI              OK 15.02
+[866/2573] GOVY.MI              OK 55.68
+[867/2573] IBZL.MI              OK 25.375
+[868/2573] IUS5.DE              OK 142.95
+[869/2573] VBTC.AS              OK 14.214
+[870/2573] VGOV.DE              OK 18.019
+[871/2573] IQGA.MI              OK 5.04
+[872/2573] 36B1.DE              OK 3.7497
+[873/2573] UKE.MI               OK 20.72
+[874/2573] TIP1E.MI             OK 12.006
+[875/2573] WRDE.MI              OK 4.687
+[876/2573] DXG10.MI             OK 5.017
+[877/2573] APEX.MI              OK 167.57
+[878/2573] IEBB.MI              OK 4.8025
+[879/2573] XAT1.MI              OK 16.122
+[880/2573] HTWO.MI              OK 6.15
+[881/2573] XEIN.MI              OK 244.16
+[882/2573] XAD2.MI              OK 372.0
+[883/2573] ZA30.DE              OK 7.318
+[884/2573] BRES.MI              OK 117.86
+[885/2573] XCSI.MI              OK 44.68
+[886/2573] XDED.MI              OK 202.71
+[887/2573] EXHE.MI              OK 97.73
+[888/2573] EENG.MI              OK 96.87
+[889/2573] 30IA.MI              OK 5.247
+[890/2573] HYLE.DE              OK 4.2535
+[891/2573] HSXD.MI              OK 20.98
+[892/2573] SEL.MI               OK 20.95
+[893/2573] FPXR.MI              OK 6.186
+[894/2573] CBUI.DE              OK 6.96
+[895/2573] EUHA.DE              OK 12.087
+[896/2573] HKOR.MI              OK 96.71
+[897/2573] US7.MI               OK 238.85
+[898/2573] UQAB.DE              OK 6.952
+[899/2573] ECAR.MI              OK 8.255
+[900/2573] OP7E.DE              OK 145.38
+[901/2573] XUHY.MI              OK 11.08
+[902/2573] GRC.MI               OK 2.27
+[903/2573] PHPM.MI              OK 256.23
+[904/2573] EROX.MI              OK 364.0
+[905/2573] JREJ.MI              OK 32.195
+[906/2573] SB10.MI              OK 15.228
+[907/2573] EHF1.DE              OK 227.55
+[908/2573] IBGZ.MI              OK 145.66
+[909/2573] REUSE.MI             OK 20.01
+[910/2573] IBE7.MI              OK 5.122
+[911/2573] YIWSU.MI             OK 8.385
+[912/2573] EIB3.MI              OK 37.425
+[913/2573] EMUSRI.MI            OK 30.4
+[914/2573] KWBE.MI              OK 13.206
+[915/2573] XAXJ.MI              OK 50.18
+[916/2573] W450.DE              OK 17.442
+[917/2573] HQWA.MI              OK 9.979
+[918/2573] SBIO.MI              OK 51.21
+[919/2573] INDG.MI              OK 137.0
+[920/2573] WING.MI              OK 4.602
+[921/2573] CEBK.DE              OK 99.84
+[922/2573] WPAB.AS              OK 7.2749
+[923/2573] XG7S.MI              OK 218.41
+[924/2573] SODJ.DE              OK 6.469
+[925/2573] 29GA.MI              OK 5.238
+[926/2573] USPA.MI              OK 46.345
+[927/2573] D26A.DE              OK 98.902
+[928/2573] AEUSE.MI             OK 11.25
+[929/2573] XEEW.MI              OK 29.79
+[930/2573] V3GF.MI              OK 4.772
+[931/2573] PSFE.MI              OK 18.209
+[932/2573] X03B.DE              OK 157.855
+[933/2573] XFFE.MI              OK 183.06
+[934/2573] PCOM.MI              OK 13.312
+[935/2573] YIUU2.MI             OK 9.674
+[936/2573] ESIT.DE              OK 8.997
+[937/2573] EUHD.MI              OK 33.235
+[938/2573] IWSZ.MI              OK 47.1
+[939/2573] XWEU.DE              OK 12.281
+[940/2573] UEFD.AS              OK 138.32
+[941/2573] CJ1.MI               OK 306.38
+[942/2573] MEEQ.MI              OK 17.326
+[943/2573] EUNE.DE              OK 179.17
+[944/2573] EXX5.MI              OK 91.96
+[945/2573] LDEU.MI              OK 16.41
+[946/2573] GLUX.MI              OK 189.71
+[947/2573] WSDG.MI              OK 25.625
+[948/2573] CBEU5.MI             OK 13.02
+[949/2573] 21BC.DE              OK 14.571
+[950/2573] EPEJ.MI              OK 16.178
+[951/2573] XGIN.MI              OK 219.2
+[952/2573] IHYE.MI              OK 3.868
+[953/2573] IQSE.MI              OK 87.63
+[954/2573] 29GI.MI              OK 5.088
+[955/2573] XMAS.MI              OK 74.83
+[956/2573] JGRO.MI              OK 29.88
+[957/2573] XDGE.MI              OK 10.284
+[958/2573] XLVS.MI              OK 624.21
+[959/2573] FLES.MI              OK 25.923
+[960/2573] FLTR.MI              OK 4.4085
+[961/2573] TRET.MI              OK 39.265
+[962/2573] U3O8.MI              OK 12.716
+[963/2573] SUOU.MI              OK 3.75
+[964/2573] SHEME.MI             OK 12.672
+[965/2573] 4UBK.DE              OK 17.32
+[966/2573] XBAE.MI              OK 20.83
+[967/2573] EPRA.MI              OK 67.26
+[968/2573] ENERW.MI             OK 14.97
+[969/2573] H411.DE              OK 65.78
+[970/2573] ISAG.MI              OK 49.51
+[971/2573] CEB7.MI              OK 5.665
+[972/2573] 18MN.DE              OK 12.532
+[973/2573] FSKY.MI              OK 40.88
+[974/2573] SP3C.AS              OK 6.2625
+[975/2573] MMS.MI               OK 386.7
+[976/2573] CSMIB.MI             OK 212.75
+[977/2573] HYS.MI               OK 95.83
+[978/2573] DFNC.DE              OK 5.784
+[979/2573] XT01.MI              OK 54.42
+[980/2573] JPCT.MI              OK 40.75
+[981/2573] WELS.DE              OK 10.598
+[982/2573] HMEU.MI              OK 19.886
+[983/2573] UCRH.DE              OK 38.569
+[984/2573] JSEG.MI              OK 31.295
+[985/2573] EMPAB.MI             OK 13.672
+[986/2573] XSLR.MI              OK 89.28
+[987/2573] EURO.MI              OK 91.48
+[988/2573] YII5P.MI             OK 9.97
+[989/2573] WENT.MI              OK 22.51
+[990/2573] 36B6.DE              OK 10.054
+[991/2573] CITY.MI              OK 8.176
+[992/2573] DJE.MI               OK 401.88
+[993/2573] XDNY.MI              OK 17.514
+[994/2573] GGOV.MI              OK 45.125
+[995/2573] MOAT.MI              OK 51.82
+[996/2573] XLFS.MI              OK 330.93
+[997/2573] XWEV.MI              OK 43.82
+[998/2573] CBU4.DE              OK 4.4318
+[999/2573] CCEUAS.MI            OK 97.58
+[1000/2573] XUIN.DE              OK 91.37
+[1001/2573] JPHY.MI              OK 9.44
+[1002/2573] RENW.MI              OK 13.73
+[1003/2573] VCEU.MI              OK 414.0
+[1004/2573] HYSRI.MI             OK 11.036
+[1005/2573] V3GE.MI              OK 4.01
+[1006/2573] GLRE.MI              OK 31.27
+[1007/2573] FRPG.DE              OK 4.26
+[1008/2573] IQQG.DE              OK 61.94
+[1009/2573] 21XP.DE              OK 34.26
+[1010/2573] OP2E.DE              OK 165.94
+[1011/2573] WCBR.MI              OK 22.47
+[1012/2573] PRAM.DE              OK 22.2
+[1013/2573] EUNI.DE              OK 91.48
+[1014/2573] XESD.DE              OK 38.89
+[1015/2573] ASRD.MI              OK 9.498
+[1016/2573] 4UB9.DE              OK 19.422
+[1017/2573] XFVT.MI              OK 31.205
+[1018/2573] FJPR.MI              OK 6.219
+[1019/2573] U13H.MI              OK 82.97
+[1020/2573] FLESA.MI             OK 27.645
+[1021/2573] XD5D.L               OK 92.53
+[1022/2573] JEPI.MI              OK 21.065
+[1023/2573] SYB5.DE              OK 55.724
+[1024/2573] IUSF.DE              OK 33.7
+[1025/2573] SYBL.DE              OK 39.88
+[1026/2573] COBO.MI              OK 83.96
+[1027/2573] CBUM.DE              OK 7.694
+[1028/2573] EMVEUA.MI            OK 56.65
+[1029/2573] XRSM.MI              OK 48.931
+[1030/2573] QDVC.DE              OK 10.358
+[1031/2573] SDVY.MI              OK 20.5
+[1032/2573] MXFS.MI              OK 62.11
+[1033/2573] XLPE.MI              OK 103.28
+[1034/2573] EMV.MI               OK 33.765
+[1035/2573] EXAG.DE              OK 16.308
+[1036/2573] AAA13.MI             OK 100.99
+[1037/2573] BRA.MI               OK 25.065
+[1038/2573] USCO.MI              OK 26.09
+[1039/2573] WFIN.MI              OK 75.48
+[1040/2573] DISW.MI              OK 12.242
+[1041/2573] AUSSE.MI             OK 12.148
+[1042/2573] ITPD.MI              OK 3.964
+[1043/2573] CBU8.DE              OK 4.3515
+[1044/2573] USRI.MI              OK 104.16
+[1045/2573] XSDR.MI              OK 147.0
+[1046/2573] ASRT.DE              OK 9.3644
+[1047/2573] MWOJ.DE              OK 16.118
+[1048/2573] MD4X.DE              OK 133.8
+[1049/2573] VUSC.MI              OK 42.49
+[1050/2573] AIPE.MI              OK 11.426
+[1051/2573] EFRW.DE              OK 5.572
+[1052/2573] HSWD.MI              OK 25.825
+[1053/2573] EXXY.MI              OK 33.58
+[1054/2573] GQEM.MI              OK 22.25
+[1055/2573] XDWC.MI              OK 53.97
+[1056/2573] CN1.MI               OK 640.0
+[1057/2573] CLIM.MI              OK 48.68
+[1058/2573] JPSR.MI              OK 25.31
+[1059/2573] EMAAA.MI             OK 126.4
+[1060/2573] XUEK.DE              OK 80.44
+[1061/2573] HDLV.MI              OK 31.73
+[1062/2573] TRSY.MI              OK 83.83
+[1063/2573] USSMC.MI             OK 165.92
+[1064/2573] SMCX.MI              OK 347.15
+[1065/2573] RQFI.MI              OK 11.05
+[1066/2573] UEQD.DE              OK 30.849
+[1067/2573] SR2000.MI            OK 109.72
+[1068/2573] CETH.AS              OK 67.929
+[1069/2573] LGQK.DE              OK 101.74
+[1070/2573] MLPD.MI              OK 48.59
+[1071/2573] VGER.DE              OK 32.585
+[1072/2573] AIAA.MI              OK 4.589
+[1073/2573] YIIG5.MI             OK 9.945
+[1074/2573] GGRW.MI              OK 33.56
+[1075/2573] UEEA.DE              OK 7.399
+[1076/2573] HSJD.MI              OK 19.544
+[1077/2573] ACUG.DE              OK 52.38
+[1078/2573] SNAZ.DE              OK 5.0568
+[1079/2573] XHY1.MI              OK 8.476
+[1080/2573] CBSUSE.MI            OK 15.252
+[1081/2573] ARKI.MI              OK 8.155
+[1082/2573] XZME.MI              OK 9.74
+[1083/2573] SXLC.MI              OK 45.325
+[1084/2573] QCEU.MI              OK 112.32
+[1085/2573] XEOU.L               OK 20.68
+[1086/2573] TRES.MI              OK 31.145
+[1087/2573] XS5E.MI              OK 9.743
+[1088/2573] DXJZ.MI              OK 34.315
+[1089/2573] V3NA.MI              OK 6.861
+[1090/2573] EXI4.F               OK 91.31
+[1091/2573] IU0E.MI              OK 5.399
+[1092/2573] CHSR.DE              OK 15.534
+[1093/2573] ARKK.MI              OK 6.442
+[1094/2573] BSRIC.MI             OK 10.676
+[1095/2573] CINESG.MI            OK 9.161
+[1096/2573] EXV5.DE              OK 39.605
+[1097/2573] PADV.MI              OK 46.82
+[1098/2573] XD9D.DE              OK 22.071
+[1099/2573] WDMVO.MI             OK 126.57
+[1100/2573] ERTH.MI              OK 7.391
+[1101/2573] FUSA.MI              OK 12.59
+[1102/2573] SADA.DE              OK 38.76
+[1103/2573] AUSAUW.MI            OK 31.38
+[1104/2573] HWVL.MI              OK 21.965
+[1105/2573] FBTC.L               OK 6.912
+[1106/2573] EMHD.MI              OK 25.19
+[1107/2573] XYP1.MI              OK 149.42
+[1108/2573] VX6F.DE              OK 23.463
+[1109/2573] NCLR.MI              OK 48.915
+[1110/2573] CLWD.MI              OK 8.926
+[1111/2573] TPXH.MI              OK 542.45
+[1112/2573] MVEW.AS              OK 8.0311
+[1113/2573] CP9.MI               OK 637.88
+[1114/2573] XUHA.L               OK 10.433
+[1115/2573] MWSH.MI              OK 74.03
+[1116/2573] VAL.MI               OK 166.9
+[1117/2573] PEU.MI               OK 108.31
+[1118/2573] CC1.MI               OK 284.45
+[1119/2573] OVER.MI              OK 5.095
+[1120/2573] CEBP.DE              OK 11.274
+[1121/2573] SXLP.MI              OK 38.525
+[1122/2573] EXH3.DE              OK 60.15
+[1123/2573] 540J.DE              OK 12.546
+[1124/2573] ETHA.DE              OK 20.586
+[1125/2573] OIH.MI               OK 28.0
+[1126/2573] TIPE.MI              OK 19.1
+[1127/2573] V3PA.MI              OK 7.986
+[1128/2573] EM15.MI              OK 174.61
+[1129/2573] EMIG.MI              OK 12.156
+[1130/2573] TIPS.MI              OK 25.22
+[1131/2573] XB29.MI              OK 25.93
+[1132/2573] C007.DE              OK 24.12
+[1133/2573] ASRC.DE              OK 10.5665
+[1134/2573] D5BL.DE              OK 44.87
+[1135/2573] LYQY.DE              OK 105.375
+[1136/2573] WINC.AS              OK 5.5056
+[1137/2573] 540H.DE              OK 381.95
+[1138/2573] FCRN.DE              OK 4.99
+[1139/2573] INFL1.MI             OK 14.58
+[1140/2573] CEMN.DE              OK 5.027
+[1141/2573] IS0P.DE              OK 150.235
+[1142/2573] IS0Y.DE              OK 98.656
+[1143/2573] SVE.MI               OK 17.546
+[1144/2573] CBUH.DE              OK 5.921
+[1145/2573] EUCL.MI              OK 1023.17
+[1146/2573] CBUS5.MI             OK 11.894
+[1147/2573] ETFEU.MI             OK 33.0
+[1148/2573] CIT.MI               OK 6.618
+[1149/2573] XWEM.DE              OK 47.86
+[1150/2573] TELEW.MI             OK 18.87
+[1151/2573] US10.MI              OK 87.87
+[1152/2573] EESM.MI              OK 298.6
+[1153/2573] EXHA.DE              OK 123.26
+[1154/2573] ESGW.MI              OK 79.48
+[1155/2573] JPGL.MI              OK 41.305
+[1156/2573] IFLX.MI              OK 4.9525
+[1157/2573] WCOA.MI              OK 18.422
+[1158/2573] 36B3.DE              OK 7.159
+[1159/2573] CHSF.DE              OK 17.0535
+[1160/2573] XEZB.MI              OK 40.595
+[1161/2573] 2B7F.DE              OK 9.065
+[1162/2573] BLTH.MI              OK 13.376
+[1163/2573] JARH.DE              OK 76.22
+[1164/2573] VNGA40.MI            OK 29.335
+[1165/2573] CNYE.MI              OK 5.162
+[1166/2573] SPEL.MI              OK 19.614
+[1167/2573] FFLC.MI              OK 4.538
+[1168/2573] ESIE.DE              OK 15.962
+[1169/2573] IS3U.DE              OK 60.28
+[1170/2573] USSRF.MI             OK 28.17
+[1171/2573] EMLC.MI              OK 58.57
+[1172/2573] EHBA.MI              OK 44.945
+[1173/2573] EIB5.MI              OK 36.05
+[1174/2573] HSEM.MI              OK 17.168
+[1175/2573] JUPI.DE              OK 57.46
+[1176/2573] TFRN.MI              OK 52.77
+[1177/2573] XDJE.MI              OK 80.08
+[1178/2573] EXXV.DE              OK 20.595
+[1179/2573] FGLR.MI              OK 9.225
+[1180/2573] XZBU.MI              OK 38.22
+[1181/2573] WSRIE.MI             OK 16.076
+[1182/2573] SBEME.MI             OK 12.746
+[1183/2573] EMDV.MI              OK 14.388
+[1184/2573] ECLO.MI              OK 25.315
+[1185/2573] SPFF.DE              OK 31.85
+[1186/2573] EMD5.MI              OK 7.944
+[1187/2573] EMUESG.MI            OK 23.54
+[1188/2573] 3SUR.MI              OK 1967.76
+[1189/2573] XEMB.MI              OK 319.65
+[1190/2573] FAMSFF.MI            OK 113.42
+[1191/2573] IPRE.DE              OK 4.806
+[1192/2573] S6EW.MI              OK 139.04
+[1193/2573] PHPD.MI              OK 114.3
+[1194/2573] C030.DE              OK 176.12
+[1195/2573] UPVLD.MI             OK 32.855
+[1196/2573] E6BR.DE              OK 142.7
+[1197/2573] IG3A.DE              OK 4.379
+[1198/2573] ENRG.MI              OK 103.94
+[1199/2573] YIIG3.MI             OK 10.048
+[1200/2573] WCLD.MI              OK 23.91
+[1201/2573] XMKO.MI              OK 147.0
+[1202/2573] IS05.DE              OK 3.2388
+[1203/2573] SLNC.PA              OK 8.653
+[1204/2573] SADH.DE              OK 84.59
+[1205/2573] IASP.MI              OK 20.085
+[1206/2573] ARMI.MI              OK 10.4
+[1207/2573] XZWD.MI              OK 8.777
+[1208/2573] UBEUR.MI             OK 10.458
+[1209/2573] JNHD.DE              OK 37.05
+[1210/2573] XSTR.MI              OK 209.16
+[1211/2573] IS0Z.DE              OK 69.36
+[1212/2573] JARI.DE              OK 46.445
+[1213/2573] STSX.MI              OK 224.5
+[1214/2573] XESP.DE              OK 54.09
+[1215/2573] SAUB.MI              OK 27.125
+[1216/2573] XMBR.MI              OK 57.26
+[1217/2573] FLRG.MI              OK 23.765
+[1218/2573] RMEH.MI              OK 41.22
+[1219/2573] XML4.DE              OK 21.305
+[1220/2573] 2B7B.DE              OK 9.143
+[1221/2573] EEUR.MI              OK 72.28
+[1222/2573] US1.MI               OK 9.667
+[1223/2573] PSRW.MI              OK 31.1
+[1224/2573] 2B7N.DE              OK 5.388
+[1225/2573] EXV2.DE              OK 28.65
+[1226/2573] HMJD.MI              OK 44.0
+[1227/2573] LVO.MI               OK 0.82
+[1228/2573] SPXJ.MI              OK 46.385
+[1229/2573] XYPL.MI              OK 10.018
+[1230/2573] MXUE.MI              OK 6.203
+[1231/2573] C005.DE              OK 126.76
+[1232/2573] PRAE.DE              OK 32.56
+[1233/2573] SYBS.DE              OK 58.594
+[1234/2573] HEUR.MI              OK 100.663
+[1235/2573] EXV3.DE              OK 78.43
+[1236/2573] ELCR.MI              OK 21.985
+[1237/2573] XMTW.MI              OK 27.295
+[1238/2573] ETLF.DE              OK 17.1
+[1239/2573] RTWO.MI              OK 102.11
+[1240/2573] SXLU.MI              OK 50.15
+[1241/2573] EMGEAS.MI            OK 64.21
+[1242/2573] JRAW.MI              OK 25.61
+[1243/2573] FORTE.MI             OK 10.546
+[1244/2573] GSCE.MI              OK 20.435
+[1245/2573] IPAB.MI              OK 5.543
+[1246/2573] DOCT.MI              OK 11.712
+[1247/2573] WIND.MI              OK 77.82
+[1248/2573] XB31.MI              OK 29.665
+[1249/2573] ITAMID.MI            OK 206.85
+[1250/2573] JPNE.MI              OK 37.575
+[1251/2573] SYBQ.DE              OK 33.515
+[1252/2573] OP6E.DE              OK 128.74
+[1253/2573] UTIW.MI              OK 13.852
+[1254/2573] K0MR.DE              OK 12.504
+[1255/2573] HIDD.MI              OK 42.795
+[1256/2573] FLXT.MI              OK 41.63
+[1257/2573] EXH7.DE              OK 89.91
+[1258/2573] 9E0E.DE              OK 44.45
+[1259/2573] AIGA.MI              OK 5.424
+[1260/2573] XNIF.MI              OK 203.5
+[1261/2573] XEEU.MI              OK 29.81
+[1262/2573] XMUJ.L               OK 59.84
+[1263/2573] UTI.MI               OK 101.22
+[1264/2573] JJEJ.DE              OK 5836.0
+[1265/2573] DXEZ.MI              OK 5.347
+[1266/2573] CITE.MI              OK 6.062
+[1267/2573] GREIT.MI             OK 105.05
+[1268/2573] LINXC.MI             OK 12.484
+[1269/2573] X014.DE              OK 70.34
+[1270/2573] MEWD.DE              OK 66.15
+[1271/2573] VPN.MI               OK 19.432
+[1272/2573] UIQ4.DE              OK 151.9
+[1273/2573] YIEUS.MI             OK 11.086
+[1274/2573] OM3M.AS              OK 4.8365
+[1275/2573] JMBE.MI              OK 94.55
+[1276/2573] EXHF.DE              OK 109.065
+[1277/2573] IS0L.DE              OK 118.03
+[1278/2573] UEQU.DE              OK 247.3
+[1279/2573] CBU2.DE              OK 5.4194
+[1280/2573] XUCD.DE              OK 76.56
+[1281/2573] UESG.MI              OK 44.84
+[1282/2573] INFL.MI              OK 119.61
+[1283/2573] SXR0.DE              OK 8.381
+[1284/2573] CI2.MI               OK 763.18
+[1285/2573] EUHI.MI              OK 9.163
+[1286/2573] ZPRU.DE              OK 68.27
+[1287/2573] MIVA.DE              OK 160.3
+[1288/2573] EHYB.MI              OK 38.835
+[1289/2573] ET32.DE              OK 3.858
+[1290/2573] IG31.MI              OK 5.201
+[1291/2573] BTP13.MI             OK 103.83
+[1292/2573] CAPE.MI              OK 605.2
+[1293/2573] JU13.MI              OK 101.615
+[1294/2573] STAW.MI              OK 10.39
+[1295/2573] EMDE.MI              OK 27.515
+[1296/2573] SJNK.MI              OK 34.58
+[1297/2573] RIUS.MI              OK 20.91
+[1298/2573] 31IG.DE              OK 4.9708
+[1299/2573] JAGE.MI              OK 10.44
+[1300/2573] TNO.MI               OK 94.15
+[1301/2573] SYBU.DE              OK 81.884
+[1302/2573] XMOV.MI              OK 102.97
+[1303/2573] FMI.MI               OK 103.78
+[1304/2573] UBBB.MI              OK 54.2
+[1305/2573] SPELE.MI             OK 17.136
+[1306/2573] IMIB.MI              OK 26.525
+[1307/2573] SRIUC.MI             OK 10.888
+[1308/2573] MONEJ.MI             OK 10099.01
+[1309/2573] YIWUU.MI             OK 8.566
+[1310/2573] XGBE.MI              OK 27.645
+[1311/2573] GOAT.MI              OK 29.97
+[1312/2573] SPYG.DE              OK 13.734
+[1313/2573] KWBE.MI              OK 13.206
+[1314/2573] XM1D.DE              OK 60.474
+[1315/2573] EMUL.MI              OK 67.71
+[1316/2573] AGEB.MI              OK 130.43
+[1317/2573] USRIH.MI             OK 77.52
+[1318/2573] IQEE.MI              OK 46.815
+[1319/2573] AHYD.DE              OK 51.65
+[1320/2573] HFRN.MI              OK 55.83
+[1321/2573] GQWD.MI              OK 10.508
+[1322/2573] DXUSH.MI             OK 5.621
+[1323/2573] WOEH.MI              OK 6.246
+[1324/2573] CBUA.DE              OK 6.484
+[1325/2573] SPTRE.MI             OK 11.866
+[1326/2573] WMAT.MI              OK 64.74
+[1327/2573] CLO.MI               OK 10.24
+[1328/2573] JSHE.MI              OK 31.97
+[1329/2573] FEME.MI              OK 5.772
+[1330/2573] LDCE.MI              OK 100.38
+[1331/2573] XWEQ.MI              OK 43.025
+[1332/2573] CAHEUA.MI            OK 36.035
+[1333/2573] GQJY.MI              OK 22.315
+[1334/2573] DEM.MI               OK 14.97
+[1335/2573] EMEH.DE              OK 16.242
+[1336/2573] CNAA.MI              OK 162.88
+[1337/2573] SPJE.MI              OK 13.024
+[1338/2573] N400.MI              OK 220.11
+[1339/2573] XLES.MI              OK 716.68
+[1340/2573] FAITH.MI             OK 28.81
+[1341/2573] JR15.MI              OK 108.53
+[1342/2573] ZPRP.DE              OK 28.96
+[1343/2573] GQEU.MI              OK 10.444
+[1344/2573] YIPU.MI              OK 11.256
+[1345/2573] XUCS.DE              OK 42.245
+[1346/2573] WCOS.MI              OK 46.07
+[1347/2573] PAUS.MI              OK 5.199
+[1348/2573] GXRP.DE              OK 17.418
+[1349/2573] ACLE.MI              OK 17.144
+[1350/2573] VOLT.MI              OK 42.375
+[1351/2573] STKX.MI              OK 157.38
+[1352/2573] MUSRI.MI             OK 16.466
+[1353/2573] ECOP.MI              OK 8.647
+[1354/2573] JREA.MI              OK 28.325
+[1355/2573] INDIA.MI             OK 7.447
+[1356/2573] XLCS.MI              OK 84.76
+[1357/2573] LGOV.MI              OK 22.64
+[1358/2573] 30ID.AS              OK 5.1918
+[1359/2573] AIME.MI              OK 12.356
+[1360/2573] WETH.PA              OK 18.22
+[1361/2573] IS4S.DE              OK 9.43
+[1362/2573] XB33.MI              OK 28.515
+[1363/2573] BUYB.MI              OK 59.38
+[1364/2573] USTH.MI              OK 17.098
+[1365/2573] SOLR.MI              OK 25.64
+[1366/2573] XS7R.MI              OK 26.12
+[1367/2573] CHINA.MI             OK 142.47
+[1368/2573] YIJU.MI              OK 11.938
+[1369/2573] UNIC.MI              OK 15.032
+[1370/2573] MWOQ.DE              OK 12.51
+[1371/2573] CBUS5E.MI            OK 15.238
+[1372/2573] U5MD.DE              OK 5.138
+[1373/2573] LHKG.DE              OK 23.455
+[1374/2573] 36B7.DE              OK 4.1567
+[1375/2573] XGII.MI              OK 192.09
+[1376/2573] PAEM.MI              OK 4.56
+[1377/2573] HQIW.MI              OK 10.004
+[1378/2573] SLVR.MI              OK 51.09
+[1379/2573] GSLC.MI              OK 77.0
+[1380/2573] CRRY.MI              OK 17.904
+[1381/2573] XYLE.MI              OK 12.972
+[1382/2573] EEI.MI               OK 13.472
+[1383/2573] FEUR.MI              OK 9.737
+[1384/2573] XBHE.MI              OK 10.33
+[1385/2573] WSPX.MI              OK 34.555
+[1386/2573] XDBC.MI              OK 35.5
+[1387/2573] EH1Y.DE              OK 4.7926
+[1388/2573] JPEC.MI              OK 27.75
+[1389/2573] MFDD.MI              OK 219.25
+[1390/2573] CSUK.MI              OK 203.05
+[1391/2573] WELG.DE              OK 10.19
+[1392/2573] INS.MI               OK 82.84
+[1393/2573] EXV7.DE              OK 109.06
+[1394/2573] JPESG.MI             OK 10.34
+[1395/2573] CHSE.DE              OK 17.68
+[1396/2573] EUP0.DE              OK 110.28
+[1397/2573] V3EA.MI              OK 6.871
+[1398/2573] JPA.MI               OK 14.734
+[1399/2573] MJMT.DE              OK 136.28
+[1400/2573] EUHY.MI              OK 49.4
+[1401/2573] EUEUA.MI             OK 18.448
+[1402/2573] AUST.MI              OK 52.94
+[1403/2573] EXSC.DE              OK 60.1
+[1404/2573] SRIE.MI              OK 30.18
+[1405/2573] LUTR.MI              OK 18.158
+[1406/2573] MCHT.MI              OK 26.33
+[1407/2573] XIEE.DE              OK 82.33
+[1408/2573] XQUE.MI              OK 8.282
+[1409/2573] UEEG.DE              OK 4.702
+[1410/2573] WQTM.MI              OK 29.19
+[1411/2573] H41G.DE              OK 20.55
+[1412/2573] XRES.MI              OK 22.065
+[1413/2573] 21XH.DE              OK 11.519
+[1414/2573] SEUGB.MI             OK 10.294
+[1415/2573] GLDVD.MI             OK 10.29
+[1416/2573] INFU.MI              OK 119.7
+[1417/2573] NICK.MI              OK 12.796
+[1418/2573] VSGF.MI              OK 5.075
+[1419/2573] JRED.DE              OK 45.875
+[1420/2573] IQSD.MI              OK 70.03
+[1421/2573] ABIE.MI              OK 14.154
+[1422/2573] CMOE.MI              OK 65.86
+[1423/2573] XCS4.MI              OK 17.118
+[1424/2573] XUEM.MI              OK 10.232
+[1425/2573] IQQ9.DE              OK 20.655
+[1426/2573] XLUS.MI              OK 579.48
+[1427/2573] V3RE.MI              OK 5.741
+[1428/2573] CBUSE.MI             OK 17.588
+[1429/2573] NGAS.MI              OK 5.251
+[1430/2573] EXIA.DE              OK 7.08
+[1431/2573] XUT3.MI              OK 145.3
+[1432/2573] XMLA.MI              OK 34.435
+[1433/2573] XDWY.MI              OK 24.025
+[1434/2573] BCFD.DE              OK 7.709
+[1435/2573] LGQI.DE              OK 153.8
+[1436/2573] CHINE.MI             OK 7.045
+[1437/2573] XLIS.MI              OK 783.86
+[1438/2573] XX25.MI              OK 34.0
+[1439/2573] XEMC.DE              OK 41.54
+[1440/2573] COPR.MI              OK 15.93
+[1441/2573] EMLB.MI              OK 108.8
+[1442/2573] XDND.DE              OK 55.57
+[1443/2573] VAGE.DE              OK 20.544
+[1444/2573] FEUZ.MI              OK 59.11
+[1445/2573] VETH.AS              OK 8.801
+[1446/2573] ITKY.MI              OK 15.748
+[1447/2573] ESIC.DE              OK 5.446
+[1448/2573] X25E.MI              OK 251.84
+[1449/2573] GSM.MI               OK 13.106
+[1450/2573] BULL.MI              OK 39.95
+[1451/2573] IART.MI              OK 5.096
+[1452/2573] U10H.MI              OK 61.68
+[1453/2573] SXRD.DE              OK 294.5
+[1454/2573] XSFR.MI              OK 22.595
+[1455/2573] XRTM.MI              OK 8.91
+[1456/2573] AHYI.DE              OK 468.05
+[1457/2573] IUHE.AS              OK 6.6261
+[1458/2573] ACTIJ.MI             OK 10774.31
+[1459/2573] XNJP.MI              OK 37.985
+[1460/2573] XB27.MI              OK 26.005
+[1461/2573] SECD.DE              OK 4.0378
+[1462/2573] SXLY.MI              OK 57.62
+[1463/2573] FTGA.DE              OK 30.49
+[1464/2573] XEC1.DE              OK 8.033
+[1465/2573] EBUY.MI              OK 15.786
+[1466/2573] HYC.MI               OK 10.85
+[1467/2573] RIEM.MI              OK 15.482
+[1468/2573] FINSW.MI             OK 339.19
+[1469/2573] LOWV.MI              OK 72.06
+[1470/2573] JGEV.MI              OK 8.793
+[1471/2573] TRUD.MI              OK 3.848
+[1472/2573] XCAC.MI              OK 65.38
+[1473/2573] EJEGSS.MI            OK 8.314
+[1474/2573] VITA.MI              OK 5.065
+[1475/2573] HCHA.MI              OK 7.423
+[1476/2573] GSHY.MI              OK 43.62
+[1477/2573] AIGP.MI              OK 46.75
+[1478/2573] COMH.MI              OK 40.035
+[1479/2573] GOVG.MI              OK 7.875
+[1480/2573] XGIU.MI              OK 22.432
+[1481/2573] JSEM.MI              OK 29.56
+[1482/2573] XNZN.DE              OK 31.66
+[1483/2573] C051.DE              OK 43.925
+[1484/2573] EJAH.MI              OK 25.32
+[1485/2573] XNZW.MI              OK 51.94
+[1486/2573] MTAV.MI              OK 10.036
+[1487/2573] CBUX.DE              OK 5.977
+[1488/2573] WXRP.DE              OK 42.31
+[1489/2573] ZSRN.DE              OK 15.09
+[1490/2573] AM3A.MI              OK 204.14
+[1491/2573] LCWLD.MI             OK 17.278
+[1492/2573] SBEM.MI              OK 8.036
+[1493/2573] IVDF.MI              OK 8.384
+[1494/2573] IBC7.DE              OK 4.4981
+[1495/2573] 3SUE.DE              OK 5.108
+[1496/2573] YIEUU.MI             OK 10.902
+[1497/2573] LWCE.MI              OK 86.32
+[1498/2573] RU2E.MI              OK 5.898
+[1499/2573] EXH2.DE              OK 83.12
+[1500/2573] EDEQ.DE              OK 10.502
+[1501/2573] XGVD.MI              OK 172.33
+[1502/2573] JPST.MI              OK 87.61
+[1503/2573] FEDF.MI              OK 107.72
+[1504/2573] IUVE.AS              OK 7.4461
+[1505/2573] GISE.MI              OK 10.828
+[1506/2573] AIPU.MI              OK 10.405
+[1507/2573] CEBR.DE              OK 5.8532
+[1508/2573] VGUE.DE              OK 19.983
+[1509/2573] CMUSRI.MI            OK 98.27
+[1510/2573] USAPA.MI             OK 19.456
+[1511/2573] CSMXCP.MI            OK 165.29
+[1512/2573] TRE7.MI              OK 33.05
+[1513/2573] NRJC.MI              OK 19.108
+[1514/2573] KLMH.DE              OK 47.01
+[1515/2573] CBU1.DE              OK 6.111
+[1516/2573] BCFP.DE              OK 24.38
+[1517/2573] FLXB.MI              OK 30.185
+[1518/2573] XSLE.MI              OK 77.82
+[1519/2573] USUP.DE              OK 11.16
+[1520/2573] XQUA.MI              OK 9.086
+[1521/2573] WEAT.MI              OK 17.258
+[1522/2573] GQUS.MI              OK 10.78
+[1523/2573] GAGH.MI              OK 49.18
+[1524/2573] EMQQ.MI              OK 8.323
+[1525/2573] SUSC.MI              OK 43.155
+[1526/2573] ES50.DE              OK 7.375
+[1527/2573] OCEAN.MI             OK 17.356
+[1528/2573] XDUK.DE              OK 18.658
+[1529/2573] JPSRE.MI             OK 29.105
+[1530/2573] LAFRI.MI             OK 13.58
+[1531/2573] USUE.DE              OK 37.015
+[1532/2573] U15E.MI              OK 10.796
+[1533/2573] BAT1.MI              OK 4.94
+[1534/2573] AIGC.MI              OK 13.646
+[1535/2573] AJASE.MI             OK 11.62
+[1536/2573] C006.DE              OK 35.195
+[1537/2573] US10C.MI             OK 6.279
+[1538/2573] USIG.MI              OK 81.13
+[1539/2573] INDA.DE              OK 75.29
+[1540/2573] CLOA.MI              OK 20.65
+[1541/2573] LITU.MI              OK 10.812
+[1542/2573] XUKX.DE              OK 11.444
+[1543/2573] XBTR.MI              OK 218.53
+[1544/2573] IQJP.MI              OK 42.455
+[1545/2573] CO2.MI               OK 65.14
+[1546/2573] USYH.MI              OK 73.53
+[1547/2573] ESAN.DE              OK 10.2375
+[1548/2573] ICLO.MI              OK 17.37
+[1549/2573] JGOV.MI              OK 8.741
+[1550/2573] HDX1.DE              OK 44.882
+[1551/2573] XZSP.MI              OK 52.49
+[1552/2573] TRS5.MI              OK 24.35
+[1553/2573] 100EUA.MI            OK 110.98
+[1554/2573] VJPE.MI              OK 63.56
+[1555/2573] BOTZ.MI              OK 19.88
+[1556/2573] VNGA20.MI            OK 25.355
+[1557/2573] PRFD.MI              OK 12.792
+[1558/2573] FTGU.DE              OK 87.57
+[1559/2573] CBUL.DE              OK 4.431
+[1560/2573] XDUE.SW              OK 25.435
+[1561/2573] CBUS.MI              OK 12.766
+[1562/2573] MVEA.AS              OK 8.3191
+[1563/2573] JMBA.MI              OK 99.71
+[1564/2573] TUR.MI               OK 48.15
+[1565/2573] FLXX.MI              OK 35.015
+[1566/2573] HNSC.MI              OK 23.125
+[1567/2573] APJX.DE              OK 5.574
+[1568/2573] EPAZ.DE              OK 23.91
+[1569/2573] VNGD60.MI            OK 30.25
+[1570/2573] SEUCB.MI             OK 10.76
+[1571/2573] IWQE.MI              OK 6.865
+[1572/2573] US100.MI             OK 25.865
+[1573/2573] XUEN.DE              OK 53.57
+[1574/2573] XS6R.MI              OK 106.98
+[1575/2573] DAXESG.MI            OK 80.38
+[1576/2573] WTEL.MI              OK 69.69
+[1577/2573] WPEE.MI              OK 5.605
+[1578/2573] TRVL.MI              OK 23.85
+[1579/2573] MCHN.MI              OK 26.07
+[1580/2573] CBSUSA.MI            OK 18.33
+[1581/2573] MDB5E.MI             OK 5.084
+[1582/2573] 32XG.DE              OK 4.934
+[1583/2573] DXJ.MI               OK 42.085
+[1584/2573] FAMSF3.MI            OK 111.12
+[1585/2573] ITEK.MI              OK 14.154
+[1586/2573] JGIE.MI              OK 27.35
+[1587/2573] BKCH.MI              OK 12.31
+[1588/2573] DHSA.MI              OK 29.96
+[1589/2573] JEHY.MI              OK 10.362
+[1590/2573] XBAG.MI              OK 33.894
+[1591/2573] WENH.DE              OK 13.216
+[1592/2573] EKLD.DE              OK 21.205
+[1593/2573] SNTE.MI              OK 103.34
+[1594/2573] FFGC.MI              OK 4.778
+[1595/2573] CATH.MI              OK 34.595
+[1596/2573] CYBR.MI              OK 6.376
+[1597/2573] ALUM.MI              OK 3.714
+[1598/2573] XDGM.MI              OK 24.94
+[1599/2573] IUSB.DE              OK 20.125
+[1600/2573] EDSRI.MI             OK 65.18
+[1601/2573] US13.MI              OK 87.29
+[1602/2573] BCFS.DE              OK 106.4
+[1603/2573] ETFEZ.MI             OK 34.875
+[1604/2573] FAMLSS.MI            OK 103.22
+[1605/2573] XCNA.MI              OK 17.816
+[1606/2573] HDRO.MI              OK 6.76
+[1607/2573] IX29.MI              OK 4.982
+[1608/2573] AIGE.MI              OK 4.405
+[1609/2573] HEMV.MI              OK 16.468
+[1610/2573] SPSA.DE              OK 10.664
+[1611/2573] USDC.MI              OK 7.494
+[1612/2573] CEB1.DE              OK 4.5916
+[1613/2573] GCLE.MI              OK 21.11
+[1614/2573] INDO.MI              OK 87.63
+[1615/2573] WXUS.MI              OK 13.75
+[1616/2573] GWT.MI               OK 193.28
+[1617/2573] IG32.MI              OK 5.161
+[1618/2573] XSWC.MI              OK 24.85
+[1619/2573] MWOS.DE              OK 12.276
+[1620/2573] IEWQ.MI              OK 5.993
+[1621/2573] HIDIJ.MI             OK 10794.41
+[1622/2573] CBUY.DE              OK 6.5
+[1623/2573] PEH.MI               OK 10.01
+[1624/2573] GRON.MI              OK 3.968
+[1625/2573] GREAL.MI             OK 6.842
+[1626/2573] XDEX.MI              OK 129.37
+[1627/2573] AW1T.DE              OK 20.42
+[1628/2573] TEET.MI              OK 89.5
+[1629/2573] SJNE.MI              OK 34.005
+[1630/2573] JEGA.MI              OK 26.925
+[1631/2573] XAD3.MI              OK 103.7
+[1632/2573] PRAZ.DE              OK 33.81
+[1633/2573] C003.DE              OK 36.445
+[1634/2573] EMUS.MI              OK 7.498
+[1635/2573] STPX.MI              OK 328.0
+[1636/2573] 8PSA.DE              OK 163.09
+[1637/2573] TRE3.MI              OK 33.395
+[1638/2573] MAGR.MI              OK 7.42
+[1639/2573] VRTX.DE              OK 1.2241
+[1640/2573] XEUM.MI              OK 191.14
+[1641/2573] WS5X.MI              OK 40.53
+[1642/2573] XUEB.MI              OK 38.13
+[1643/2573] EMLA.MI              OK 29.67
+[1644/2573] XBAS.DE              OK 2.002
+[1645/2573] PACEUA.MI            OK 45.16
+[1646/2573] XLYS.MI              OK 676.39
+[1647/2573] CBUW.DE              OK 29.84
+[1648/2573] BTC1.DE              OK 6.086
+[1649/2573] IRFT.DE              OK 23.17
+[1650/2573] HYFA.MI              OK 18.158
+[1651/2573] ESGH.MI              OK 26.785
+[1652/2573] FSMF.MI              OK 3.638
+[1653/2573] EPRE.MI              OK 326.4
+[1654/2573] MONEY.MI             OK 10.102
+[1655/2573] MCT.MI               OK 7.207
+[1656/2573] WELY.DE              OK 15.578
+[1657/2573] XZHY.MI              OK 33.21
+[1658/2573] HQUS.MI              OK 10.082
+[1659/2573] FSME.MI              OK 5.865
+[1660/2573] CEBU.DE              OK 5.5102
+[1661/2573] CARB.MI              OK 21.315
+[1662/2573] X1GD.DE              OK 193.34
+[1663/2573] H13E.MI              OK 10.22
+[1664/2573] SPQH.MI              OK 17.782
+[1665/2573] IFSU.MI              OK 13.218
+[1666/2573] FOOD.MI              OK 3.1215
+[1667/2573] XWSC.MI              OK 8.903
+[1668/2573] ZPRW.DE              OK 67.94
+[1669/2573] XMKA.DE              OK 8.782
+[1670/2573] ZSRM.DE              OK 20.715
+[1671/2573] IS3F.DE              OK 89.776
+[1672/2573] US37.MI              OK 94.56
+[1673/2573] DRGN.MI              OK 8.851
+[1674/2573] EQUA.MI              OK 193.1
+[1675/2573] CLOD.MI              OK 20.025
+[1676/2573] TEMP.MI              OK 36.495
+[1677/2573] EMMH.MI              OK 9.689
+[1678/2573] ASRR.DE              OK 35.345
+[1679/2573] R8T.DE               OK 9.785
+[1680/2573] XYLD.MI              OK 15.822
+[1681/2573] CSMIB.MI             OK 213.0
+[1682/2573] BAT3.DE              OK 13.704
+[1683/2573] V3MA.MI              OK 7.213
+[1684/2573] FTGM.DE              OK 22.8
+[1685/2573] MLPS.MI              OK 137.56
+[1686/2573] SCITY.MI             OK 68.52
+[1687/2573] BBUS.MI              OK 54.55
+[1688/2573] X13G.MI              OK 118.23
+[1689/2573] LDCU.MI              OK 87.97
+[1690/2573] CEB3.DE              OK 7.373
+[1691/2573] EHLT.DE              OK 184.26
+[1692/2573] ESGO.MI              OK 15.81
+[1693/2573] URNJ.MI              OK 8.686
+[1694/2573] ETFGG.MI             OK 16.306
+[1695/2573] TRS3.MI              OK 41.79
+[1696/2573] REWLD.MI             OK 40.115
+[1697/2573] HMCA.MI              OK 10.378
+[1698/2573] XMAE.MI              OK 47.615
+[1699/2573] VNGD80.MI            OK 35.2
+[1700/2573] EGO.MI               OK 8.361
+[1701/2573] TIP1D.MI             OK 10.47
+[1702/2573] ZETH.DE              OK 17.169
+[1703/2573] VCSHA.MI             OK 15.0859
+[1704/2573] CEMK.DE              OK 5.0474
+[1705/2573] GSOV.MI              OK 27.285
+[1706/2573] TIP10D.MI            OK 8.317
+[1707/2573] EXI5.DE              OK 13.634
+[1708/2573] XDJU.DE              OK 23.305
+[1709/2573] QJUN.DE              OK 18.644
+[1710/2573] SYLD.MI              OK 14.412
+[1711/2573] NFRA.MI              OK 5.441
+[1712/2573] CBEF.MI              OK 135.52
+[1713/2573] EQLTD.MI             OK 24.84
+[1714/2573] USSM.MI              OK 11.404
+[1715/2573] SPQB.MI              OK 18.784
+[1716/2573] AXEE.MI              OK 6.258
+[1717/2573] JPMQJ.MI             OK 13835.39
+[1718/2573] FOO.MI               OK 90.2
+[1719/2573] HTWN.MI              OK 99.5
+[1720/2573] BATF.DE              OK 13.348
+[1721/2573] AVERE.MI             OK 12.21
+[1722/2573] WELL.MI              OK 6.515
+[1723/2573] EXIC.DE              OK 6.536
+[1724/2573] XAGZ.MI              OK 12.748
+[1725/2573] ECOM.MI              OK 15.278
+[1726/2573] EUEB.MI              OK 5.159
+[1727/2573] WENE.MI              OK 6.704
+[1728/2573] 34GI.DE              OK 4.904
+[1729/2573] JP4H.DE              OK 242.9
+[1730/2573] ETHC.AS              OK 7.9319
+[1731/2573] XISP.DE              OK 31.354
+[1732/2573] WUTI.MI              OK 62.52
+[1733/2573] HYBB.MI              OK 122.21
+[1734/2573] PAJP.MI              OK 4.76
+[1735/2573] IS0K.DE              OK 147.915
+[1736/2573] BBSC.MI              OK 30.4
+[1737/2573] XEEE.MI              OK 33.485
+[1738/2573] EDEJ.DE              OK 10.98
+[1739/2573] XAUS.MI              OK 42.39
+[1740/2573] EPVLD.MI             OK 22.15
+[1741/2573] SMSEUR.MI            OK 398.05
+[1742/2573] CHSV.DE              OK 10.655
+[1743/2573] XDNE.MI              OK 39.105
+[1744/2573] INF1A.MI             OK 8.723
+[1745/2573] JAVA.MI              OK 28.905
+[1746/2573] EUPD.DE              OK 104.96
+[1747/2573] AT1D.MI              OK 16.458
+[1748/2573] FLXE.MI              OK 31.72
+[1749/2573] EURSRI.MI            OK 16.718
+[1750/2573] GHYEH.MI             OK 22.21
+[1751/2573] EDEA.DE              OK 11.67
+[1752/2573] XZBE.DE              OK 33.346
+[1753/2573] FLOE.MI              OK 4.2975
+[1754/2573] WATC.MI              OK 6.729
+[1755/2573] YIUGU.MI             OK 8.366
+[1756/2573] IUS9.DE              OK 26.35
+[1757/2573] X15E.MI              OK 273.01
+[1758/2573] DXJF.MI              OK 48.46
+[1759/2573] LUSC.MI              OK 22.7
+[1760/2573] EVOE.MI              OK 203.75
+[1761/2573] PEMD.MI              OK 14.1
+[1762/2573] 10AJ.DE              OK 53.16
+[1763/2573] XRME.MI              OK 11.362
+[1764/2573] WCOD.MI              OK 69.58
+[1765/2573] SDJE5D.MI            OK 54.65
+[1766/2573] XS7W.MI              OK 13.16
+[1767/2573] EMLOC.MI             OK 11.164
+[1768/2573] EGRO.MI              OK 10.572
+[1769/2573] MMLP.MI              OK 17.694
+[1770/2573] XNGI.MI              OK 52.35
+[1771/2573] LVLE.MI              OK 7.47
+[1772/2573] XZEB.MI              OK 26.975
+[1773/2573] 4UBL.DE              OK 26.095
+[1774/2573] MIVU.AS              OK 75.746
+[1775/2573] CHIN.MI              OK 13.13
+[1776/2573] CBUP.DE              OK 245.03
+[1777/2573] CEMF.DE              OK 5.113
+[1778/2573] EKUS.MI              OK 19.122
+[1779/2573] XDPC.SW              OK 59.14
+[1780/2573] PQVM.MI              OK 60.68
+[1781/2573] FLXU.MI              OK 59.1
+[1782/2573] VUDS.MI              OK 88.09
+[1783/2573] EXV9.DE              OK 22.26
+[1784/2573] USFA.MI              OK 21.175
+[1785/2573] EDEX.DE              OK 10.346
+[1786/2573] STTX.MI              OK 75.84
+[1787/2573] EMKTB.MI             OK 68.57
+[1788/2573] B500.MI              OK 312.19
+[1789/2573] ECMS.MI              OK 5.603
+[1790/2573] CEMH.DE              OK 4.8988
+[1791/2573] CEMD.AS              OK 28.33
+[1792/2573] MIBA.MI              OK 21.85
+[1793/2573] CN50.MI              OK 9.151
+[1794/2573] EDEY.DE              OK 10.807
+[1795/2573] XBOT.MI              OK 33.87
+[1796/2573] EEA.MI               OK 9.172
+[1797/2573] PR1H.DE              OK 21.252
+[1798/2573] STRX.MI              OK 143.68
+[1799/2573] 33GI.DE              OK 4.927
+[1800/2573] EMLI.MI              OK 56.7
+[1801/2573] JRWU.DE              OK 24.61
+[1802/2573] CEB5.DE              OK 3.933
+[1803/2573] JGHY.MI              OK 109.49
+[1804/2573] EXID.DE              OK 3.925
+[1805/2573] DXDC.MI              OK 6.574
+[1806/2573] CBND.MI              OK 47.935
+[1807/2573] XPPT.DE              OK 41.8
+[1808/2573] ESVR.MI              OK 11.206
+[1809/2573] HSGE.MI              OK 10.406
+[1810/2573] FUSU.MI              OK 10.826
+[1811/2573] BCFE.DE              OK 17.934
+[1812/2573] DHS.MI               OK 24.275
+[1813/2573] WGES.DE              OK 21.545
+[1814/2573] CATHEM.MI            OK 27.19
+[1815/2573] GEU7C.MI             OK 10.168
+[1816/2573] LDGL.MI              OK 8.79
+[1817/2573] CLIP.MI              OK 14.496
+[1818/2573] TAT.MI               OK 19.168
+[1819/2573] 36BB.DE              OK 6.984
+[1820/2573] 3SUS.MI              OK 24.1
+[1821/2573] ETFUSC.MI            OK 15.174
+[1822/2573] CEB4.DE              OK 6.2
+[1823/2573] WAXG.DE              OK 15.758
+[1824/2573] USCBC.MI             OK 10.03
+[1825/2573] PRIMO.MI             OK 10.508
+[1826/2573] EMBHI.MI             OK 64.22
+[1827/2573] OIGS.DE              OK 138.1
+[1828/2573] MXUD.MI              OK 76.18
+[1829/2573] GSGR.MI              OK 49.815
+[1830/2573] AAA35.MI             OK 106.8
+[1831/2573] XS3R.MI              OK 126.26
+[1832/2573] GTIS.DE              OK 32.455
+[1833/2573] HEDGJ.MI             OK 10964.34
+[1834/2573] ESAA.DE              OK 13.602
+[1835/2573] INFH.MI              OK 112.2
+[1836/2573] APXJ.DE              OK 9.234
+[1837/2573] 36B4.DE              OK 5.62
+[1838/2573] JP40.DE              OK 220.1
+[1839/2573] EVAE.MI              OK 181.16
+[1840/2573] US4E.DE              OK 32.585
+[1841/2573] WPAI.MI              OK 20.535
+[1842/2573] XIGB.MI              OK 31.275
+[1843/2573] CBUN.DE              OK 9.167
+[1844/2573] DGRE.MI              OK 19.164
+[1845/2573] HAGG.MI              OK 9.648
+[1846/2573] EXXU.DE              OK 38.705
+[1847/2573] NTSG.MI              OK 25.515
+[1848/2573] XGUE.DE              OK 24.681
+[1849/2573] JAGA.MI              OK 10.044
+[1850/2573] JEUS.DE              OK 30.92
+[1851/2573] XCS3.MI              OK 10.836
+[1852/2573] USDE.MI              OK 8.754
+[1853/2573] SC0Y.DE              OK 224.15
+[1854/2573] GFA.MI               OK 63.41
+[1855/2573] IG34.MI              OK 5.137
+[1856/2573] XZEZ.MI              OK 79.44
+[1857/2573] WMTS.MI              OK 4.471
+[1858/2573] DEMR.MI              OK 28.445
+[1859/2573] USHY.MI              OK 82.63
+[1860/2573] 36B2.DE              OK 144.08
+[1861/2573] CBSUS.MI             OK 12.87
+[1862/2573] ECRD.MI              OK 3.944
+[1863/2573] LDAP.MI              OK 10.604
+[1864/2573] JGRN.MI              OK 102.86
+[1865/2573] JUSE.MI              OK 29.835
+[1866/2573] VS0L.DE              OK 4.308
+[1867/2573] FAMMWS.MI            OK 416.4
+[1868/2573] SPY2.DE              OK 18.662
+[1869/2573] COVR.DE              OK 103.15
+[1870/2573] IX28.MI              OK 5.008
+[1871/2573] ECEH.MI              OK 12.61
+[1872/2573] YMAG.MI              OK 36.35
+[1873/2573] LABL.MI              OK 13.796
+[1874/2573] XLPS.MI              OK 636.2
+[1875/2573] DFE.MI               OK 20.35
+[1876/2573] DXDCH.MI             OK 6.489
+[1877/2573] DMAT.MI              OK 20.16
+[1878/2573] LINXB.MI             OK 11.588
+[1879/2573] SXLB.MI              OK 41.175
+[1880/2573] WXLM.PA              OK 7.26
+[1881/2573] FFGE.MI              OK 4.623
+[1882/2573] EDEU.DE              OK 170.1
+[1883/2573] ARKG.MI              OK 4.333
+[1884/2573] XZHE.MI              OK 34.075
+[1885/2573] XMN1.DE              OK 9.265
+[1886/2573] GLDVDE.MI            OK 12.148
+[1887/2573] CCBO.MI              OK 77.3
+[1888/2573] BLOK.MI              OK 41.175
+[1889/2573] IS0S.DE              OK 73.17
+[1890/2573] AHYH.DE              OK 53.892
+[1891/2573] GCOR.MI              OK 28.085
+[1892/2573] IS31.DE              OK 10.046
+[1893/2573] WDESGE.MI            OK 228.23
+[1894/2573] ECE.MI               OK 12.088
+[1895/2573] E15S.MI              OK 10.326
+[1896/2573] AHYU.MI              OK 10.4015
+[1897/2573] LGGM.DE              OK 10.814
+[1898/2573] GHYE.MI              OK 21.16
+[1899/2573] HPNA.MI              OK 10.686
+[1900/2573] WBLK.MI              OK 43.725
+[1901/2573] TELE.MI              OK 53.71
+[1902/2573] FAMUSS.MI            OK 112.23
+[1903/2573] VT0P.DE              OK 6.564
+[1904/2573] FTGS.DE              OK 36.185
+[1905/2573] ACE32.MI             OK 10.512
+[1906/2573] COCO.MI              OK 4.73
+[1907/2573] HYEM.MI              OK 116.45
+[1908/2573] XSPR.MI              OK 73.8
+[1909/2573] SRIC7.MI             OK 10.542
+[1910/2573] FWEA.MI              OK 7.882
+[1911/2573] WXUPAB.MI            OK 20.75
+[1912/2573] AIQE.MI              OK 18.914
+[1913/2573] H41F.DE              OK 24.085
+[1914/2573] YICAU.MI             OK 11.38
+[1915/2573] YIEMU.MI             OK 10.842
+[1916/2573] OPEN.AS              OK 8.5014
+[1917/2573] JPEH.MI              OK 89.99
+[1918/2573] SC01.DE              OK 685.7
+[1919/2573] LYX7.DE              OK 77.044
+[1920/2573] JPMB.MI              OK 71.58
+[1921/2573] XY2D.DE              OK 7.1344
+[1922/2573] AIUU.MI              OK 12.01
+[1923/2573] MTIG.MI              OK 41.53
+[1924/2573] BOLD.AS              OK 47.8327
+[1925/2573] EDEN.DE              OK 10.0185
+[1926/2573] HPAE.MI              OK 26.35
+[1927/2573] USDB.MI              OK 4.396
+[1928/2573] AGYU.MI              OK 9.3025
+[1929/2573] JPMQ.MI              OK 137.8
+[1930/2573] INCU.AS              OK 5.328
+[1931/2573] MODR.MI              OK 6.318
+[1932/2573] XDEF.MI              OK 30.975
+[1933/2573] VNTM.MI              OK 73.07
+[1934/2573] FGEU.MI              OK 8.856
+[1935/2573] TCBT.MI              OK 17.244
+[1936/2573] JEIG.MI              OK 9.205
+[1937/2573] GASRI.MI             OK 41.88
+[1938/2573] MOTU.MI              OK 21.015
+[1939/2573] QDEV.DE              OK 9.504
+[1940/2573] V3PL.MI              OK 7.415
+[1941/2573] SOLW.PA              OK 10.748
+[1942/2573] XMIN.MI              OK 9.327
+[1943/2573] XPQP.DE              OK 1.2846
+[1944/2573] CWE.MI               OK 451.79
+[1945/2573] CEMG.AS              OK 29.8085
+[1946/2573] VNGD40.MI            OK 26.0
+[1947/2573] XCS2.MI              OK 144.91
+[1948/2573] SP1E.MI              OK 9.327
+[1949/2573] BBTR.MI              OK 93.38
+[1950/2573] DGSE.MI              OK 19.916
+[1951/2573] EGRA.MI              OK 25.2
+[1952/2573] FORTJ.MI             OK 10656.91
+[1953/2573] ASHU.MI              OK 8.782
+[1954/2573] IG35.DE              OK 4.9696
+[1955/2573] XSNR.MI              OK 88.73
+[1956/2573] MUNI.MI              OK 28.02
+[1957/2573] ULOVD.MI             OK 30.39
+[1958/2573] MDBU.DE              OK 9.3322
+[1959/2573] SPUT.DE              OK 6.625
+[1960/2573] SC0W.DE              OK 744.6
+[1961/2573] C500.MI              OK 7.581
+[1962/2573] XMCX.DE              OK 23.61
+[1963/2573] PAEU.MI              OK 5.953
+[1964/2573] XMGA.MI              OK 9.276
+[1965/2573] ITBL.MI              OK 699.7
+[1966/2573] WEBC.DE              OK 120.04
+[1967/2573] EQQJ.MI              OK 38.87
+[1968/2573] DFEA.MI              OK 23.105
+[1969/2573] ASRX.DE              OK 11.596
+[1970/2573] V3EL.MI              OK 6.206
+[1971/2573] XZDE.DE              OK 37.925
+[1972/2573] PRIMJ.MI             OK 11210.0
+[1973/2573] CEBW.DE              OK 5.057
+[1974/2573] XB30.MI              OK 35.445
+[1975/2573] JJEH.MI              OK 49.21
+[1976/2573] LSTE.DE              OK 26.822
+[1977/2573] GENDED.MI            OK 17.9
+[1978/2573] AYEV.DE              OK 7.68
+[1979/2573] EUSD.MI              OK 17.97
+[1980/2573] SEAD.DE              OK 9.427
+[1981/2573] AUHEUA.MI            OK 22.6
+[1982/2573] EISR.MI              OK 113.24
+[1983/2573] VESU.DE              OK 3.613
+[1984/2573] CBU0.AS              OK 118.04
+[1985/2573] WEWEU.MI             OK 12.05
+[1986/2573] FAMEUS.MI            OK 123.7
+[1987/2573] ACPA.MI              OK 18.452
+[1988/2573] EBRT.MI              OK 7.547
+[1989/2573] IEXA.DE              OK 5.3744
+[1990/2573] IQEC.MI              OK 24.185
+[1991/2573] BUG.MI               OK 10.052
+[1992/2573] USTEC.MI             OK 16.144
+[1993/2573] IESZ.MI              OK 10.282
+[1994/2573] YGLD.DE              OK 12.88
+[1995/2573] SPGA.MI              OK 5.121
+[1996/2573] GOV10.MI             OK 10.062
+[1997/2573] CORN.MI              OK 17.02
+[1998/2573] ELOW.MI              OK 56.97
+[1999/2573] XCTE.MI              OK 29.755
+[2000/2573] EGV1.DE              OK 96.15
+[2001/2573] XMEA.MI              OK 40.32
+[2002/2573] EEIA.MI              OK 25.48
+[2003/2573] ECO.MI               OK 11.482
+[2004/2573] EUPA.MI              OK 38.27
+[2005/2573] SHORT.MI             OK 5.314
+[2006/2573] WDSD.DE              OK 10.654
+[2007/2573] REEU.MI              OK 29.755
+[2008/2573] X03C.DE              OK 184.12
+[2009/2573] UIQ1.DE              OK 218.05
+[2010/2573] JRUB.MI              OK 108.79
+[2011/2573] VTOF.MI              OK 84.54
+[2012/2573] GIST.MI              OK 10.214
+[2013/2573] COFF.MI              OK 52.01
+[2014/2573] FEMI.MI              OK 7.023
+[2015/2573] SHEMB.MI             OK 9.51
+[2016/2573] WMGT.MI              OK 33.515
+[2017/2573] EDEV.DE              OK 9.9928
+[2018/2573] LITM.MI              OK 5.997
+[2019/2573] IG33.MI              OK 5.156
+[2020/2573] EBUL.MI              OK 15.668
+[2021/2573] IS07.DE              OK 10.31
+[2022/2573] DFSV.DE              OK 11.03
+[2023/2573] ACE29.MI             OK 10.656
+[2024/2573] HPAU.MI              OK 39.79
+[2025/2573] BSOL.DE              OK 4.0884
+[2026/2573] XG7U.L               OK 27.955
+[2027/2573] GMAY.MI              OK 33.11
+[2028/2573] GRCTB.MI             OK 9.112
+[2029/2573] USHYC.MI             OK 10.054
+[2030/2573] UNCA.MI              OK 37.565
+[2031/2573] XS8R.MI              OK 86.94
+[2032/2573] PRAG.DE              OK 17.261
+[2033/2573] GNOV.MI              OK 29.875
+[2034/2573] TGBT.MI              OK 12.476
+[2035/2573] FEQD.MI              OK 9.149
+[2036/2573] SCOR.MI              OK 26.42
+[2037/2573] PUIG.MI              OK 15.856
+[2038/2573] PEF.MI               OK 14.88
+[2039/2573] 36BD.DE              OK 4.7379
+[2040/2573] NXTB.DE              OK 60.61
+[2041/2573] 8PSC.DE              OK 119.43
+[2042/2573] JPUY.DE              OK 8.7984
+[2043/2573] MAXS.AS              OK 5.068
+[2044/2573] AICU.MI              OK 9.301
+[2045/2573] ECMD.MI              OK 4.9785
+[2046/2573] JYEH.MI              OK 90.94
+[2047/2573] JPE.MI               OK 21.655
+[2048/2573] CSTA.AS              OK 1669.81
+[2049/2573] XZEG.MI              OK 5.629
+[2050/2573] UQLTE.MI             OK 45.58
+[2051/2573] PAWD.MI              OK 5.086
+[2052/2573] FAMTEL.MI            OK 211.98
+[2053/2573] AI4U.MI              OK 113.73
+[2054/2573] ADAA.DE              OK 4.231
+[2055/2573] HGVU.MI              OK 9.367
+[2056/2573] XB28.MI              OK 35.725
+[2057/2573] EU35.MI              OK 29.07
+[2058/2573] MB28.MI              OK 10.36
+[2059/2573] XJ2C.DE              OK 7.681
+[2060/2573] FEUI.MI              OK 6.797
+[2061/2573] MWOU.DE              OK 11.112
+[2062/2573] XBCT.MI              OK 197.96
+[2063/2573] MVEE.DE              OK 8.207
+[2064/2573] ICFP.MI              OK 61.74
+[2065/2573] 21HX.DE              OK 20.144
+[2066/2573] FEIA.MI              OK 5.333
+[2067/2573] IS0H.DE              OK 145.42
+[2068/2573] ASRN.DE              OK 7.6664
+[2069/2573] QGRW.MI              OK 30.5
+[2070/2573] CEMB.DE              OK 5.0392
+[2071/2573] EIBB.MI              OK 32.095
+[2072/2573] USFMD.MI             OK 33.655
+[2073/2573] FLUC.MI              OK 20.7
+[2074/2573] HEDJ.MI              OK 24.96
+[2075/2573] EMHE.MI              OK 30.52
+[2076/2573] GIGE.MI              OK 50.08
+[2077/2573] XZDW.MI              OK 35.32
+[2078/2573] EYLD.MI              OK 5.0
+[2079/2573] FESE.DE              OK 4.822
+[2080/2573] VCASH.MI             OK 15.002
+[2081/2573] XFLN.DE              OK 30.222
+[2082/2573] VCDE.MI              OK 54.13
+[2083/2573] FAMMAI.MI            OK 137.35
+[2084/2573] V3NL.MI              OK 6.555
+[2085/2573] FEPI.MI              OK 19.158
+[2086/2573] ECMF.MI              OK 5.114
+[2087/2573] WELR.DE              OK 18.532
+[2088/2573] CEB2.DE              OK 4.8548
+[2089/2573] EMH5.MI              OK 23.525
+[2090/2573] EXH6.DE              OK 27.77
+[2091/2573] BRND.MI              OK 58.0
+[2092/2573] NEAR.AS              OK 3.987
+[2093/2573] AYEP.DE              OK 4.835
+[2094/2573] CBUQ.DE              OK 6.28
+[2095/2573] BJL7.DE              OK 6.844
+[2096/2573] FCHP.DE              OK 30.31
+[2097/2573] JRIN.MI              OK 18.71
+[2098/2573] XDG3.MI              OK 30.25
+[2099/2573] AQDU.MI              OK 9.056
+[2100/2573] XM31.MI              OK 9.841
+[2101/2573] TIGA.MI              OK 8.933
+[2102/2573] 21XA.DE              OK 22.41
+[2103/2573] XUFB.L               OK 2448.5
+[2104/2573] CGB.MI               OK 19.216
+[2105/2573] XGLF.DE              OK 23.47
+[2106/2573] MILL.MI              OK 14.46
+[2107/2573] BBEG.MI              OK 93.59
+[2108/2573] LUTL.DE              OK 152.46
+[2109/2573] CEMM.DE              OK 5.006
+[2110/2573] CHSK.DE              OK 9.8268
+[2111/2573] AIQU.MI              OK 11.488
+[2112/2573] AEAE.MI              OK 10.018
+[2113/2573] CEUE.DE              OK 13.198
+[2114/2573] WRNW.MI              OK 26.02
+[2115/2573] VTRX.AS              OK 13.933
+[2116/2573] XD5S.L               OK 4235.75
+[2117/2573] XM27.MI              OK 9.192
+[2118/2573] HSEU.MI              OK 19.376
+[2119/2573] GENDEE.MI            OK 25.86
+[2120/2573] FAMMWF.MI            OK 160.62
+[2121/2573] EDEF.MI              OK 19.646
+[2122/2573] FEBB.DE              OK 31.82
+[2123/2573] AQWA.MI              OK 27.01
+[2124/2573] LDGA.MI              OK 9.326
+[2125/2573] FAMAMW.MI            OK 157.78
+[2126/2573] XDG7.MI              OK 24.805
+[2127/2573] WENU.MI              OK 12.77
+[2128/2573] SPLW.MI              OK 45.73
+[2129/2573] MDB5.MI              OK 4.896
+[2130/2573] QTOP.MI              OK 4.966
+[2131/2573] XREA.DE              OK 57.1
+[2132/2573] SRIJ.MI              OK 22.395
+[2133/2573] VDTM.MI              OK 62.9
+[2134/2573] KOID.MI              OK 21.66
+[2135/2573] FAMWCS.MI            OK 98.03
+[2136/2573] NTSX.MI              OK 32.82
+[2137/2573] SEUA.DE              OK 10.701
+[2138/2573] SC0V.DE              OK 423.3
+[2139/2573] INFL10.MI            OK 15.662
+[2140/2573] USSRIE.MI            OK 19.194
+[2141/2573] IVAI.MI              OK 6.792
+[2142/2573] GIGU.MI              OK 44.34
+[2143/2573] ROE.MI               OK 9.532
+[2144/2573] WMIB.MI              OK 50.6
+[2145/2573] YIJUH.MI             OK 13.446
+[2146/2573] ZPD3.DE              OK 19.27
+[2147/2573] XCTW.DE              OK 43.665
+[2148/2573] WCOE.MI              OK 17.218
+[2149/2573] IUSW.DE              OK 4.4955
+[2150/2573] AIGG.MI              OK 3.114
+[2151/2573] TREI.MI              OK 35.135
+[2152/2573] E0UA.DE              OK 5.145
+[2153/2573] HSRID.MI             OK 9.262
+[2154/2573] XB13.MI              OK 145.7
+[2155/2573] VRTS.AS              OK 0.8039
+[2156/2573] TTFW.MI              OK 40.965
+[2157/2573] XZDZ.MI              OK 38.57
+[2158/2573] HYGN.MI              OK 8.376
+[2159/2573] JEAA.MI              OK 10.1
+[2160/2573] ESAK.DE              OK 10.888
+[2161/2573] XE01.MI              OK 35.225
+[2162/2573] AI4UJ.MI             OK 11530.08
+[2163/2573] JREC.MI              OK 21.555
+[2164/2573] GEME.MI              OK 10.13
+[2165/2573] GNOM.MI              OK 6.68
+[2166/2573] GAUG.DE              OK 30.165
+[2167/2573] XGBU.MI              OK 28.15
+[2168/2573] XCMC.DE              OK 12.942
+[2169/2573] CEMI.DE              OK 5.061
+[2170/2573] WEB3.MI              OK 9.3
+[2171/2573] FSEM.MI              OK 3.488
+[2172/2573] ACTIO.MI             OK 10.776
+[2173/2573] XBNK.MI              OK 9.279
+[2174/2573] JGEH.MI              OK 31.67
+[2175/2573] EXHG.DE              OK 4.514
+[2176/2573] 2SCS.DE              OK 3.36
+[2177/2573] VRTA.DE              OK 0.7818
+[2178/2573] COBA.MI              OK 89.74
+[2179/2573] DPAY.MI              OK 5.565
+[2180/2573] XBAT.MI              OK 205.75
+[2181/2573] CEB0.DE              OK 5.235
+[2182/2573] ADOT.AS              OK 0.745
+[2183/2573] WELV.DE              OK 12.772
+[2184/2573] FEGI.MI              OK 21.23
+[2185/2573] XBEE.DE              OK 39.14
+[2186/2573] GGRE.MI              OK 19.906
+[2187/2573] EMOVJ.MI             OK 13810.53
+[2188/2573] CYBO.MI              OK 16.334
+[2189/2573] YIUUH.MI             OK 11.564
+[2190/2573] MDB1E.MI             OK 9.796
+[2191/2573] KRBN.MI              OK 21.715
+[2192/2573] FRCP.MI              OK 21.0
+[2193/2573] GSPE.MI              OK 8.5
+[2194/2573] TSLI.DE              OK 4.199
+[2195/2573] WNAS.MI              OK 30.715
+[2196/2573] HEGB.MI              OK 10.068
+[2197/2573] BTECJ.MI             OK 9529.4
+[2198/2573] JAPAN.MI             OK 29.015
+[2199/2573] XUHE.DE              OK 16.354
+[2200/2573] JPCE.MI              OK 40.915
+[2201/2573] FTGQ.DE              OK 19.378
+[2202/2573] BJLL.DE              OK 10.156
+[2203/2573] HELO.MI              OK 21.56
+[2204/2573] XB35.MI              OK 30.3
+[2205/2573] ANAE.MI              OK 11.9
+[2206/2573] JSEE.MI              OK 28.415
+[2207/2573] 5HEE.MI              OK 111.37
+[2208/2573] RAYZ.MI              OK 11.332
+[2209/2573] MTVS.MI              OK 24.41
+[2210/2573] BTC.MI               OK 13.328
+[2211/2573] XZSW.DE              OK 27.835
+[2212/2573] BIODV.MI             OK 15.632
+[2213/2573] EXIB.DE              OK 4.786
+[2214/2573] CSP5.DE              OK 5.4784
+[2215/2573] WNDE.L               OK 6.528
+[2216/2573] BARS.MI              OK 39.41
+[2217/2573] SPDA.MI              OK 3.63
+[2218/2573] BT27.MI              OK 10.374
+[2219/2573] QSEP.DE              OK 19.492
+[2220/2573] XNZE.MI              OK 49.375
+[2221/2573] VITU.MI              OK 5.274
+[2222/2573] JSDE.DE              OK 27.76
+[2223/2573] ACE27.MI             OK 10.63
+[2224/2573] XCUD.DE              OK 43.38
+[2225/2573] JUIE.MI              OK 26.9
+[2226/2573] VAVA.DE              OK 0.8537
+[2227/2573] VLDS.MI              OK 87.26
+[2228/2573] USEH.MI              OK 6.194
+[2229/2573] 28IY.MI              OK 5.085
+[2230/2573] FAEU.MI              OK 27.1
+[2231/2573] USMUFE.MI            OK 28.135
+[2232/2573] 18MQ.DE              OK 254.15
+[2233/2573] SMSJPN.MI            OK 90.8
+[2234/2573] ELOVD.MI             OK 18.19
+[2235/2573] SC00.DE              OK 532.0
+[2236/2573] ENGS.MI              OK 0.2275
+[2237/2573] SAUDI.MI             OK 20.93
+[2238/2573] FTGG.DE              OK 33.81
+[2239/2573] XSKR.MI              OK 63.06
+[2240/2573] IQQ3.DE              OK 28.54
+[2241/2573] ABCH.AS              OK 18.8322
+[2242/2573] UT7EUA.MI            OK 33.255
+[2243/2573] SC0Q.DE              OK 143.52
+[2244/2573] SC0P.DE              OK 390.2
+[2245/2573] SC0Z.DE              OK 405.1
+[2246/2573] QUEJ.DE              OK 26.615
+[2247/2573] VRTL.DE              OK 0.761
+[2248/2573] RAND.AS              OK 23.28
+[2249/2573] XZDU.DE              OK 33.36
+[2250/2573] JAUD.DE              OK 28.42
+[2251/2573] QNXT.MI              OK 4.584
+[2252/2573] FEIG.L               OK 6.031
+[2253/2573] PLAN.MI              OK 9.85
+[2254/2573] 26TP.MI              OK 5.054
+[2255/2573] GACL.DE              OK 38.885
+[2256/2573] INQQ.MI              OK 6.452
+[2257/2573] IQGE.MI              OK 5.725
+[2258/2573] XEMU.MI              OK 9.196
+[2259/2573] CNEW.MI              OK 14.366
+[2260/2573] XDG6.MI              OK 33.045
+[2261/2573] DRVE.MI              OK 13.256
+[2262/2573] XZEC.DE              OK 61.43
+[2263/2573] FLUSA.MI             OK 17.918
+[2264/2573] WCCA.MI              OK 22.385
+[2265/2573] GEVT.MI              OK 9.901
+[2266/2573] XB36.MI              OK 29.155
+[2267/2573] EXCS.MI              OK 7.087
+[2268/2573] FREP.MI              OK 33.39
+[2269/2573] CHST.DE              OK 9.2044
+[2270/2573] CHSC.DE              OK 2.946
+[2271/2573] XZSE.DE              OK 29.56
+[2272/2573] NXTG.MI              OK 36.455
+[2273/2573] H41R.DE              OK 11.296
+[2274/2573] LC30.DE              OK 10.256
+[2275/2573] EURPA.MI             OK 17.2
+[2276/2573] EWAT.MI              OK 2.082
+[2277/2573] FTGB.DE              OK 17.143
+[2278/2573] XDNU.L               OK 47.08
+[2279/2573] RNRG.MI              OK 11.302
+[2280/2573] ECTA.DE              OK 5.579
+[2281/2573] 28IX.DE              OK 4.9521
+[2282/2573] XYP0.MI              OK 35.39
+[2283/2573] JPVD.DE              OK 28.12
+[2284/2573] COIY.AS              OK 1.39
+[2285/2573] FGHY.MI              OK 4.588
+[2286/2573] CHSP.DE              OK 8.8088
+[2287/2573] WTVU.MI              OK 21.08
+[2288/2573] ONSW.DE              OK 5.0323
+[2289/2573] XG11.MI              OK 31.345
+[2290/2573] XDGI.MI              OK 28.515
+[2291/2573] ONVD.DE              OK 5.8045
+[2292/2573] WNDY.MI              OK 11.272
+[2293/2573] XEPA.MI              OK 39.775
+[2294/2573] MIDS.MI              OK 8.342
+[2295/2573] GEUR.MI              OK 10.016
+[2296/2573] CATB.MI              OK 8.847
+[2297/2573] XNNV.MI              OK 41.47
+[2298/2573] SC0X.DE              OK 129.26
+[2299/2573] TLCO.MI              OK 6.276
+[2300/2573] USAH.DE              OK 10.587
+[2301/2573] SC04.DE              OK 665.6
+[2302/2573] ASWA.DE              OK 8.16
+[2303/2573] FDNI.MI              OK 16.834
+[2304/2573] LC36.DE              OK 10.332
+[2305/2573] DSPY.DE              OK 4.236
+[2306/2573] WTRE.MI              OK 25.005
+[2307/2573] FVD.DE               OK 24.695
+[2308/2573] META.MI              OK 32.655
+[2309/2573] SC02.DE              OK 453.4
+[2310/2573] XUDY.DE              OK 29.435
+[2311/2573] VLNK.DE              OK 5.63
+[2312/2573] UGAS.MI              OK 69.28
+[2313/2573] PEX.MI               OK 17.282
+[2314/2573] VRTC.DE              OK 1.2
+[2315/2573] HERU.MI              OK 10.778
+[2316/2573] 10AM.DE              OK 44.608
+[2317/2573] WWRD.MI              OK 21.885
+[2318/2573] CTEK.MI              OK 7.575
+[2319/2573] XGEN.MI              OK 27.83
+[2320/2573] LC39.DE              OK 10.322
+[2321/2573] EXIF.DE              OK 6.21
+[2322/2573] CEB8.DE              OK 4.8964
+[2323/2573] BJLY.DE              OK 10.3665
+[2324/2573] JMAG.MI              OK 4.996
+[2325/2573] JMAM.MI              OK 4.99
+[2326/2573] EXCN.MI              OK 26.785
+[2327/2573] JMAC.MI              OK 4.973
+[2328/2573] 2UNI.DE              OK 4.77
+[2329/2573] TLTY.AS              OK 33.23
+[2330/2573] CBUD.DE              OK 5.054
+[2331/2573] CLOU.MI              OK 8.453
+[2332/2573] LC33.DE              OK 10.284
+[2333/2573] EDEH.DE              OK 8.9038
+[2334/2573] CDOT.SW              OK 1.2806
+[2335/2573] IGOG.DE              OK 11.469
+[2336/2573] 21XV.DE              OK 11.449
+[2337/2573] ETY.MI               OK 10.066
+[2338/2573] NATY.MI              OK 41.17
+[2339/2573] JRDC.DE              OK 20.005
+[2340/2573] CEML.DE              OK 5.128
+[2341/2573] CHSZ.DE              OK 9.911
+[2342/2573] AXQE.DE              OK 14.032
+[2343/2573] SEAP.MI              OK 10.658
+[2344/2573] BS28.MI              
+  FAIL - Nessun ticker trovato per IE000A0RC215 (Invesco BulletShares 2028 USD Corporate )
+[2345/2573] BJLZ.DE              OK 10.429
+[2346/2573] FOFD.MI              OK 23.435
+[2347/2573] TREL.MI              OK 3.6135
+[2348/2573] XG12.MI              OK 31.71
+[2349/2573] BTCG.AS              OK 13.3039
+[2350/2573] FJAN.DE              OK 23.095
+[2351/2573] KARS.MI              OK 20.49
+[2352/2573] MINR.MI              OK 28.695
+[2353/2573] MCTA.DE              OK 5.969
+[2354/2573] ICBR.MI              OK 4.618
+[2355/2573] PFFI.MI              OK 16.668
+[2356/2573] JUSH.MI              OK 30.83
+[2357/2573] ELTC.AS              OK 5.0565
+[2358/2573] CHSX.DE              OK 8.597
+[2359/2573] H41S.DE              OK 10.386
+[2360/2573] XMVU.MI              OK 37.37
+[2361/2573] EDOC.MI              OK 6.724
+[2362/2573] EMUPA.MI             OK 17.616
+[2363/2573] SC0R.DE              OK 246.25
+[2364/2573] WLDX.MI              OK 221.47
+[2365/2573] ULOVE.MI             OK 31.57
+[2366/2573] WRTY.MI              OK 30.68
+[2367/2573] XUEE.DE              OK 10.7565
+[2368/2573] BE28.MI              OK 5.263
+[2369/2573] GBHE.MI              OK 6.631
+[2370/2573] ACUU.DE              OK 55.42
+[2371/2573] FGLV.MI              OK 5.047
+[2372/2573] WDFE.MI              OK 7.073
+[2373/2573] XEQW.MI              OK 31.05
+[2374/2573] CROP.MI              OK 8.487
+[2375/2573] EUC.MI               OK 9.548
+[2376/2573] JAVE.MI              OK 29.995
+[2377/2573] SUST.DE              OK 9.255
+[2378/2573] PTAM.MI              OK 7.208
+[2379/2573] BE27.MI              OK 5.395
+[2380/2573] XUTL.DE              OK 26.591
+[2381/2573] FINX.MI              OK 6.624
+[2382/2573] WGRO.MI              OK 23.25
+[2383/2573] CEB9.DE              OK 22.525
+[2384/2573] HECB.MI              OK 10.248
+[2385/2573] BJLR.DE              OK 9.8008
+[2386/2573] JGAD.DE              OK 8.3768
+[2387/2573] FTAI.MI              OK 19.866
+[2388/2573] HUCB.MI              OK 9.205
+[2389/2573] 28IA.MI              OK 5.238
+[2390/2573] 400X.AS              OK 10.488
+[2391/2573] XCJD.DE              OK 36.025
+[2392/2573] XUGA.DE              OK 25.575
+[2393/2573] XZWG.MI              OK 5.518
+[2394/2573] HYDE.MI              OK 4.2075
+[2395/2573] XUML.DE              OK 25.445
+[2396/2573] WNER.MI              OK 23.6
+[2397/2573] HDXM.DE              OK 55.68
+[2398/2573] UTY.MI               OK 8.803
+[2399/2573] BS30.MI              OK 4.406
+[2400/2573] JRUE.MI              OK 97.51
+[2401/2573] USESGA.MI            OK 19.106
+[2402/2573] HOGS.MI              OK 29.09
+[2403/2573] XLIQ.MI              OK 167.29
+[2404/2573] CEBV.DE              OK 5.532
+[2405/2573] AIGS.MI              OK 5.389
+[2406/2573] INDB.MI              OK 19.0
+[2407/2573] MSTI.AS              OK 8.85
+[2408/2573] FJUL.DE              OK 22.83
+[2409/2573] METY.AS              OK 6.376
+[2410/2573] USCE.MI              OK 27.115
+[2411/2573] SC06.DE              OK 141.76
+[2412/2573] WATT.MI              OK 17.06
+[2413/2573] USDIV.MI             OK 25.535
+[2414/2573] FTEG.MI              OK 20.4
+[2415/2573] WTVE.MI              OK 26.62
+[2416/2573] AHYF.DE              OK 48.334
+[2417/2573] HIDIV.MI             OK 105.25
+[2418/2573] XCO2E.MI             OK 21.17
+[2419/2573] WADA.AS              OK 3.331
+[2420/2573] WSPE.MI              OK 24.8
+[2421/2573] JEQE.MI              OK 20.9
+[2422/2573] XU10.DE              OK 26.963
+[2423/2573] XDGS.DE              OK 31.415
+[2424/2573] VCEL.DE              OK 0.763
+[2425/2573] JT13E.MI             OK 10.962
+[2426/2573] BCFK.DE              OK 9.329
+[2427/2573] NTSZ.MI              OK 25.575
+[2428/2573] XUT7.DE              OK 28.96
+[2429/2573] JSDM.DE              OK 29.135
+[2430/2573] AK8C.DE              OK 17.8015
+[2431/2573] ALC0.DE              OK 0.7756
+[2432/2573] LVLC.MI              OK 6.879
+[2433/2573] EBIZ.MI              OK 11.29
+[2434/2573] MJUN.MI              OK 20.965
+[2435/2573] FTMA.DE              OK 21.225
+[2436/2573] BCFC.DE              OK 109.4
+[2437/2573] BS29.MI              OK 4.587
+[2438/2573] POLY.DE              OK 0.9317
+[2439/2573] GGE.MI               OK 10.432
+[2440/2573] SP1.MI               OK 8.759
+[2441/2573] INGE.DE              OK 8.4876
+[2442/2573] FTGF.DE              OK 19.782
+[2443/2573] OAMZ.DE              OK 6.8105
+[2444/2573] BBUD.MI              OK 35.125
+[2445/2573] SCAR.MI              OK 26.215
+[2446/2573] IETH.DE              OK 1.7788
+[2447/2573] 26TA.MI              OK 5.228
+[2448/2573] CHPX.MI              OK 15.548
+[2449/2573] ECMA.MI              OK 5.755
+[2450/2573] FOHW.MI              OK 23.59
+[2451/2573] YMSF.DE              OK 6.712
+[2452/2573] YAMD.DE              OK 30.692
+[2453/2573] XNDQ.MI              OK 31.735
+[2454/2573] INCI.MI              OK 5.518
+[2455/2573] JEGN.MI              OK 110.49
+[2456/2573] T10A.MI              OK 8.701
+[2457/2573] FYEI.DE              OK 4.9785
+[2458/2573] BCFM.DE              OK 13.538
+[2459/2573] BE26.MI              OK 5.419
+[2460/2573] FYUI.DE              OK 4.2443
+[2461/2573] YAVG.DE              OK 29.584
+[2462/2573] 3SUU.DE              OK 5.6284
+[2463/2573] JESM.DE              OK 29.61
+[2464/2573] AAPY.AS              OK 6.822
+[2465/2573] BE29.MI              OK 5.152
+[2466/2573] CIRC.MI              OK 9.96
+[2467/2573] BJLP.DE              OK 10.435
+[2468/2573] QPEU.MI              OK 9.728
+[2469/2573] XGVC.DE              OK 8.1618
+[2470/2573] WTVG.MI              OK 21.83
+[2471/2573] PLTY.AS              OK 23.51
+[2472/2573] SCTB.MI              OK 4.905
+[2473/2573] BJL0.DE              OK 10.48
+[2474/2573] BS26.MI              OK 4.612
+[2475/2573] AIDE.MI              OK 10.118
+[2476/2573] BCFW.DE              OK 16.548
+[2477/2573] BCFV.DE              OK 6.905
+[2478/2573] BSRID.MI             OK 10.014
+[2479/2573] BS27.MI              OK 4.636
+[2480/2573] EDEK.DE              OK 10.1105
+[2481/2573] VDOT.AS              OK 2.194
+[2482/2573] XNDX.DE              OK 31.515
+[2483/2573] H4Z5.DE              OK 13.816
+[2484/2573] RCTU.L               OK 19.515
+[2485/2573] RDAN.DE              OK 1.071
+[2486/2573] VSMA.DE              OK 5.51
+[2487/2573] CEMC.DE              OK 5.1012
+[2488/2573] T10D.MI              OK 8.545
+[2489/2573] CNYE.MI              OK 5.162
+[2490/2573] COMS.SW              OK 16.78
+[2491/2573] INDE.MI              OK 7.939
+[2492/2573] SNSR.MI              OK 12.95
+[2493/2573] VLDP.AS              OK 85.35
+[2494/2573] XEZ3.DE              OK 33.665
+[2495/2573] XEZ5.DE              OK 33.904
+[2496/2573] XEZ7.DE              OK 33.734
+[2497/2573] FTMS.DE              OK 23.275
+[2498/2573] 21NR.DE              OK 3.4464
+[2499/2573] WTD0.DE              OK 15.374
+[2500/2573] CLMD.MI              OK 8.097
+[2501/2573] EUESRI.MI            OK 16.29
+[2502/2573] WNRG.MI              OK 64.51
+[2503/2573] JPN.MI               OK 192.62
+[2504/2573] SC05.DE              OK 230.4
+[2505/2573] SOYO.MI              OK 7.709
+[2506/2573] FYUE.DE              OK 4.7747
+[2507/2573] AXTZ.AS              OK 2.2955
+[2508/2573] VRTN.DE              OK 1.265
+[2509/2573] DHSF.MI              OK 27.45
+[2510/2573] ACT20.MI             OK 10.318
+[2511/2573] BENE.MI              OK 39.305
+[2512/2573] OP5H.DE              OK 225.55
+[2513/2573] XPAB.F               OK 6.115
+[2514/2573] GCBE.MI              OK 4.582
+[2515/2573] CBU7.AS              OK 123.65
+[2516/2573] SEZA.MI              OK 11.444
+[2517/2573] SEPE.MI              OK 10.718
+[2518/2573] GEMS.MI              OK 44.345
+[2519/2573] AXXT.DE              OK 12.304
+[2520/2573] EBXA.DE              OK 5.1778
+[2521/2573] EDEI.DE              OK 8.961
+[2522/2573] EPIN.DE              OK 19.764
+[2523/2573] ACTEQ.MI             OK 11.036
+[2524/2573] FTGT.DE              OK 17.928
+[2525/2573] BCFF.DE              OK 7.277
+[2526/2573] JREW.DE              OK 24.79
+[2527/2573] DRGE.DE              OK 10.122
+[2528/2573] VP0L.DE              OK 0.3255
+[2529/2573] XEQ8.MI              OK 9.983
+[2530/2573] WNGA.MI              OK 5.003
+[2531/2573] SPAH.MI              OK 16.566
+[2532/2573] JQPD.MI              OK 21.55
+[2533/2573] FUSV.MI              OK 4.8285
+[2534/2573] FUIE.DE              OK 5.143
+[2535/2573] BCFG.DE              OK 6.863
+[2536/2573] FGGB.MI              OK 4.293
+[2537/2573] CEME.DE              OK 5.787
+[2538/2573] EAAA.MI              OK 10.344
+[2539/2573] ACT60.MI             OK 10.64
+[2540/2573] JPYE.MI              OK 9.418
+[2541/2573] PEXE.MI              OK 19.46
+[2542/2573] CEB6.DE              OK 4.187
+[2543/2573] HYHE.DE              OK 4.8999
+[2544/2573] CEBX.DE              OK 4.9732
+[2545/2573] BJLT.DE              OK 10.29
+[2546/2573] JPGD.DE              OK 29.59
+[2547/2573] XEZ1.DE              OK 34.075
+[2548/2573] BABY.AS              OK 24.735
+[2549/2573] FOCT.DE              OK 23.16
+[2550/2573] EUNQ.DE              OK 51.24
+[2551/2573] UGOV.MI              OK 8.549
+[2552/2573] EFPX.MI              OK 22.635
+[2553/2573] BMAC.PA              OK 5.0405
+[2554/2573] AGE40.MI             OK 9.988
+[2555/2573] FJPI.DE              OK 4.0605
+[2556/2573] BJLQ.DE              OK 10.0265
+[2557/2573] ECTD.DE              OK 5.398
+[2558/2573] SPAB.MI              OK 17.002
+[2559/2573] ULTY.L               OK 16.365
+[2560/2573] FTMQ.DE              OK 19.884
+[2561/2573] VGND.DE              OK 0.8423
+[2562/2573] ASAE.MI              OK 10.02
+[2563/2573] RMBS.MI              OK 9.075
+[2564/2573] VITD.AS              OK 86.65
+[2565/2573] AIHU.MI              OK 8.665
+[2566/2573] AGE50.MI             OK 10.102
+[2567/2573] NATE.MI              OK 6.772
+[2568/2573] AGE60.MI             OK 9.981
+[2569/2573] OP5E.DE              OK 160.0
+[2570/2573] VUDP.MI              OK 4.95
+[2571/2573] AWST.DE              OK 9.762
+[2572/2573] DRON.MI              OK 6.92
+[2573/2573] MDB1.MI              OK 8.075
+
+==================================================
+Risultati: ✓ 2567 OK | FIX 0 corretti | FAIL 6 non trovati
+Script completato.

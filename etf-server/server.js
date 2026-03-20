@@ -83,6 +83,16 @@ async function initDB() {
       key TEXT PRIMARY KEY,
       value TEXT
     );
+    CREATE TABLE IF NOT EXISTS portfolio_buckets (
+      id SERIAL PRIMARY KEY,
+      portfolio_id TEXT NOT NULL REFERENCES portfolios(id) ON DELETE CASCADE,
+      tipo TEXT NOT NULL CHECK (tipo IN ('BREVE','LUNGO')),
+      pct_allocazione REAL NOT NULL DEFAULT 50,
+      orizzonte_anni INTEGER NOT NULL DEFAULT 5,
+      rendimento_target_annuo REAL,
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      UNIQUE(portfolio_id, tipo)
+    );
     CREATE TABLE IF NOT EXISTS ai_config (
       key TEXT PRIMARY KEY,
       label TEXT NOT NULL,
@@ -174,6 +184,7 @@ async function initDB() {
   }
   // Migrazioni sicure
   await pool.q('ALTER TABLE etf_catalog ADD COLUMN IF NOT EXISTS maxdd5y REAL');
+  await pool.q("ALTER TABLE portfolio_etf ADD COLUMN IF NOT EXISTS bucket TEXT DEFAULT 'LUNGO'");
   console.log('✓ Database PostgreSQL pronto');
 }
 

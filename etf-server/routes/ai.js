@@ -45,6 +45,128 @@ const REGOLE_PROFILO = {
   },
 };
 
+// ── Rendimento minimo per profilo (% annuo netto stimato) ─────────────────
+const RENDIMENTO_MIN_PROFILO = {
+  Prudente:   3.5,  // inflazione ~2% + 2% min = ~4%, netto ~3.5%
+  Bilanciato: 4.5,  // inflazione ~2% + 2.5% min = ~4.5%
+  Aggressivo: 6.0,  // inflazione ~2% + 4% min = ~6%
+};
+
+// Verifica se rendimento medio pesato bucket rispetta il minimo di profilo
+function verificaRendimentoComplessivo(buckets, profilo) {
+  if (!buckets || buckets.length < 2) return { ok: true, nota: '' };
+  const bBrv = buckets.find(b => b.tipo === 'BREVE');
+  const bLng = buckets.find(b => b.tipo === 'LUNGO');
+  if (!bBrv || !bLng) return { ok: true, nota: '' };
+
+  const pctB = bBrv.pct_allocazione / 100;
+  const pctL = bLng.pct_allocazione / 100;
+  const rendB = bBrv.rendimento_target_annuo || RENDIMENTO_MIN_PROFILO[profilo] * 0.6;
+  const rendL = bLng.rendimento_target_annuo || RENDIMENTO_MIN_PROFILO[profilo] * 1.3;
+  const rendMin = RENDIMENTO_MIN_PROFILO[profilo] || 4.0;
+
+  const rendPesato = (pctB * rendB) + (pctL * rendL);
+  const ok = rendPesato >= rendMin;
+
+  return {
+    ok,
+    rendPesato: parseFloat(rendPesato.toFixed(2)),
+    rendMin,
+    nota: ok
+      ? `Rendimento complessivo atteso ~${rendPesato.toFixed(1)}% >= minimo profilo ${rendMin}%`
+      : `⚠️ ATTENZIONE: rendimento complessivo atteso ~${rendPesato.toFixed(1)}% < minimo profilo ${rendMin}%. Il bucket LUNGO deve compensare rendendo almeno ${((rendMin - pctB * rendB) / pctL).toFixed(1)}% annuo.`,
+    targetLungoMinimo: parseFloat(((rendMin - pctB * rendB) / pctL).toFixed(2)),
+  };
+}
+
+// ── Posizionamento tattico: matrice profilo × orizzonte × macro ──────────
+function getPosizionetattica(profilo, orizzonteAnni, macro) {
+  const anni = parseInt(orizzonteAnni) || 5;
+  const breve = anni <= 3;
+  const lungo = anni > 7;
+
+  // Estrai indicatori macro rilevanti
+  const vix = parseFloat(macro?.vix) || 20;
+  const tassoFed = parseFloat(macro?.tassoFed) || 4.5;
+  const tassoBce = parseFloat(macro?.tassoBce) || 3.0;
+  const inflEU = parseFloat(macro?.inflEU) || 2.0;
+  const inflUSA = parseFloat(macro?.inflUSA) || 3.0;
+  const brent = parseFloat(macro?.brent) || 80;
+  const spread = parseFloat(macro?.spreadBtp) || 120;
+  const curva = parseFloat(macro?.curvaUSA) || 0; // 10Y-5Y in %
+
+  // Scenari macro chiave
+  const vixAlto = vix > 25;
+  const vixMoltoAlto = vix > 35;
+  const tassiAlti = tassoFed > 4.0 || tassoBce > 3.0;
+  const tassiRischioRialzo = tassiAlti && brent > 85 && inflUSA > 3.0; // stagflazione latente
+  const tagliAttesi = tassoFed < 4.0 || tassoBce < 3.0;
+  const inflazioneAlta = inflEU > 3.0 || inflUSA > 3.5;
+  const petrolioCaldo = brent > 90;
+  const curvaNormale = curva > 0.3;
+  const curvaInvertita = curva < -0.1;
+  const spreadElevato = spread > 200;
+
+  // Determina scenario prevalente
+  let scenario = 'NEUTRO';
+  if (tassiRischioRialzo) scenario = 'STAGFLAZIONE_LATENTE';
+  else if (vixMoltoAlto) scenario = 'CRISI_MERCATI';
+  else if (vixAlto && !tassiAlti) scenario = 'VOLATILITA_ELEVATA';
+  else if (tagliAttesi && !inflazioneAlta) scenario = 'EASING_CICLO';
+  else if (inflazioneAlta && !tassiAlti) scenario = 'INFLAZIONE_SURRISCALDATA';
+  else if (petrolioCaldo) scenario = 'SHOCK_PETROLIO';
+  else if (curvaInvertita) scenario = 'RECESSIONE_RISCHIO';
+  else if (curvaNormale && !vixAlto) scenario = 'ESPANSIONE';
+
+  // Matrice posizionamento per profilo + orizzonte + scenario
+  const matrice = {
+    STAGFLAZIONE_LATENTE: {
+      Prudente: {
+        breve: 'SCENARIO ATTUALE: tassi fermi con rischio rialzo (petrolio/guerra). PROTEGGITI: duration brevissima (1-2Y), inflation-linked EUR, monetario EUR overnight. EVITA: obbligazioni lungo termine, azionario growth. La BCE potrebbe non tagliare — non scommettere su duration.',
+        medio: 'CAUTELA: mantieni obbligazioni breve-medio termine, quota inflation-linked. Azionario difensivo (healthcare, consumer staples, utility). Riduci esposizione tech e growth.',
+        lungo: 'Scenario passeggero a lungo termine. Mantieni mix standard con quota inflation-linked. Azionario difensivo in sovrappeso rispetto a growth.',
+      },
+      Bilanciato: {
+        breve: 'SCENARIO ATTUALE: tassi fermi con rischio rialzo. BILANCIA: 40% obblig. breve/inflation-linked, 30% azionario difensivo (energy, healthcare, commodity ETF), 30% monetario. RIDUCI: growth puro, tech, real estate.',
+        medio: 'Mix difensivo-ciclico: energy ETF beneficia da petrolio alto, inflation-linked per protezione, azionario value e dividend. Riduci duration obbligazionaria.',
+        lungo: 'Gestisci con calma. Quota commodity/energy in sovrappeso tattico. Azionario globale con tilt value.',
+      },
+      Aggressivo: {
+        breve: 'SCENARIO ATTUALE: tassi fermi con rischio rialzo — OPPORTUNITA' SELETTIVE. SOVRAPPESA: energy ETF (Brent alto), commodity, azionario value europeo, real assets. RIDUCI: tech growth puro, obbligazioni. In questo contesto il rischio è asimmetrico: chi sale guadagna molto.',
+        medio: 'Tilt tattico verso value, energy, financials (beneficiano da tassi alti). Mantieni azionario globale. Riduci duration. Crypto/tematici ad alto beta solo con stop mentali.',
+        lungo: 'Ciclo passeggero. Mantieni mix aggressivo standard con tilt verso inflation-resistant assets.',
+      },
+    },
+    CRISI_MERCATI: {
+      Prudente: { breve: 'VIX >35: massima difesa. Monetario EUR, obbligazioni governative breve, zero azionario se possibile. Attendi stabilizzazione.', medio: 'Crisi in corso: riduci azionario al minimo profilo, aumenta cash e obblig. gov. breve.', lungo: 'Le crisi sono temporanee su orizzonti lunghi. Mantieni esposizione, evita vendite in panico.' },
+      Bilanciato: { breve: 'VIX >35: riduzione tattica azionario -10% dal target. Aumenta monetario. Niente acquisti aggressivi.', medio: 'Mantieni profilo ma con tilt difensivo. Opportunità in obblig. corp. investment grade.', lungo: 'Occasion di ribilanciamento. Mantieni o aumenta azionario se prezzi scendono molto.' },
+      Aggressivo: { breve: 'VIX >35: le crisi profonde sono opportunità per l'aggressivo. Tieni liquidità pronta per entrare su cali. Obbligazioni ZERO. Azionario globale e tematici su livelli bassi.', medio: 'Accumula su cali. Tematici AI, tech, emergenti a sconto.', lungo: 'Massima opportunità storica. Aumenta esposizione su cali prolungati.' },
+    },
+    EASING_CICLO: {
+      Prudente: { breve: 'Tagli tassi: prolunga leggermente duration (3-5Y). Obbligazioni corporate investment grade beneficiano. Mantieni quota azionario difensivo.', medio: 'Contesto favorevole per obbligazioni. Allunga duration progressivamente.', lungo: 'Ottimo per obbligazioni lungo termine. Mantieni mix standard.' },
+      Bilanciato: { breve: 'Tagli tassi: favorisce azionario growth e obbligazioni. Sovrappesa growth/tech moderatamente. Allunga duration.', medio: 'Ciclo espansivo: aumenta azionario verso upper range. Tech e growth in sovrappeso.', lungo: 'Contesto molto favorevole. Massimizza azionario nel range del profilo.' },
+      Aggressivo: { breve: 'Tagli tassi = carburante per azionario growth. SOVRAPPESA: tech, growth, emergenti, tematici (AI, clean energy). Riduci obbligazioni al minimo.', medio: 'Ciclo rialzista. Massima esposizione azionario. Tematici e emergenti.', lungo: 'Espansione sostenuta. Azionario globale, emergenti, tematici. Niente obbligazioni.' },
+    },
+    NEUTRO: {
+      Prudente: { breve: 'Contesto neutro. Applica regole standard del profilo.', medio: 'Standard.', lungo: 'Standard.' },
+      Bilanciato: { breve: 'Contesto neutro. Mix standard.', medio: 'Standard.', lungo: 'Standard.' },
+      Aggressivo: { breve: 'Contesto neutro. Azionario globale diversificato, tematici selettivi.', medio: 'Standard aggressivo.', lungo: 'Standard aggressivo.' },
+    },
+  };
+
+  const fascia = breve ? 'breve' : lungo ? 'lungo' : 'medio';
+  const profil = matrice[scenario] || matrice.NEUTRO;
+  const posiz = profil[profilo] || profil.Bilanciato;
+  const testo = posiz[fascia] || posiz.medio;
+
+  return {
+    scenario,
+    testo,
+    fascia,
+    indicatori: { vix, tassoFed, tassoBce, inflEU, inflUSA, brent, spread, curva },
+  };
+}
+
 // ── Modulazione regole per orizzonte temporale ───────────────────────────
 function modulaRegolePerOrizzonte(regoleBase, orizzonteAnni) {
   const anni = parseInt(orizzonteAnni) || 5;
@@ -106,7 +228,24 @@ router.post('/analisi', async (req, res) => {
   console.log(`[${new Date().toLocaleTimeString()}] Analisi AI: ${portfolio.name}`);
   log(EVENTI.AI_ANALISI, { portafoglio: portfolio.name, profilo: portfolio.riskProfile, obiettivo: opzioni?.obiettivo || 'completa' }, req.user?.username).catch(() => {});
 
-  const macroContext = '';
+  // Carica contesto macro reale
+  let macroData = {};
+  let macroContext = '';
+  try {
+    const { getMacroDati } = require('./macro');
+    const { testo, dati } = await getMacroDati();
+    macroContext = testo || '';
+    macroData = dati || {};
+  } catch (e) { console.log('[AI] macro non disponibile:', e.message); }
+
+  // Carica configurazione bucket se presente
+  let buckets = [];
+  try {
+    const { rows: bRows } = await db.query('SELECT * FROM portfolio_buckets WHERE portfolio_id = $1', [portfolio.id]);
+    buckets = bRows;
+  } catch {}
+  const hasBuckets = buckets.length >= 2;
+  const checkRend = hasBuckets ? verificaRendimentoComplessivo(buckets, portfolio.riskProfile) : null;
 
   const etfSelezionatiRaw = portfolio.etfs.filter(e => e.selected);
   const etfNonSelezionati = portfolio.etfs.filter(e => !e.selected);
@@ -169,6 +308,21 @@ ${giorniVita < 7 ? `⚠️ PORTAFOGLIO CREATO ${giorniVita} GIORNI FA: è molto 
 
 ## ORIZZONTE TEMPORALE: ${portfolio.orizzonteAnni || 'N/D'} anni
 ${regole.noteOrizzonte || ''}
+
+## POSIZIONAMENTO TATTICO (Profilo × Orizzonte × Macro)
+${(() => { try { const pt = getPosizionetattica(portfolio.riskProfile, portfolio.orizzonteAnni || 5, macroData); return `Scenario macro corrente: ${pt.scenario}\n${pt.testo}`; } catch(e) { return ''; } })()}
+${hasBuckets ? `
+## STRUTTURA BUCKET
+Questo portafoglio usa una strategia a DUE BUCKET:
+${buckets.map(b => `- Bucket ${b.tipo}: ${b.pct_allocazione}% del capitale | Orizzonte ${b.orizzonte_anni} anni | Target rendimento: ${b.rendimento_target_annuo || 'non specificato'}% annuo`).join('\n')}
+
+VINCOLO RENDIMENTO COMPLESSIVO:
+${checkRend?.nota || ''}
+${!checkRend?.ok ? `Il bucket LUNGO (ETF con bucket='LUNGO') deve puntare a rendimento >= ${checkRend?.targetLungoMinimo}% annuo per rispettare il minimo del profilo ${portfolio.riskProfile}.` : ''}
+
+Ogni ETF ha un'etichetta bucket (BREVE o LUNGO). Nelle modifiche mantieni questa distinzione:
+- ETF con bucket BREVE: privilegia bassa volatilità, obbligazionario breve, liquidità
+- ETF con bucket LUNGO: privilegia crescita, azionario, tematico` : ''}
 Categorie obbligazionarie preferite per questo orizzonte: ${regole.durataObbligaz || 'standard'}
 Peso contesto macro: ${regole.pesoMacro || 'MEDIO'}
 
@@ -551,7 +705,22 @@ router.post('/crea-portafoglio', async (req, res) => {
 
   // Carica ETF dal DB filtrati per profilo + notizie macro in parallelo
   const etfDisponibili = await getEtfPerProfilo(profilo, escludiDistribuzione);
-  const macroContext = '';
+  let macroData = {};
+  let macroContext = '';
+  try {
+    const { getMacroDati } = require('./macro');
+    const { testo, dati } = await getMacroDati();
+    macroContext = testo || '';
+    macroData = dati || {};
+  } catch (e) { console.log('[AI] macro non disponibile:', e.message); }
+  const { bucketBreve, bucketLungo } = req.body; // opzionali: { pct, anni, targetRend }
+  const hasBuckets = bucketBreve && bucketLungo;
+  const checkRend = hasBuckets
+    ? verificaRendimentoComplessivo(
+        [{tipo:'BREVE', pct_allocazione: bucketBreve.pct, orizzonte_anni: bucketBreve.anni, rendimento_target_annuo: bucketBreve.targetRend},
+         {tipo:'LUNGO', pct_allocazione: bucketLungo.pct, orizzonte_anni: bucketLungo.anni, rendimento_target_annuo: bucketLungo.targetRend}],
+        profilo)
+    : null;
   console.log(`[${new Date().toLocaleTimeString()}] Crea portafoglio AI: ${profilo}, ETF disponibili dal DB: ${etfDisponibili.length}, capitale: €${capitale || 'N/D'}`);
   log(EVENTI.AI_CREA_PORTAFOGLIO, { profilo, capitale: capitale || null, maxUSA, nEtfDisponibili: etfDisponibili.length }, req.user?.username).catch(() => {});
 
@@ -567,6 +736,7 @@ Crea un portafoglio ETF ottimale rispettando RIGOROSAMENTE le regole del profilo
 - Orizzonte temporale: ${orizzonteAnni} anni
 - Classe orizzonte: ${parseInt(orizzonteAnni||5)<=3?'BREVE (<=3 anni)':parseInt(orizzonteAnni||5)<=7?'MEDIO (3-7 anni)':'LUNGO (>7 anni)'}
 - ${regole.noteOrizzonte || ''}
+- POSIZIONAMENTO TATTICO: ${(() => { try { const pt = getPosizionetattica(profilo, orizzonteAnni||5, macroData); return `[${pt.scenario}] ${pt.testo}`; } catch(e) { return 'standard'; } })()}
 - Categorie obbligazionarie consigliate per orizzonte: ${regole.durataObbligaz || 'standard'}
 - Categorie da privilegiare: ${regole.pesoCategoriePreferite || 'mix standard'}
 - Capitale disponibile: ${conCapitale ? `€${parseFloat(capitale).toLocaleString('it-IT')}` : 'non specificato'}

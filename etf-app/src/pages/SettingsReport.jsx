@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import AIConfigPanel from './AIConfigPanel';
+import BucketConfig from './BucketConfig';
 
 export function Settings() {
   const { currentUser, updateUser } = useApp();
@@ -63,6 +64,14 @@ export function Settings() {
             <button className="btn btn-primary" onClick={handleSave}>Salva Modifiche</button>
           </div>
         </div>
+
+        {/* Card Bucket */}
+        {currentPortfolio && (
+          <BucketConfig
+            portfolioId={currentPortfolio.id}
+            riskProfile={currentPortfolio.riskProfile}
+          />
+        )}
 
         {/* Card Motore AI */}
         <div style={{ width: 300, flexShrink: 0 }}>

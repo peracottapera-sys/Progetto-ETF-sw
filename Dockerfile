@@ -6,7 +6,7 @@ WORKDIR /app
 
 COPY . .
 
-ARG CACHEBUST=1
+ARG CACHEBUST=2
 RUN cd etf-app && npm install && CI=false npm run build
 RUN mv etf-app/build etf-app/dist
 RUN cd etf-server && npm install

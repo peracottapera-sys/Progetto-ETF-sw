@@ -10,7 +10,7 @@ export default function PortfolioSelector() {
   // step: 'list' | 'new' | 'ai-prompt' | 'ai-loading' | 'ai-result'
   const [step, setStep] = useState('list');
   const [form, setForm] = useState({ name: '', riskProfile: 'Prudente', maxUSA: 'No max' });
-  const [aiForm, setAiForm] = useState({ orizzonteAnni: 10, capitale: '', preferenze: '', escludiDistribuzione: true });
+  const [aiForm, setAiForm] = useState({ orizzonteAnni: 10, capitale: '', preferenze: '', escludiDistribuzione: true, usaBucket: false, pctBreve: 30, anniBreve: 3, rendBreve: '', anniLungo: 10, rendLungo: '' });
   const [error, setError] = useState('');
   const [newPortfolioId, setNewPortfolioId] = useState(null);
   const [aiRisultato, setAiRisultato] = useState(null); // { spiegazione, selezione }
@@ -36,6 +36,8 @@ export default function PortfolioSelector() {
           portfolioId: newPortfolioId,
           profilo: form.riskProfile,
           orizzonteAnni: parseInt(aiForm.orizzonteAnni) || 10,
+          bucketBreve: aiForm.usaBucket ? { pct: aiForm.pctBreve, anni: aiForm.anniBreve, targetRend: parseFloat(aiForm.rendBreve) || null } : undefined,
+          bucketLungo: aiForm.usaBucket ? { pct: 100 - aiForm.pctBreve, anni: aiForm.anniLungo, targetRend: parseFloat(aiForm.rendLungo) || null } : undefined,
           capitale: aiForm.capitale || null,
           conCapitale: !!aiForm.capitale,
           preferenze: aiForm.preferenze,
@@ -192,6 +194,38 @@ export default function PortfolioSelector() {
               <label className="form-label">Orizzonte temporale (anni)</label>
               <input className="input" type="number" min={1} max={30} value={aiForm.orizzonteAnni}
                 onChange={e => setAiForm(f => ({ ...f, orizzonteAnni: e.target.value }))} />
+            </div>
+            <div className="form-group">
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, marginBottom: 8 }}>
+                <input type="checkbox" checked={aiForm.usaBucket}
+                  onChange={e => setAiForm(f => ({ ...f, usaBucket: e.target.checked }))} />
+                <span>🪣 Strategia a <strong>due bucket</strong> (breve + lungo)</span>
+              </label>
+              {aiForm.usaBucket && (
+                <div style={{ background: 'var(--bg-secondary)', borderRadius: 8, padding: '10px 12px', border: '1px solid var(--border)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginBottom: 4 }}>
+                    <span style={{ color: 'var(--accent-blue)', fontWeight: 600 }}>🔵 BREVE: {aiForm.pctBreve}%</span>
+                    <span style={{ color: 'var(--accent-amber)', fontWeight: 600 }}>🟡 LUNGO: {100 - aiForm.pctBreve}%</span>
+                  </div>
+                  <input type="range" min={10} max={80} step={5} value={aiForm.pctBreve}
+                    onChange={e => setAiForm(f => ({ ...f, pctBreve: parseInt(e.target.value) }))}
+                    style={{ width: '100%', accentColor: 'var(--accent-blue)', marginBottom: 10 }} />
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                    <div>
+                      <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 3 }}>Orizzonte breve (anni)</div>
+                      <input className="input" type="number" min={1} max={5} value={aiForm.anniBreve}
+                        onChange={e => setAiForm(f => ({ ...f, anniBreve: parseInt(e.target.value) || 1 }))}
+                        style={{ fontSize: 12, padding: '4px 8px' }} />
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 3 }}>Orizzonte lungo (anni)</div>
+                      <input className="input" type="number" min={5} max={30} value={aiForm.anniLungo}
+                        onChange={e => setAiForm(f => ({ ...f, anniLungo: parseInt(e.target.value) || 5 }))}
+                        style={{ fontSize: 12, padding: '4px 8px' }} />
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
             <div className="form-group">
               <label className="form-label">Capitale disponibile (€) — opzionale</label>

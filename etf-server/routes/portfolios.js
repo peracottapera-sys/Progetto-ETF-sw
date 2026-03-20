@@ -48,7 +48,7 @@ module.exports = (pool) => {
     const { rows: p } = await pool.query('SELECT id FROM portfolios WHERE id = $1 AND user_id = $2', [req.params.id, req.user.id]);
     if (!p[0]) return res.status(404).json({ error: 'Portafoglio non trovato' });
 
-    const { rows } = await pool.query('SELECT isin, selected, tipo FROM portfolio_etf WHERE portfolio_id = $1', [req.params.id]);
+    const { rows } = await pool.query('SELECT isin, selected, tipo, bucket FROM portfolio_etf WHERE portfolio_id = $1', [req.params.id]);
     if (rows.length === 0) return res.json([]);
 
     const isins = rows.map(r => r.isin);
@@ -76,7 +76,7 @@ module.exports = (pool) => {
     res.json(rows.map(r => {
       const cat = catalogMap[r.isin] || {};
       return {
-        isin: r.isin, selected: r.selected, tipo: r.tipo,
+        isin: r.isin, selected: r.selected, tipo: r.tipo, bucket: r.bucket || 'LUNGO',
         quotazione: prezziMap[r.isin] || 0,
         name: cat.name || null, emittente: cat.emittente || null,
         ter: cat.ter ?? null, categoria: cat.categoria || null,
@@ -150,6 +150,52 @@ module.exports = (pool) => {
       console.error('[apply-ai] ERRORE:', err.message);
       res.status(500).json({ error: err.message });
     } finally { client.release(); }
+  });
+
+  // ── Bucket config ─────────────────────────────────────────────────────────────
+
+  router.get('/:id/buckets', authMiddleware, async (req, res) => {
+    const { rows: p } = await pool.query('SELECT id FROM portfolios WHERE id = $1 AND user_id = $2', [req.params.id, req.user.id]);
+    if (!p[0]) return res.status(404).json({ error: 'Portafoglio non trovato' });
+    const { rows } = await pool.query('SELECT * FROM portfolio_buckets WHERE portfolio_id = $1 ORDER BY tipo', [req.params.id]);
+    res.json(rows);
+  });
+
+  router.post('/:id/buckets', authMiddleware, async (req, res) => {
+    const { buckets } = req.body; // [{tipo, pct_allocazione, orizzonte_anni, rendimento_target_annuo}]
+    if (!Array.isArray(buckets) || buckets.length === 0)
+      return res.status(400).json({ error: 'Dati bucket mancanti' });
+    const { rows: p } = await pool.query('SELECT id FROM portfolios WHERE id = $1 AND user_id = $2', [req.params.id, req.user.id]);
+    if (!p[0]) return res.status(404).json({ error: 'Portafoglio non trovato' });
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query('DELETE FROM portfolio_buckets WHERE portfolio_id = $1', [req.params.id]);
+      for (const b of buckets) {
+        await client.query(
+          `INSERT INTO portfolio_buckets (portfolio_id, tipo, pct_allocazione, orizzonte_anni, rendimento_target_annuo)
+           VALUES ($1, $2, $3, $4, $5)`,
+          [req.params.id, b.tipo, b.pct_allocazione, b.orizzonte_anni, b.rendimento_target_annuo || null]
+        );
+      }
+      await client.query('COMMIT');
+      res.json({ ok: true });
+    } catch (e) { await client.query('ROLLBACK'); res.status(500).json({ error: e.message }); }
+    finally { client.release(); }
+  });
+
+  // Assegna bucket a un ETF
+  router.post('/:id/etf-bucket', authMiddleware, async (req, res) => {
+    const { isin, bucket } = req.body;
+    if (!isin || !['BREVE', 'LUNGO'].includes(bucket))
+      return res.status(400).json({ error: 'Dati non validi' });
+    const { rows: p } = await pool.query('SELECT id FROM portfolios WHERE id = $1 AND user_id = $2', [req.params.id, req.user.id]);
+    if (!p[0]) return res.status(404).json({ error: 'Portafoglio non trovato' });
+    await pool.query(
+      'UPDATE portfolio_etf SET bucket = $1 WHERE portfolio_id = $2 AND isin = $3',
+      [bucket, req.params.id, isin]
+    );
+    res.json({ ok: true });
   });
 
   // ── Acquisti ────────────────────────────────────────────────────────────────
