@@ -138,7 +138,6 @@ module.exports = (pool, fetchETF) => {
     const { motivo, isins } = req.body || {};
     res.json({ message: 'Aggiornamento avviato in background' });
     if (isins && Array.isArray(isins) && isins.length > 0) {
-      // Aggiorna solo gli ETF specificati (per portafoglio)
       aggiornaPrezziSelettivo(pool, fetchETF, isins, motivo || 'manual').catch(e => console.error('[trigger-update]', e.message));
     } else {
       aggiornaPrezziCompleto(pool, fetchETF, motivo || 'manual').catch(e => console.error('[trigger-update]', e.message));
@@ -151,12 +150,49 @@ module.exports = (pool, fetchETF) => {
 // ── Aggiornamento prezzi automatico ────────────────────────────────────────
 
 async function aggiornaPrezziSelettivo(pool, fetchETF, isins, motivo = 'manual') {
+  const axios = require('axios');
+  const HEADERS = { 'User-Agent': 'Mozilla/5.0' };
   const oggi = new Date().toISOString().slice(0, 10);
   console.log(`[update-selettivo] Aggiornamento ${isins.length} ETF — ${motivo}`);
+
+  // Leggi ticker_yahoo dal DB per ogni ISIN
+  const ph = isins.map((_, i) => `$${i+1}`).join(',');
+  const { rows: tickerRows } = await pool.query(
+    `SELECT isin, ticker_yahoo FROM etf_catalog WHERE isin IN (${ph})`, isins
+  );
+  const tickerMap = {};
+  tickerRows.forEach(r => { if (r.ticker_yahoo) tickerMap[r.isin] = r.ticker_yahoo; });
+
+  async function fetchQuoteDirect(ticker) {
+    try {
+      const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=5y`;
+      const { data } = await axios.get(url, { headers: HEADERS, timeout: 10000 });
+      const result = data?.chart?.result?.[0];
+      if (!result) return null;
+      const meta = result.meta;
+      const closes = result.indicators?.quote?.[0]?.close || [];
+      const validi = closes.filter(c => c != null);
+      if (validi.length < 2) return null;
+      const prezzo = parseFloat((meta.regularMarketPrice || validi[validi.length-1]).toFixed(3));
+      const l = validi.length;
+      const perf = (idx) => idx >= 0 && idx < l && validi[idx] ? parseFloat(((prezzo - validi[idx]) / validi[idx] * 100).toFixed(2)) : null;
+      return { quotazione: prezzo, perf1m: perf(l-22), perf6m: perf(l-126), perf1y: perf(l-252), perf5y: perf(0) };
+    } catch { return null; }
+  }
+
   let ok = 0, err = 0;
   for (const isin of isins) {
     try {
-      const dati = await fetchETF(isin);
+      const ticker = tickerMap[isin];
+      let dati = null;
+      if (ticker) {
+        dati = await fetchQuoteDirect(ticker);
+      }
+      if (!dati) {
+        // Fallback: usa fetchETF standard (cerca in ISIN_TICKER_MAP)
+        const r = await fetchETF(isin);
+        if (r) dati = { quotazione: r.quotazione, perf1m: r.perf1m, perf6m: r.perf6m, perf1y: r.perf1y, perf5y: r.perf5y };
+      }
       if (dati?.quotazione > 0) {
         await pool.query(`
           INSERT INTO prezzi_storici (isin, data, prezzo, perf1m, perf6m, perf1y, perf5y) VALUES ($1,$2,$3,$4,$5,$6,$7)
@@ -167,8 +203,9 @@ async function aggiornaPrezziSelettivo(pool, fetchETF, isins, motivo = 'manual')
           `UPDATE etf_catalog SET quotazione=$1, perf1m=$2, perf6m=$3, perf1y=$4, perf5y=$5, updated_at=$6 WHERE isin=$7`,
           [dati.quotazione, dati.perf1m, dati.perf6m, dati.perf1y, dati.perf5y, oggi, isin]
         );
+        console.log(`[update-selettivo] ✓ ${isin} (${ticker || 'auto'}) → ${dati.quotazione}`);
         ok++;
-      } else { err++; }
+      } else { console.log(`[update-selettivo] ✗ ${isin} — nessun prezzo`); err++; }
     } catch (e) { console.error(`[update-selettivo] Errore ${isin}:`, e.message); err++; }
     await new Promise(r => setTimeout(r, 300));
   }
