@@ -148,7 +148,7 @@ export default function MacroPanel({ token }) {
         {/* Riga 1: Volatilità e mercati */}
         <div style={{ fontSize: 9, color: 'var(--text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.06em', display:'flex', alignItems:'center', gap:4 }}>
           Volatilità e Mercati
-          <a href="https://tradingeconomics.com/markets" target="_blank" rel="noopener noreferrer" style={{ fontSize:9, color:'var(--text-muted)', opacity:0.6, textDecoration:'none' }}>↗ TE</a>
+          <a href="https://tradingeconomics.com/forecast/market" target="_blank" rel="noopener noreferrer" style={{ fontSize:11, color:'var(--accent-blue)', textDecoration:'underline', textUnderlineOffset:'2px', fontWeight:500 }}>↗ TE</a>
         </div>
         <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 8 }}>
           <Pill label="VIX" valore={dati.vix} colore={colorVIX(dati.vix)} sub={dati.vixLabel} />
@@ -164,7 +164,7 @@ export default function MacroPanel({ token }) {
         {/* Riga 2: Tassi e rendimenti */}
         <div style={{ fontSize: 9, color: 'var(--text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.06em', display:'flex', alignItems:'center', gap:4 }}>
           Tassi e Rendimenti
-          <a href="https://tradingeconomics.com/bonds" target="_blank" rel="noopener noreferrer" style={{ fontSize:9, color:'var(--text-muted)', opacity:0.6, textDecoration:'none' }}>↗ TE</a>
+          <a href="https://tradingeconomics.com/bonds" target="_blank" rel="noopener noreferrer" style={{ fontSize:11, color:'var(--accent-blue)', textDecoration:'underline', textUnderlineOffset:'2px', fontWeight:500 }}>↗ TE</a>
         </div>
         <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 8 }}>
           <Pill label="Tasso Fed" valore={dati.fedFunds} unita="%" colore="var(--accent-amber)" sub="Fed Funds Rate" />
@@ -182,7 +182,7 @@ export default function MacroPanel({ token }) {
         {/* Riga 3: Inflazione */}
         <div style={{ fontSize: 9, color: 'var(--text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.06em', display:'flex', alignItems:'center', gap:4 }}>
           Inflazione (YoY)
-          <a href="https://tradingeconomics.com/country-list/inflation-rate" target="_blank" rel="noopener noreferrer" style={{ fontSize:9, color:'var(--text-muted)', opacity:0.6, textDecoration:'none' }}>↗ TE</a>
+          <a href="https://tradingeconomics.com/country-list/inflation-rate" target="_blank" rel="noopener noreferrer" style={{ fontSize:11, color:'var(--accent-blue)', textDecoration:'underline', textUnderlineOffset:'2px', fontWeight:500 }}>↗ TE</a>
         </div>
         <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 8 }}>
           <Pill label="Inflazione USA (CPI)" valore={dati.cpiUSA} unita="%"
@@ -196,7 +196,7 @@ export default function MacroPanel({ token }) {
         {/* Riga 4: Outlook politica monetaria */}
         <div style={{ fontSize: 9, color: 'var(--text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.06em', display:'flex', alignItems:'center', gap:4 }}>
           Outlook Politica Monetaria
-          <a href="https://tradingeconomics.com/country-list/interest-rate" target="_blank" rel="noopener noreferrer" style={{ fontSize:9, color:'var(--text-muted)', opacity:0.6, textDecoration:'none' }}>↗ TE</a>
+          <a href="https://tradingeconomics.com/country-list/interest-rate" target="_blank" rel="noopener noreferrer" style={{ fontSize:11, color:'var(--accent-blue)', textDecoration:'underline', textUnderlineOffset:'2px', fontWeight:500 }}>↗ TE</a>
         </div>
         <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 8 }}>
           <OutlookBadge label="BCE — prossime mosse" outlook={dati.stimaBCE} />
@@ -229,7 +229,7 @@ export default function MacroPanel({ token }) {
             <div style={{ fontSize: 9, color: 'var(--text-muted)', marginBottom: 6, display:'flex', alignItems:'center', gap:8 }}>
               <span>Fonte: Trading Economics · Aggiornamento mensile</span>
               <a href="https://tradingeconomics.com/matrix" target="_blank" rel="noopener noreferrer"
-                style={{ color:'var(--accent-blue)', textDecoration:'none', fontSize:9 }}>↗ Approfondisci su TE</a>
+                style={{ fontSize:11, color:'var(--accent-blue)', textDecoration:'underline', textUnderlineOffset:'2px', fontWeight:500 }}>↗ Approfondisci su TE</a>
             </div>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 10 }}>
               <thead>
