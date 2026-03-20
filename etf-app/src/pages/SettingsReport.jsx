@@ -4,7 +4,7 @@ import AIConfigPanel from './AIConfigPanel';
 import BucketConfig from './BucketConfig';
 
 export function Settings() {
-  const { currentUser, updateUser } = useApp();
+  const { currentUser, updateUser, currentPortfolio } = useApp();
   const [form, setForm] = useState({ email: currentUser.email || '', newPwd: '', confirmPwd: '' });
   const [saved, setSaved] = useState('');
   const [error, setError] = useState('');
