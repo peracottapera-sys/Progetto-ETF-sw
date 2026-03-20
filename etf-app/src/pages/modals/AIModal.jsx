@@ -36,6 +36,7 @@ function AIModal({ portfolio, onClose }) {
     maxUSA: portfolio?.maxUSA || 'No max',
     note: '',
   });
+  const [bucket, setBucket] = useState({ attivo: false, pctBreve: 30, anniBreve: 3, anniLungo: portfolio?.orizzonteAnni || 10 });
   const [semafori, setSemafori] = useState(null);
   const [puntiChiave, setPuntiChiave] = useState([]);
   const [analisiDettagliata, setAnalisiDettagliata] = useState('');
@@ -58,7 +59,7 @@ function AIModal({ portfolio, onClose }) {
     try {
       const res = await fetch(`${API}/api/ai/analisi`, {
         method: 'POST', headers: authHdr,
-        body: JSON.stringify({ portfolio, opzioni }),
+        body: JSON.stringify({ portfolio, opzioni, bucketBreve: bucket.attivo ? { pct: bucket.pctBreve, anni: bucket.anniBreve } : undefined, bucketLungo: bucket.attivo ? { pct: 100 - bucket.pctBreve, anni: bucket.anniLungo } : undefined }),
       });
       const data = await res.json();
       if (data.semafori || data.analisiDettagliata) {
@@ -311,6 +312,40 @@ function AIModal({ portfolio, onClose }) {
                 <label style={{ fontSize:12, fontWeight:600, color:'var(--text-primary)', display:'block', marginBottom:6 }}>Note o preferenze — opzionale</label>
                 <input type="text" className="input" placeholder="Es: voglio mantenere l'ETF Gold, evitare obbligazionario..."
                   value={opzioni.note} onChange={e => setOpzioni(o => ({...o, note: e.target.value}))} />
+              </div>
+
+              {/* Strategia Bucket */}
+              <div style={{ marginBottom:8, padding:'10px 12px', borderRadius:8, border:'1px solid var(--border)', background:'var(--bg-secondary)' }}>
+                <label style={{ display:'flex', alignItems:'center', gap:8, cursor:'pointer', marginBottom: bucket.attivo ? 10 : 0 }}>
+                  <input type="checkbox" checked={bucket.attivo} onChange={e => setBucket(b => ({...b, attivo: e.target.checked}))} />
+                  <span style={{ fontSize:12, fontWeight:600 }}>🪣 Strategia a due bucket (breve + lungo)</span>
+                  <span style={{ fontSize:11, color:'var(--text-muted)' }}>— opzionale</span>
+                </label>
+                {bucket.attivo && (
+                  <div>
+                    <div style={{ display:'flex', justifyContent:'space-between', fontSize:11, marginBottom:4 }}>
+                      <span style={{ color:'var(--accent-blue)', fontWeight:600 }}>🔵 BREVE: {bucket.pctBreve}%</span>
+                      <span style={{ color:'var(--accent-amber)', fontWeight:600 }}>🟡 LUNGO: {100 - bucket.pctBreve}%</span>
+                    </div>
+                    <input type="range" min={10} max={80} step={5} value={bucket.pctBreve}
+                      onChange={e => setBucket(b => ({...b, pctBreve: parseInt(e.target.value)}))}
+                      style={{ width:'100%', accentColor:'var(--accent-blue)', marginBottom:8 }} />
+                    <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
+                      <div>
+                        <div style={{ fontSize:10, color:'var(--text-muted)', marginBottom:3 }}>Orizzonte breve (anni)</div>
+                        <input className="input" type="number" min={1} max={5} value={bucket.anniBreve}
+                          onChange={e => setBucket(b => ({...b, anniBreve: parseInt(e.target.value)||1}))}
+                          style={{ fontSize:12, padding:'4px 8px' }} />
+                      </div>
+                      <div>
+                        <div style={{ fontSize:10, color:'var(--text-muted)', marginBottom:3 }}>Orizzonte lungo (anni)</div>
+                        <input className="input" type="number" min={5} max={30} value={bucket.anniLungo}
+                          onChange={e => setBucket(b => ({...b, anniLungo: parseInt(e.target.value)||5}))}
+                          style={{ fontSize:12, padding:'4px 8px' }} />
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 

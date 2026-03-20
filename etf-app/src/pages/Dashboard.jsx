@@ -5,6 +5,7 @@ import VenditaModal from './modals/VenditaModal';
 import AIModal from './modals/AIModal';
 import CreaPortafoglioModal from './modals/CreaPortafoglioModal';
 import MacroPanel from './MacroPanel';
+import CatalogPanel from './CatalogPanel';
 
 const API = process.env.REACT_APP_API_URL || (window.location.hostname === 'localhost' ? 'http://localhost:3001' : '');
 
@@ -20,6 +21,7 @@ export default function Dashboard({ setActiveTab }) {
   const [showAI, setShowAI] = useState(false);
   const [showCrea, setShowCrea] = useState(false);
   const [showMacro, setShowMacro] = useState(false);
+  const [showCatalog, setShowCatalog] = useState(false);
   const [pendingData, setPendingData] = useState(null);
 
   // Apri automaticamente il modal con il risultato AI proveniente dal PortfolioSelector
@@ -163,8 +165,8 @@ export default function Dashboard({ setActiveTab }) {
               📊 {showMacro ? 'Chiudi Indicatori' : 'Indicatori'}
             </button>
             <button className="btn btn-secondary" style={{ fontSize: 12 }}
-              onClick={() => setActiveTab && setActiveTab('settings')}>
-              📋 Catalogo ETF
+              onClick={() => setShowCatalog(c => !c)}>
+              📋 {showCatalog ? 'Chiudi Catalogo' : 'Catalogo ETF'}
             </button>
             <button className="btn btn-primary" style={{ fontSize: 12, background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}
               onClick={() => setShowAI(true)}>
@@ -175,6 +177,9 @@ export default function Dashboard({ setActiveTab }) {
 
         {showMacro && (
           <MacroPanel token={token} />
+        )}
+        {showCatalog && (
+          <CatalogPanel />
         )}
 
         <div style={{ display: 'flex', gap: 10, marginBottom: 12, flexWrap: 'wrap' }}>

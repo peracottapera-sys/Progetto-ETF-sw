@@ -13,6 +13,7 @@ function CreaPortafoglioModal({ portfolioId, onClose, initialProfilo, initialDat
     escludiDistribuzione: true,
     maxUSA: 'No max',
   });
+  const [bucket, setBucket] = useState({ attivo: false, pctBreve: 30, anniBreve: 3 });
   const [spiegazione, setSpiegazione] = useState(initialData?.spiegazione || '');
   const [selezione, setSelezione] = useState(initialData?.selezione || []);
   const [approvate, setApprovate] = useState(() => {
@@ -41,6 +42,8 @@ function CreaPortafoglioModal({ portfolioId, onClose, initialProfilo, initialDat
         body: JSON.stringify({
           profilo: form.profilo,
           orizzonteAnni: form.orizzonteAnni,
+          bucketBreve: bucket.attivo ? { pct: bucket.pctBreve, anni: bucket.anniBreve } : undefined,
+          bucketLungo: bucket.attivo ? { pct: 100 - bucket.pctBreve, anni: parseInt(form.orizzonteAnni) || 10 } : undefined,
           capitale: form.capitale ? parseFloat(form.capitale) : null,
           preferenze: form.preferenze,
           escludiDistribuzione: form.escludiDistribuzione,
