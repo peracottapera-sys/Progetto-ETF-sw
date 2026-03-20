@@ -513,24 +513,35 @@ export function AppProvider({ children }) {
     if (!portfolio) return { ok: false, error: 'Portafoglio non trovato' };
     const isins = [...new Set(portfolio.etfs.map(e => e.isin))];
     try {
-      const res = await fetch(`${API}/api/etf/batch`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
+      // 1. Chiedi al server di aggiornare i prezzi via Yahoo Finance
+      const res = await fetch(`${API}/api/etf-catalog/batch`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         body: JSON.stringify({ isins }),
       });
-      const risultati = await res.json();
+      const risultatiArr = await res.json(); // array [{isin, quotazione, perf1m,...}]
+
+      // 2. Converti array → mappa per isin
+      const risultati = {};
+      (Array.isArray(risultatiArr) ? risultatiArr : []).forEach(r => {
+        if (r.isin) risultati[r.isin] = r;
+      });
+
+      // 3. Aggiorna quotazioni in memoria
       setPortfolios(ps => ps.map(p => {
         if (p.id !== portfolioId) return p;
         return {
           ...p, etfs: p.etfs.map(e => {
             const r = risultati[e.isin];
-            if (!r) return e;
-            return { ...e, quotazione: r.quotazione ?? e.quotazione, perf1m: r.perf1m ?? e.perf1m, perf6m: r.perf6m ?? e.perf6m, perf1y: r.perf1y ?? e.perf1y, perf5y: r.perf5y ?? e.perf5y, ultimoAggiornamento: r.aggiornato };
+            if (!r || !r.quotazione) return e;
+            return { ...e, quotazione: r.quotazione, perf1m: r.perf1m ?? e.perf1m, perf6m: r.perf6m ?? e.perf6m, perf1y: r.perf1y ?? e.perf1y, perf5y: r.perf5y ?? e.perf5y };
           })
         };
       }));
-      return { ok: true, trovati: Object.keys(risultati).length, totale: isins.length };
-    } catch {
-      return { ok: false, error: 'Server non raggiungibile. Avvia etf-server!' };
+
+      const aggiornati = Object.values(risultati).filter(r => r.quotazione > 0).length;
+      return { ok: true, trovati: aggiornati, totale: isins.length };
+    } catch (e) {
+      return { ok: false, error: 'Errore aggiornamento prezzi: ' + e.message };
     }
   };
 

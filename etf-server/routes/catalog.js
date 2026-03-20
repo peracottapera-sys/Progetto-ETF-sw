@@ -86,21 +86,57 @@ module.exports = (pool, fetchETF) => {
     try {
       const placeholders = isins.map((_, i) => `$${i + 1}`).join(',');
       const { rows } = await pool.query(`SELECT * FROM etf_catalog WHERE isin IN (${placeholders})`, isins);
+
+      // 1. Prendi prezzi da prezzi_storici (ultimi 90 giorni)
+      const cutoff = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
       const prezziMap = {};
       try {
         const { rows: prezziRows } = await pool.query(
-          `SELECT DISTINCT ON (isin) isin, prezzo FROM prezzi_storici WHERE isin IN (${placeholders}) AND prezzo > 0 ORDER BY isin, data DESC`, isins);
-        prezziRows.forEach(p => { prezziMap[p.isin] = p.prezzo; });
+          `SELECT DISTINCT ON (isin) isin, prezzo, perf1m, perf6m, perf1y, perf5y
+           FROM prezzi_storici WHERE isin IN (${placeholders}) AND prezzo > 0 AND data >= $${isins.length + 1}
+           ORDER BY isin, data DESC`,
+          [...isins, cutoff]);
+        prezziRows.forEach(p => { prezziMap[p.isin] = p; });
       } catch {}
-      res.json(rows.map(r => ({
-        isin: r.isin, name: r.name, emittente: r.emittente || '', ter: r.ter ?? 0,
-        tassazione: 26, quotazione: prezziMap[r.isin] ?? 0,
-        annoNascita: ETF_ANNO_MAP[r.isin] || null, capitalizzazione: r.aum_mln ?? 0,
-        variabilita: r.vol1y ?? 0, maxDrawdown: r.maxdd1y ?? 0,
-        categoria: r.categoria || 'Altro', valuta: r.valuta || 'EUR',
-        perf1m: r.perf1m ?? 0, perf6m: r.perf6m ?? 0, perf1y: r.perf1y ?? 0, perf5y: r.perf5y ?? 0,
-      })));
-    } catch(e) { console.error(e.message); res.json([]); }
+
+      // 2. Per ETF senza prezzo recente, tenta fetch Yahoo in tempo reale
+      const isinsSenzaPrezzo = isins.filter(isin => !prezziMap[isin]);
+      if (isinsSenzaPrezzo.length > 0 && fetchETF) {
+        const oggi = new Date().toISOString().slice(0, 10);
+        await Promise.allSettled(isinsSenzaPrezzo.map(async isin => {
+          try {
+            const dati = await fetchETF(isin);
+            if (dati?.quotazione > 0) {
+              prezziMap[isin] = { prezzo: dati.quotazione, perf1m: dati.perf1m, perf6m: dati.perf6m, perf1y: dati.perf1y, perf5y: dati.perf5y };
+              // Salva in DB per usi futuri
+              await pool.query(
+                `INSERT INTO prezzi_storici (isin, data, prezzo, perf1m, perf6m, perf1y, perf5y) VALUES ($1,$2,$3,$4,$5,$6,$7)
+                 ON CONFLICT(isin, data) DO UPDATE SET prezzo=EXCLUDED.prezzo, perf1m=EXCLUDED.perf1m,
+                   perf6m=EXCLUDED.perf6m, perf1y=EXCLUDED.perf1y, perf5y=EXCLUDED.perf5y`,
+                [isin, oggi, dati.quotazione, dati.perf1m, dati.perf6m, dati.perf1y, dati.perf5y]
+              ).catch(() => {});
+              await pool.query(
+                `UPDATE etf_catalog SET quotazione=$1, perf1m=$2, perf6m=$3, perf1y=$4, perf5y=$5, updated_at=$6 WHERE isin=$7`,
+                [dati.quotazione, dati.perf1m, dati.perf6m, dati.perf1y, dati.perf5y, oggi, isin]
+              ).catch(() => {});
+            }
+          } catch {}
+        }));
+      }
+
+      res.json(rows.map(r => {
+        const p = prezziMap[r.isin];
+        return {
+          isin: r.isin, name: r.name, emittente: r.emittente || '', ter: r.ter ?? 0,
+          tassazione: 26, quotazione: p?.prezzo ?? r.quotazione ?? 0,
+          annoNascita: ETF_ANNO_MAP[r.isin] || null, capitalizzazione: r.aum_mln ?? 0,
+          variabilita: r.vol1y ?? 0, maxDrawdown: r.maxdd1y ?? 0,
+          categoria: r.categoria || 'Altro', valuta: r.valuta || 'EUR',
+          perf1m: p?.perf1m ?? r.perf1m ?? 0, perf6m: p?.perf6m ?? r.perf6m ?? 0,
+          perf1y: p?.perf1y ?? r.perf1y ?? 0, perf5y: p?.perf5y ?? r.perf5y ?? 0,
+        };
+      }));
+    } catch(e) { console.error('[batch]', e.message); res.json([]); }
   });
 
   router.post('/:isin/ticker', async (req, res) => {
