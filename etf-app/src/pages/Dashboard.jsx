@@ -153,20 +153,20 @@ export default function Dashboard({ setActiveTab }) {
               </span>
             )}
             <button className="btn btn-secondary" style={{ fontSize: 12 }}
-              onClick={handleAggiornaPressi} disabled={aggiornando}>
-              {aggiornando ? '⏳ Aggiornamento...' : '🔄 Aggiorna Prezzi'}
-            </button>
-            <button className="btn btn-secondary" style={{ fontSize: 12, background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', color: 'white', border: 'none' }}
-              onClick={() => setShowCrea(true)}>
-              ✨ Crea con AI
+              onClick={() => setShowCatalog(c => !c)}>
+              📋 {showCatalog ? 'Chiudi Catalogo' : 'Catalogo ETF'}
             </button>
             <button className="btn btn-secondary" style={{ fontSize: 12 }}
               onClick={() => setShowMacro(m => !m)}>
               📊 {showMacro ? 'Chiudi Indicatori' : 'Indicatori'}
             </button>
             <button className="btn btn-secondary" style={{ fontSize: 12 }}
-              onClick={() => setShowCatalog(c => !c)}>
-              📋 {showCatalog ? 'Chiudi Catalogo' : 'Catalogo ETF'}
+              onClick={handleAggiornaPressi} disabled={aggiornando}>
+              {aggiornando ? '⏳ Aggiornamento...' : '🔄 Aggiorna Prezzi'}
+            </button>
+            <button className="btn btn-secondary" style={{ fontSize: 12, background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', color: 'white', border: 'none' }}
+              onClick={() => setShowCrea(true)}>
+              ✨ Crea con AI
             </button>
             <button className="btn btn-primary" style={{ fontSize: 12, background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}
               onClick={() => setShowAI(true)}>

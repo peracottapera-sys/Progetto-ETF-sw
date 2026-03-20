@@ -161,15 +161,15 @@ async function initDB() {
   }
   // Seed ai_config — valori default scorecard
   const aiConfigDefaults = [
-    ['peso_num_etf','N. ETF nel portafoglio','HARD',10,0,20,'Peso della regola sul numero di ETF'],
-    ['peso_quota_azion','Quota azionaria target','HARD',12,0,20,'Peso del target azionario per profilo'],
-    ['peso_max_drawdown','Max Drawdown 1Y','HARD',10,0,20,'Peso vincolo drawdown singolo ETF'],
-    ['peso_capitaliz','Capitalizzazione minima','HARD',8,0,20,'Peso filtro AUM minimo'],
+    ['peso_num_etf','N. ETF nel portafoglio','HARD',11,0,20,'Peso della regola sul numero di ETF'],
+    ['peso_quota_azion','Quota azionaria target','HARD',15,0,20,'Peso del target azionario per profilo'],
+    ['peso_max_drawdown','Max Drawdown 1Y','HARD',12,0,20,'Peso vincolo drawdown singolo ETF'],
+    ['peso_capitaliz','Capitalizzazione minima','HARD',10,0,20,'Peso filtro AUM minimo'],
     ['peso_limite_usa','Limite esposizione USA','HARD',7,0,20,'Peso vincolo geografico USA'],
-    ['peso_ter','TER ponderato','SOFT',8,0,15,'Peso costo totale ponderato'],
-    ['peso_correlazione','Correlazione tra ETF','SOFT',7,0,15,'Peso diversificazione (corr <0.6)'],
-    ['peso_volatilita','Volatilita media','SOFT',6,0,15,'Peso volatilita ponderata'],
-    ['peso_hedging','Hedging valuta non EUR','SOFT',5,0,15,'Peso copertura valutaria'],
+    ['peso_ter','TER ponderato','SOFT',10,0,15,'Peso costo totale ponderato'],
+    ['peso_correlazione','Correlazione tra ETF','SOFT',9,0,15,'Peso diversificazione (corr <0.6)'],
+    ['peso_volatilita','Volatilita media','SOFT',7,0,15,'Peso volatilita ponderata'],
+    ['peso_hedging','Hedging valuta non EUR','SOFT',4,0,15,'Peso copertura valutaria'],
     ['peso_vix','VIX (volatilita mercato)','MACRO',4,0,10,'Peso VIX nelle raccomandazioni'],
     ['peso_tassi','Tassi BCE/Fed','MACRO',4,0,10,'Peso tassi interesse'],
     ['peso_inflazione','Inflazione EU/USA','MACRO',3,0,10,'Peso inflazione'],
@@ -259,11 +259,11 @@ app.put('/api/ai/config/:key', authMiddleware, async (req, res) => {
 app.post('/api/ai/config/reset', authMiddleware, async (req, res) => {
   try {
     await pool.query(`UPDATE ai_config SET valore = CASE
-      WHEN key='peso_num_etf' THEN 10 WHEN key='peso_quota_azion' THEN 12
-      WHEN key='peso_max_drawdown' THEN 10 WHEN key='peso_capitaliz' THEN 8
-      WHEN key='peso_limite_usa' THEN 7 WHEN key='peso_ter' THEN 8
-      WHEN key='peso_correlazione' THEN 7 WHEN key='peso_volatilita' THEN 6
-      WHEN key='peso_hedging' THEN 5 WHEN key='peso_vix' THEN 4
+      WHEN key='peso_num_etf' THEN 11 WHEN key='peso_quota_azion' THEN 15
+      WHEN key='peso_max_drawdown' THEN 12 WHEN key='peso_capitaliz' THEN 10
+      WHEN key='peso_limite_usa' THEN 7 WHEN key='peso_ter' THEN 10
+      WHEN key='peso_correlazione' THEN 9 WHEN key='peso_volatilita' THEN 7
+      WHEN key='peso_hedging' THEN 4 WHEN key='peso_vix' THEN 4
       WHEN key='peso_tassi' THEN 4 WHEN key='peso_inflazione' THEN 3
       WHEN key='peso_petrolio' THEN 2 WHEN key='peso_curva_eurusd' THEN 2
       ELSE valore END, updated_at=NOW()`);

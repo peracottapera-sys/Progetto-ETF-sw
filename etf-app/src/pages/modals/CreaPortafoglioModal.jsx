@@ -123,6 +123,28 @@ function CreaPortafoglioModal({ portfolioId, onClose, initialProfilo, initialDat
                   <label className="form-label">Orizzonte (anni)</label>
                   <input className="input" type="number" min="1" max="30"
                     value={form.orizzonteAnni} onChange={e => setForm(f => ({ ...f, orizzonteAnni: e.target.value }))} />
+
+              {/* Strategia Bucket */}
+              <div style={{ marginTop:10, padding:'8px 12px', borderRadius:8, border:'1px solid var(--border)', background:'var(--bg-secondary)' }}>
+                <label style={{ display:'flex', alignItems:'center', gap:8, cursor:'pointer' }}>
+                  <input type="checkbox" checked={bucket.attivo} onChange={e => setBucket(b => ({...b, attivo: e.target.checked}))} />
+                  <span style={{ fontSize:12, fontWeight:600 }}>🪣 Due bucket temporali: breve (2-3 anni) + lungo</span>
+                  <span style={{ fontSize:11, color:'var(--text-muted)' }}>— opzionale</span>
+                </label>
+                {bucket.attivo && (
+                  <div style={{ display:'flex', alignItems:'center', gap:10, marginTop:6 }}>
+                    <span style={{ fontSize:10, color:'var(--accent-blue)', fontWeight:600, flexShrink:0 }}>🔵 {bucket.pctBreve}%</span>
+                    <input type="range" min={10} max={80} step={5} value={bucket.pctBreve}
+                      onChange={e => setBucket(b => ({...b, pctBreve: parseInt(e.target.value)}))}
+                      style={{ flex:1, accentColor:'var(--accent-blue)' }} />
+                    <span style={{ fontSize:10, color:'var(--accent-amber)', fontWeight:600, flexShrink:0 }}>🟡 {100-bucket.pctBreve}%</span>
+                    <input className="input" type="number" min={1} max={5} value={bucket.anniBreve}
+                      onChange={e => setBucket(b => ({...b, anniBreve: parseInt(e.target.value)||1}))}
+                      style={{ fontSize:11, padding:'3px 6px', width:48 }} title="Anni breve" />
+                    <span style={{ fontSize:10, color:'var(--text-muted)' }}>/ {form.orizzonteAnni} anni</span>
+                  </div>
+                )}
+              </div>
                 </div>
               </div>
               {/* Riga 2: Capitale + Max USA */}
