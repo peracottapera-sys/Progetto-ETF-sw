@@ -512,21 +512,31 @@ export function AppProvider({ children }) {
     const portfolio = portfolios.find(p => p.id === portfolioId);
     if (!portfolio) return { ok: false, error: 'Portafoglio non trovato' };
     const isins = [...new Set(portfolio.etfs.map(e => e.isin))];
+    const authHdr = { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) };
     try {
-      // 1. Chiedi al server di aggiornare i prezzi via Yahoo Finance
+      // 1. Forza fetch Yahoo per ogni ETF del portafoglio
+      await fetch(`${API}/api/etf-catalog/admin/trigger-update`, {
+        method: 'POST', headers: authHdr,
+        body: JSON.stringify({ motivo: 'manual', isins }),
+      }).catch(() => {});
+
+      // 2. Aspetta 4 secondi che il server aggiorni
+      await new Promise(r => setTimeout(r, 4000));
+
+      // 3. Rileggi prezzi aggiornati
       const res = await fetch(`${API}/api/etf-catalog/batch`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        method: 'POST', headers: authHdr,
         body: JSON.stringify({ isins }),
       });
-      const risultatiArr = await res.json(); // array [{isin, quotazione, perf1m,...}]
+      const risultatiArr = await res.json();
 
-      // 2. Converti array → mappa per isin
+      // 4. Converti array → mappa per isin
       const risultati = {};
       (Array.isArray(risultatiArr) ? risultatiArr : []).forEach(r => {
         if (r.isin) risultati[r.isin] = r;
       });
 
-      // 3. Aggiorna quotazioni in memoria
+      // 5. Aggiorna in memoria
       setPortfolios(ps => ps.map(p => {
         if (p.id !== portfolioId) return p;
         return {
@@ -541,7 +551,7 @@ export function AppProvider({ children }) {
       const aggiornati = Object.values(risultati).filter(r => r.quotazione > 0).length;
       return { ok: true, trovati: aggiornati, totale: isins.length };
     } catch (e) {
-      return { ok: false, error: 'Errore aggiornamento prezzi: ' + e.message };
+      return { ok: false, error: 'Errore: ' + e.message };
     }
   };
 
