@@ -132,7 +132,7 @@ function getPosizionetattica(profilo, orizzonteAnni, macro) {
         lungo: 'Gestisci con calma. Quota commodity/energy in sovrappeso tattico. Azionario globale con tilt value.',
       },
       Aggressivo: {
-        breve: 'SCENARIO ATTUALE: tassi fermi con rischio rialzo — OPPORTUNITA' SELETTIVE. SOVRAPPESA: energy ETF (Brent alto), commodity, azionario value europeo, real assets. RIDUCI: tech growth puro, obbligazioni. In questo contesto il rischio è asimmetrico: chi sale guadagna molto.',
+        breve: 'SCENARIO ATTUALE: tassi fermi con rischio rialzo — OPPORTUNITA SELETTIVE. SOVRAPPESA: energy ETF (Brent alto), commodity, azionario value europeo, real assets. RIDUCI: tech growth puro, obbligazioni. In questo contesto il rischio è asimmetrico: chi sale guadagna molto.',
         medio: 'Tilt tattico verso value, energy, financials (beneficiano da tassi alti). Mantieni azionario globale. Riduci duration. Crypto/tematici ad alto beta solo con stop mentali.',
         lungo: 'Ciclo passeggero. Mantieni mix aggressivo standard con tilt verso inflation-resistant assets.',
       },
@@ -140,7 +140,7 @@ function getPosizionetattica(profilo, orizzonteAnni, macro) {
     CRISI_MERCATI: {
       Prudente: { breve: 'VIX >35: massima difesa. Monetario EUR, obbligazioni governative breve, zero azionario se possibile. Attendi stabilizzazione.', medio: 'Crisi in corso: riduci azionario al minimo profilo, aumenta cash e obblig. gov. breve.', lungo: 'Le crisi sono temporanee su orizzonti lunghi. Mantieni esposizione, evita vendite in panico.' },
       Bilanciato: { breve: 'VIX >35: riduzione tattica azionario -10% dal target. Aumenta monetario. Niente acquisti aggressivi.', medio: 'Mantieni profilo ma con tilt difensivo. Opportunità in obblig. corp. investment grade.', lungo: 'Occasion di ribilanciamento. Mantieni o aumenta azionario se prezzi scendono molto.' },
-      Aggressivo: { breve: 'VIX >35: le crisi profonde sono opportunità per l'aggressivo. Tieni liquidità pronta per entrare su cali. Obbligazioni ZERO. Azionario globale e tematici su livelli bassi.', medio: 'Accumula su cali. Tematici AI, tech, emergenti a sconto.', lungo: 'Massima opportunità storica. Aumenta esposizione su cali prolungati.' },
+      Aggressivo: { breve: 'VIX >35: le crisi profonde sono opportunità per l aggressivo. Tieni liquidità pronta per entrare su cali. Obbligazioni ZERO. Azionario globale e tematici su livelli bassi.', medio: 'Accumula su cali. Tematici AI, tech, emergenti a sconto.', lungo: 'Massima opportunità storica. Aumenta esposizione su cali prolungati.' },
     },
     EASING_CICLO: {
       Prudente: { breve: 'Tagli tassi: prolunga leggermente duration (3-5Y). Obbligazioni corporate investment grade beneficiano. Mantieni quota azionario difensivo.', medio: 'Contesto favorevole per obbligazioni. Allunga duration progressivamente.', lungo: 'Ottimo per obbligazioni lungo termine. Mantieni mix standard.' },
