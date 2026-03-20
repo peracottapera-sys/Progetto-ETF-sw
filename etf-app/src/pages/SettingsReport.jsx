@@ -23,10 +23,10 @@ export function Settings() {
     <div style={{ padding: '20px 16px' }}>
       <h2 style={{ fontFamily: 'DM Serif Display, serif', fontSize: 24, marginBottom: 24 }}>Impostazioni</h2>
 
-      <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start' }}>
+      <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
 
         {/* Colonna sinistra — Profilo */}
-        <div style={{ width: 300, flexShrink: 0 }}>
+        <div style={{ width: 240, flexShrink: 0 }}>
           <div className="card">
             <div className="card-title">Dati Account</div>
 
@@ -84,8 +84,12 @@ export function Settings() {
             <div style={{ fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.5 }}>
               Include: parametri per profilo, gerarchia vincoli, mappa esposizione USA, fonti dati.
             </div>
-            <AIConfigPanel />
           </div>
+        </div>
+
+        {/* Colonna centrale — Pesi Motore AI */}
+        <div style={{ width: 280, flexShrink: 0 }}>
+          <AIConfigPanel />
         </div>
 
         {/* Colonna destra — Catalogo ETF */}

@@ -21,24 +21,16 @@ function SliderRow({ item, onChange }) {
   };
 
   return (
-    <div style={{ padding: '10px 14px', borderRadius: 8, background: cat.bg,
-      border: `1px solid ${cat.border}33`, marginBottom: 6 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-        <div>
-          <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)' }}>{item.label}</span>
-          <span style={{ fontSize: 10, color: cat.testo, marginLeft: 8, fontWeight: 600 }}>{item.categoria}</span>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 13, fontWeight: 700, color: cat.testo, minWidth: 28, textAlign: 'right' }}>{val}</span>
-          <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>/ {item.max_val}</span>
-        </div>
+    <div style={{ padding: '5px 8px', borderRadius: 6, background: cat.bg,
+      border: `1px solid ${cat.border}33`, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 8 }}>
+      <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-primary)', flex: 1, minWidth: 0,
+        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={item.descrizione}>
+        {item.label}
       </div>
       <input type="range" min={item.min_val} max={item.max_val} step={1} value={val}
         onChange={handleChange}
-        style={{ width: '100%', accentColor: cat.border, height: 4, cursor: 'pointer' }} />
-      {item.descrizione && (
-        <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 4 }}>{item.descrizione}</div>
-      )}
+        style={{ width: 80, accentColor: cat.border, cursor: 'pointer', flexShrink: 0 }} />
+      <span style={{ fontSize: 11, fontWeight: 700, color: cat.testo, minWidth: 20, textAlign: 'right', flexShrink: 0 }}>{val}</span>
     </div>
   );
 }
@@ -108,7 +100,7 @@ export default function AIConfigPanel() {
   const totPesi = config.reduce((s, c) => s + (modified[c.key] ?? c.valore), 0);
 
   return (
-    <div className="card" style={{ marginTop: 20 }}>
+    <div className="card">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
         <div className="card-title">⚖️ Pesi Motore AI</div>
         <div style={{ fontSize: 12, color: totPesi === 100 ? 'var(--accent-green)' : 'var(--accent-amber)',
@@ -117,9 +109,8 @@ export default function AIConfigPanel() {
           {totPesi !== 100 && <span style={{ fontSize: 10, marginLeft: 4 }}>⚠️ non sommano 100</span>}
         </div>
       </div>
-      <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 16, lineHeight: 1.5 }}>
-        Modifica i pesi relativi di ogni regola nel motore AI. Le regole HARD bloccano sempre
-        indipendentemente dal peso — il peso influenza quanto l'AI enfatizza ogni criterio nei suggerimenti.
+      <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 10, lineHeight: 1.4 }}>
+        Pesi relativi delle regole AI. HARD = vincolo assoluto; il peso influenza l'enfasi nei suggerimenti.
       </div>
 
       {loading && <div style={{ textAlign: 'center', padding: 20, color: 'var(--text-muted)' }}>Caricamento...</div>}
@@ -128,12 +119,12 @@ export default function AIConfigPanel() {
         if (!items.length) return null;
         const c = CAT_COLORE[cat];
         return (
-          <div key={cat} style={{ marginBottom: 16 }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: c.testo, textTransform: 'uppercase',
-              letterSpacing: '0.08em', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
-              {c.label}
-              <span style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 400 }}>
-                (totale: {items.reduce((s, i) => s + (modified[i.key] ?? i.valore), 0)} pt)
+          <div key={cat} style={{ marginBottom: 10 }}>
+            <div style={{ fontSize: 9, fontWeight: 700, color: c.testo, textTransform: 'uppercase',
+              letterSpacing: '0.06em', marginBottom: 4, display: 'flex', justifyContent: 'space-between' }}>
+              <span>{cat}</span>
+              <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>
+                {items.reduce((s, i) => s + (modified[i.key] ?? i.valore), 0)} pt
               </span>
             </div>
             {items.map(item => (

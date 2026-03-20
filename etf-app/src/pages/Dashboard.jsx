@@ -8,7 +8,7 @@ import MacroPanel from './MacroPanel';
 
 const API = process.env.REACT_APP_API_URL || (window.location.hostname === 'localhost' ? 'http://localhost:3001' : '');
 
-export default function Dashboard() {
+export default function Dashboard({ setActiveTab }) {
   const { currentPortfolio, toggleEtfSelection, aggiornaPrezziBatch, token, loadPortfoliosFromDB, currentUser, pendingAIResult, setPendingAIResult } = useApp();
   const [sortKey, setSortKey] = useState('tipo');
   const [sortDir, setSortDir] = useState(1);
@@ -161,6 +161,10 @@ export default function Dashboard() {
             <button className="btn btn-secondary" style={{ fontSize: 12 }}
               onClick={() => setShowMacro(m => !m)}>
               📊 {showMacro ? 'Chiudi Indicatori' : 'Indicatori'}
+            </button>
+            <button className="btn btn-secondary" style={{ fontSize: 12 }}
+              onClick={() => setActiveTab && setActiveTab('settings')}>
+              📋 Catalogo ETF
             </button>
             <button className="btn btn-primary" style={{ fontSize: 12, background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}
               onClick={() => setShowAI(true)}>

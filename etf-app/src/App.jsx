@@ -17,7 +17,7 @@ function AppInner() {
   if (!currentPortfolio) return <PortfolioSelector />;
 
   const pages = {
-    dashboard: <Dashboard />,
+    dashboard: <Dashboard setActiveTab={setActiveTab} />,
     performance: <Performance />,
     report: <Report />,
     storico: <Reports />,
