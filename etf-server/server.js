@@ -6,8 +6,6 @@ const { Pool } = require('pg');
 const path    = require('path');
 const fs      = require('fs');
 
-const { log, setPool, EVENTI } = require('./routes/logger');
-
 const app  = express();
 const PORT = process.env.PORT || 3001;
 
@@ -85,6 +83,26 @@ async function initDB() {
       key TEXT PRIMARY KEY,
       value TEXT
     );
+    CREATE TABLE IF NOT EXISTS ai_config (
+      key TEXT PRIMARY KEY,
+      label TEXT NOT NULL,
+      categoria TEXT NOT NULL,
+      valore REAL NOT NULL DEFAULT 50,
+      min_val REAL NOT NULL DEFAULT 0,
+      max_val REAL NOT NULL DEFAULT 100,
+      descrizione TEXT,
+      updated_at TIMESTAMPTZ DEFAULT NOW()
+    );
+    CREATE TABLE IF NOT EXISTS app_logs (
+      id SERIAL PRIMARY KEY,
+      ts TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      evento TEXT NOT NULL,
+      utente TEXT,
+      dettagli JSONB,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    );
+    CREATE INDEX IF NOT EXISTS idx_app_logs_ts ON app_logs(ts DESC);
+    CREATE INDEX IF NOT EXISTS idx_app_logs_evento ON app_logs(evento);
     CREATE TABLE IF NOT EXISTS vendite (
       id SERIAL PRIMARY KEY,
       portfolio_id TEXT NOT NULL REFERENCES portfolios(id) ON DELETE CASCADE,
@@ -97,16 +115,6 @@ async function initDB() {
       note TEXT,
       created_at TIMESTAMPTZ DEFAULT NOW()
     );
-    CREATE TABLE IF NOT EXISTS app_logs (
-      id SERIAL PRIMARY KEY,
-      ts TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-      evento TEXT NOT NULL,
-      utente TEXT,
-      dettagli JSONB,
-      created_at TIMESTAMPTZ DEFAULT NOW()
-    );
-    CREATE INDEX IF NOT EXISTS idx_app_logs_ts ON app_logs(ts DESC);
-    CREATE INDEX IF NOT EXISTS idx_app_logs_evento ON app_logs(evento);
     CREATE TABLE IF NOT EXISTS etf_catalog (
       isin TEXT PRIMARY KEY,
       name TEXT,
@@ -140,6 +148,29 @@ async function initDB() {
       ['u1', 'demo', bcrypt.hashSync('demo123', 10), 'demo@email.com']
     );
     console.log('✓ Utente demo creato');
+  }
+  // Seed ai_config — valori default scorecard
+  const aiConfigDefaults = [
+    ['peso_num_etf','N. ETF nel portafoglio','HARD',10,0,20,'Peso della regola sul numero di ETF'],
+    ['peso_quota_azion','Quota azionaria target','HARD',12,0,20,'Peso del target azionario per profilo'],
+    ['peso_max_drawdown','Max Drawdown 1Y','HARD',10,0,20,'Peso vincolo drawdown singolo ETF'],
+    ['peso_capitaliz','Capitalizzazione minima','HARD',8,0,20,'Peso filtro AUM minimo'],
+    ['peso_limite_usa','Limite esposizione USA','HARD',7,0,20,'Peso vincolo geografico USA'],
+    ['peso_ter','TER ponderato','SOFT',8,0,15,'Peso costo totale ponderato'],
+    ['peso_correlazione','Correlazione tra ETF','SOFT',7,0,15,'Peso diversificazione (corr <0.6)'],
+    ['peso_volatilita','Volatilita media','SOFT',6,0,15,'Peso volatilita ponderata'],
+    ['peso_hedging','Hedging valuta non EUR','SOFT',5,0,15,'Peso copertura valutaria'],
+    ['peso_vix','VIX (volatilita mercato)','MACRO',4,0,10,'Peso VIX nelle raccomandazioni'],
+    ['peso_tassi','Tassi BCE/Fed','MACRO',4,0,10,'Peso tassi interesse'],
+    ['peso_inflazione','Inflazione EU/USA','MACRO',3,0,10,'Peso inflazione'],
+    ['peso_petrolio','Petrolio Brent','MACRO',2,0,10,'Peso petrolio'],
+    ['peso_curva_eurusd','Curva tassi / EUR/USD','MACRO',2,0,10,'Peso curva e cambio'],
+  ];
+  for (const [key,label,cat,val,min,max,desc] of aiConfigDefaults) {
+    await pool.q(
+      `INSERT INTO ai_config (key,label,categoria,valore,min_val,max_val,descrizione) VALUES ($1,$2,$3,$4,$5,$6,$7) ON CONFLICT (key) DO NOTHING`,
+      [key,label,cat,val,min,max,desc]
+    );
   }
   // Migrazioni sicure
   await pool.q('ALTER TABLE etf_catalog ADD COLUMN IF NOT EXISTS maxdd5y REAL');
@@ -191,9 +222,45 @@ app.get('/api/test', async (req, res) => {
   } catch (e) { res.json({ errore: e.message }); }
 });
 
-// ── App Logs endpoint ────────────────────────────────────────────────────
+// ── AI Config endpoint ───────────────────────────────────────────────────
 const authMiddleware = require('./middleware/auth');
 
+app.get('/api/ai/config', authMiddleware, async (req, res) => {
+  try {
+    const { rows } = await pool.query('SELECT * FROM ai_config ORDER BY categoria, key');
+    res.json({ ok: true, config: rows });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.put('/api/ai/config/:key', authMiddleware, async (req, res) => {
+  const { valore } = req.body;
+  if (valore == null || isNaN(parseFloat(valore))) return res.status(400).json({ error: 'Valore non valido' });
+  try {
+    const { rows } = await pool.query(
+      `UPDATE ai_config SET valore=$1, updated_at=NOW() WHERE key=$2 RETURNING *`,
+      [parseFloat(valore), req.params.key]
+    );
+    if (!rows[0]) return res.status(404).json({ error: 'Chiave non trovata' });
+    res.json({ ok: true, config: rows[0] });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+app.post('/api/ai/config/reset', authMiddleware, async (req, res) => {
+  try {
+    await pool.query(`UPDATE ai_config SET valore = CASE
+      WHEN key='peso_num_etf' THEN 10 WHEN key='peso_quota_azion' THEN 12
+      WHEN key='peso_max_drawdown' THEN 10 WHEN key='peso_capitaliz' THEN 8
+      WHEN key='peso_limite_usa' THEN 7 WHEN key='peso_ter' THEN 8
+      WHEN key='peso_correlazione' THEN 7 WHEN key='peso_volatilita' THEN 6
+      WHEN key='peso_hedging' THEN 5 WHEN key='peso_vix' THEN 4
+      WHEN key='peso_tassi' THEN 4 WHEN key='peso_inflazione' THEN 3
+      WHEN key='peso_petrolio' THEN 2 WHEN key='peso_curva_eurusd' THEN 2
+      ELSE valore END, updated_at=NOW()`);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ── App Logs endpoint ────────────────────────────────────────────────────
 app.get('/api/admin/logs', authMiddleware, async (req, res) => {
   try {
     const limit = Math.min(parseInt(req.query.limit) || 200, 500);
@@ -235,11 +302,6 @@ if (fs.existsSync(distPath)) {
 
 // ── Start ─────────────────────────────────────────────────────────────────
 initDB().then(() => {
-  // Inizializza logger con pool DB
-  const { setPool } = require('./routes/logger');
-  setPool(pool);
-  log(EVENTI.SERVER_START, { porta: PORT, env: process.env.NODE_ENV || 'production' });
-
   schedulaAggiornamento18(pool, fetchETF);
   app.listen(PORT, () => {
     console.log(`\n🚀 ETF Server avviato su http://localhost:${PORT}`);

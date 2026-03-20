@@ -45,6 +45,56 @@ const REGOLE_PROFILO = {
   },
 };
 
+// ── Modulazione regole per orizzonte temporale ───────────────────────────
+function modulaRegolePerOrizzonte(regoleBase, orizzonteAnni) {
+  const anni = parseInt(orizzonteAnni) || 5;
+  const r = { ...regoleBase };
+
+  if (anni <= 3) {
+    // BREVE: più conservativo, meno azionario, più stringente su volatilità e drawdown
+    r.azionarioTarget = Math.max(0, r.azionarioTarget - 10);
+    r.azionarioRange = Math.max(5, (r.azionarioRange || 10) - 2);
+    if (r.maxDrawdownAbs) r.maxDrawdownAbs = Math.max(10, r.maxDrawdownAbs - 5);
+    if (r.maxDrawdown) r.maxDrawdown = Math.min(-10, r.maxDrawdown + 5);
+    if (r.volatilita) r.volatilita = Math.max(8, r.volatilita - 3);
+    r.noteOrizzonte = `Orizzonte BREVE (${anni} anni): ridotta quota azionaria, privilegia obbligazionario breve duration (1-3Y), liquidità EUR, bassa volatilità. Il capitale potrebbe servire presto.`;
+    r.durataObbligaz = 'breve (1-3 anni)';
+    r.pesoCategoriePreferite = 'Obblig. Gov. EUR 1-3Y, Liquidità EUR, Obblig. Corp. EUR breve';
+    r.pesoMacro = 'ALTO — contesto tassi e inflazione molto rilevante a breve';
+  } else if (anni <= 7) {
+    // MEDIO: regole standard, nessuna modifica
+    r.noteOrizzonte = `Orizzonte MEDIO (${anni} anni): parametri standard del profilo. Mix bilanciato tra crescita e stabilità.`;
+    r.durataObbligaz = 'medio (3-7 anni)';
+    r.pesoCategoriePreferite = 'Mix standard del profilo';
+    r.pesoMacro = 'MEDIO — contesto macro rilevante ma non determinante';
+  } else {
+    // LUNGO: più aggressivo, più azionario tollerato, volatilità meno vincolante
+    r.azionarioTarget = Math.min(95, r.azionarioTarget + 5);
+    if (r.maxDrawdownAbs) r.maxDrawdownAbs = Math.min(40, r.maxDrawdownAbs + 5);
+    if (r.maxDrawdown) r.maxDrawdown = Math.max(-40, r.maxDrawdown - 5);
+    if (r.volatilita) r.volatilita = Math.min(25, r.volatilita + 3);
+    r.noteOrizzonte = `Orizzonte LUNGO (${anni} anni): quota azionaria leggermente aumentata, volatilità breve tollerata, privilegia crescita a lungo termine. Il mercato ha tempo di recuperare eventuali cali.`;
+    r.durataObbligaz = 'lungo (7+ anni) o nessun vincolo';
+    r.pesoCategoriePreferite = 'Azionario Globale, Azionario Emergenti, Azionario Tematico';
+    r.pesoMacro = 'BASSO — cicli macro si livellano su orizzonti lunghi';
+  }
+
+  return r;
+}
+
+// ── Carica config AI dal DB (pesi modificabili) ────────────────────────────
+async function getAIConfig(db) {
+  try {
+    const { rows } = await db.query("SELECT key, value FROM ai_config");
+    const cfg = {};
+    rows.forEach(r => {
+      const v = parseFloat(r.value);
+      cfg[r.key] = isNaN(v) ? r.value : v;
+    });
+    return cfg;
+  } catch { return {}; }
+}
+
 // POST /api/ai/analisi
 
 module.exports = (db, fetchETF, ETF_INFO_MAP) => {
@@ -85,7 +135,8 @@ router.post('/analisi', async (req, res) => {
   const terPonderato = totValore > 0
     ? etfConAcquisto.reduce((s,e) => s + e.ter * (e.acquisto.quantita * e.acquisto.quotazioneAcquisto) / totValore, 0)
     : (etfSelezionati.reduce((s,e) => s + e.ter, 0) / (etfSelezionati.length || 1));
-  const regole = REGOLE_PROFILO[portfolio.riskProfile] || REGOLE_PROFILO.Bilanciato;
+  const regoleBase = REGOLE_PROFILO[portfolio.riskProfile] || REGOLE_PROFILO.Bilanciato;
+  const regole = modulaRegolePerOrizzonte(regoleBase, portfolio.orizzonteAnni || 5);
   const maxDDabs = regole.maxDrawdownAbs || Math.abs(regole.maxDrawdown || 18);
   // Conta quanti ETF hanno maxDrawdown reale (≠0) che viola il limite
   const etfConDatiDD = etfSelezionati.filter(e => e.maxDrawdown && e.maxDrawdown !== 0);
@@ -116,7 +167,12 @@ ETF selezionati: ${etfSelezionati.length} (min: ${regole.minETF}, max: ${regole.
 Valore investito: €${totInvestito.toLocaleString('it-IT',{maximumFractionDigits:0})} | Valore attuale: €${totAttuale.toLocaleString('it-IT',{maximumFractionDigits:0})} | P&L: ${totInvestito>0?((totAttuale-totInvestito)/totInvestito*100).toFixed(2):'N/D'}%
 ${giorniVita < 7 ? `⚠️ PORTAFOGLIO CREATO ${giorniVita} GIORNI FA: è molto recente, l'AI ha già selezionato gli ETF ottimali. Non suggerire di deselezionare più di 1 ETF per violazione hard limit. Evita suggerimenti puramente stilistici.` : ''}
 
-## REGOLE VINCOLANTI PROFILO ${portfolio.riskProfile.toUpperCase()} (NON modificarle nell'analisi):
+## ORIZZONTE TEMPORALE: ${portfolio.orizzonteAnni || 'N/D'} anni
+${regole.noteOrizzonte || ''}
+Categorie obbligazionarie preferite per questo orizzonte: ${regole.durataObbligaz || 'standard'}
+Peso contesto macro: ${regole.pesoMacro || 'MEDIO'}
+
+## REGOLE VINCOLANTI PROFILO ${portfolio.riskProfile.toUpperCase()} — MODULATE PER ORIZZONTE (NON modificarle nell'analisi):
 - Quota azionaria: ${regole.azionarioTarget}% target, range ammesso ${regole.azionarioTarget-regole.azionarioRange}%–${regole.azionarioTarget+regole.azionarioRange}%
 - Volatilità media PONDERATA portafoglio: ≤${regole.volatilita}% annuo
 - Max drawdown singolo ETF (1y): ≤${maxDDabs}% in valore assoluto
@@ -499,7 +555,8 @@ router.post('/crea-portafoglio', async (req, res) => {
   console.log(`[${new Date().toLocaleTimeString()}] Crea portafoglio AI: ${profilo}, ETF disponibili dal DB: ${etfDisponibili.length}, capitale: €${capitale || 'N/D'}`);
   log(EVENTI.AI_CREA_PORTAFOGLIO, { profilo, capitale: capitale || null, maxUSA, nEtfDisponibili: etfDisponibili.length }, req.user?.username).catch(() => {});
 
-  const regole = REGOLE_PROFILO[profilo] || REGOLE_PROFILO.Bilanciato;
+  const regoleBase = REGOLE_PROFILO[profilo] || REGOLE_PROFILO.Bilanciato;
+  const regole = modulaRegolePerOrizzonte(regoleBase, orizzonteAnni || 5);
   const conCapitale = capitale && parseFloat(capitale) > 0;
 
   const prompt = `Sei un consulente finanziario esperto in ETF per investitori italiani.
@@ -508,6 +565,10 @@ Crea un portafoglio ETF ottimale rispettando RIGOROSAMENTE le regole del profilo
 ## PARAMETRI INVESTITORE:
 - Profilo: ${profilo}
 - Orizzonte temporale: ${orizzonteAnni} anni
+- Classe orizzonte: ${parseInt(orizzonteAnni||5)<=3?'BREVE (<=3 anni)':parseInt(orizzonteAnni||5)<=7?'MEDIO (3-7 anni)':'LUNGO (>7 anni)'}
+- ${regole.noteOrizzonte || ''}
+- Categorie obbligazionarie consigliate per orizzonte: ${regole.durataObbligaz || 'standard'}
+- Categorie da privilegiare: ${regole.pesoCategoriePreferite || 'mix standard'}
 - Capitale disponibile: ${conCapitale ? `€${parseFloat(capitale).toLocaleString('it-IT')}` : 'non specificato'}
 - Preferenze utente: ${preferenze || 'nessuna'}
 - Limite esposizione USA: ${maxUSA && maxUSA !== 'No max' ? maxUSA : 'nessun limite'}
