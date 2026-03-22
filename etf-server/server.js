@@ -6,6 +6,8 @@ const { Pool } = require('pg');
 const path    = require('path');
 const fs      = require('fs');
 
+const { log, setPool, EVENTI } = require('./routes/logger');
+
 const app  = express();
 const PORT = process.env.PORT || 3001;
 
@@ -343,6 +345,10 @@ if (fs.existsSync(distPath)) {
 
 // ── Start ─────────────────────────────────────────────────────────────────
 initDB().then(() => {
+  // Inizializza logger con pool DB
+  setPool(pool);
+  log(EVENTI.SERVER_START, { porta: PORT, env: process.env.NODE_ENV || 'production' });
+
   schedulaAggiornamento18(pool, fetchETF);
   app.listen(PORT, () => {
     console.log(`\n🚀 ETF Server avviato su http://localhost:${PORT}`);
