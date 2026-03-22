@@ -29,6 +29,7 @@ function CreaPortafoglioModal({ portfolioId, onClose, initialProfilo, initialDat
   });
   const [loading, setLoading] = useState(false);
   const [errore, setErrore] = useState('');
+  const [bucket, setBucket] = useState({ attivo: false, pctBreve: 30, anniBreve: 3 });
   const [step, setStep] = useState(initialData?.selezione?.length > 0 ? 'risultato' : 'form');
 
   const handleCrea = async () => {
@@ -41,6 +42,8 @@ function CreaPortafoglioModal({ portfolioId, onClose, initialProfilo, initialDat
         body: JSON.stringify({
           profilo: form.profilo,
           orizzonteAnni: form.orizzonteAnni === 'BREVE' ? 3 : form.orizzonteAnni === 'LUNGO' ? 15 : 7,
+          bucketBreve: bucket.attivo ? { pct: bucket.pctBreve, anni: bucket.anniBreve } : undefined,
+          bucketLungo: bucket.attivo ? { pct: 100 - bucket.pctBreve, anni: form.orizzonteAnni === 'LUNGO' ? 15 : 7 } : undefined,
           capitale: form.capitale ? parseFloat(form.capitale) : null,
           preferenze: form.preferenze,
           escludiDistribuzione: form.escludiDistribuzione,
@@ -166,9 +169,43 @@ function CreaPortafoglioModal({ portfolioId, onClose, initialProfilo, initialDat
                   <span style={{ fontSize:11, color:'var(--text-muted)', marginLeft:6 }}>(preferisci Accumulazione per fiscalità italiana)</span>
                 </label>
               </div>
+              {/* Pianificazione a due orizzonti */}
+              <div style={{ padding:'10px 12px', borderRadius:8, border:'1px solid var(--border)', background:'var(--bg-secondary)', marginTop:8 }}>
+                <label style={{ display:'flex', alignItems:'center', gap:8, cursor:'pointer', marginBottom: bucket.attivo ? 10 : 0 }}>
+                  <input type="checkbox" checked={bucket.attivo}
+                    onChange={e => setBucket(b => ({...b, attivo: e.target.checked}))}
+                    style={{ width:16, height:16, cursor:'pointer', accentColor:'var(--accent-blue)' }} />
+                  <span style={{ fontSize:13, fontWeight:600 }}>🪣 Pianificazione a due orizzonti</span>
+                  <span style={{ fontSize:11, color:'var(--text-muted)' }}>— opzionale</span>
+                </label>
+                {bucket.attivo && (
+                  <div>
+                    <div style={{ fontSize:11, color:'var(--text-muted)', marginBottom:8 }}>
+                      Dividi il capitale tra una componente a breve termine (protezione) e una a lungo termine (crescita).
+                    </div>
+                    <div style={{ display:'flex', justifyContent:'space-between', fontSize:12, marginBottom:4 }}>
+                      <span style={{ color:'var(--accent-blue)', fontWeight:600 }}>🔵 Breve: {bucket.pctBreve}%</span>
+                      <span style={{ color:'var(--accent-amber)', fontWeight:600 }}>🟡 Lungo: {100-bucket.pctBreve}%</span>
+                    </div>
+                    <input type="range" min={10} max={80} step={5} value={bucket.pctBreve}
+                      onChange={e => setBucket(b => ({...b, pctBreve: parseInt(e.target.value)}))}
+                      style={{ width:'100%', accentColor:'var(--accent-blue)', marginBottom:8 }} />
+                    <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                      <span style={{ fontSize:11, color:'var(--text-muted)' }}>Orizzonte breve (max 5 anni):</span>
+                      <input className="input" type="number" min={1} max={5} value={bucket.anniBreve}
+                        onChange={e => setBucket(b => ({...b, anniBreve: parseInt(e.target.value)||1}))}
+                        style={{ fontSize:12, padding:'3px 8px', width:60 }} />
+                      <span style={{ fontSize:11, color:'var(--text-muted)' }}>
+                        Il lungo usa l orizzonte principale ({form.orizzonteAnni})
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
               {errore && <div className="alert alert-warning">⚠️ {errore}</div>}
               <div className="alert alert-info" style={{ fontSize: 12 }}>
-                ⚠️ Le selezioni attuali verranno sostituite con quelle consigliate dall'AI.
+                ⚠️ Le selezioni attuali verranno sostituite con quelle consigliate dall AI.
               </div>
             </div>
           )}
