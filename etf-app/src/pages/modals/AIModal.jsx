@@ -36,7 +36,6 @@ function AIModal({ portfolio, onClose }) {
     maxUSA: portfolio?.maxUSA || 'No max',
     note: '',
   });
-  const [bucket, setBucket] = useState({ attivo: false, pctBreve: 30, anniBreve: 3, anniLungo: portfolio?.orizzonteAnni || 10 });
   const [semafori, setSemafori] = useState(null);
   const [puntiChiave, setPuntiChiave] = useState([]);
   const [analisiDettagliata, setAnalisiDettagliata] = useState('');
@@ -47,6 +46,9 @@ function AIModal({ portfolio, onClose }) {
   const [pdfLoading, setPdfLoading] = useState(false);
   const [errore, setErrore] = useState('');
   const [applicate, setApplicate] = useState(false);
+  const orizAnni = portfolio?.orizzonteAnni || 7;
+  const [orizzonte, setOrizzonte] = useState(orizAnni <= 4 ? 'BREVE' : orizAnni >= 10 ? 'LUNGO' : 'MEDIO');
+  const [bucket, setBucket] = useState({ attivo: false, pctBreve: 30, anniBreve: 3 });
   const [showAnalisi, setShowAnalisi] = useState(false);
   const [showModifiche, setShowModifiche] = useState(true);
 
@@ -59,7 +61,7 @@ function AIModal({ portfolio, onClose }) {
     try {
       const res = await fetch(`${API}/api/ai/analisi`, {
         method: 'POST', headers: authHdr,
-        body: JSON.stringify({ portfolio, opzioni, bucketBreve: bucket.attivo ? { pct: bucket.pctBreve, anni: bucket.anniBreve } : undefined, bucketLungo: bucket.attivo ? { pct: 100 - bucket.pctBreve, anni: bucket.anniLungo } : undefined }),
+        body: JSON.stringify({ portfolio: { ...portfolio, orizzonteAnni: orizzonte === 'BREVE' ? 3 : orizzonte === 'LUNGO' ? 15 : 7, orizzonteLabel: orizzonte }, opzioni, bucketBreve: bucket.attivo ? { pct: bucket.pctBreve, anni: bucket.anniBreve } : undefined, bucketLungo: bucket.attivo ? { pct: 100 - bucket.pctBreve, anni: orizzonte === 'LUNGO' ? 15 : 7 } : undefined }),
       });
       const data = await res.json();
       if (data.semafori || data.analisiDettagliata) {
@@ -248,16 +250,19 @@ function AIModal({ portfolio, onClose }) {
 
         {/* STEP 1 — Form pre-analisi */}
         {step === 'form' && (
-          <div style={{ flex:1, paddingRight:4, overflow:'hidden' }}>
-            <div style={{ background:'var(--bg-secondary)', borderRadius:10, padding:'12px 16px', border:'1px solid var(--border)' }}>
+          <div style={{ overflowY:'auto', flex:1, paddingRight:4 }}>
+            <div style={{ background:'var(--bg-secondary)', borderRadius:10, padding:'16px 18px', marginBottom:16, border:'1px solid var(--border)' }}>
+              <div style={{ fontSize:13, color:'var(--text-secondary)', marginBottom:14, lineHeight:1.5 }}>
+                Configura i parametri dell'analisi prima di avviarla. L'AI utilizzerà queste preferenze per personalizzare suggerimenti e modifiche proposte.
+              </div>
 
               {/* Obiettivo */}
-              <div style={{ marginBottom:10 }}>
-                <label style={{ fontSize:11, fontWeight:600, color:'var(--text-primary)', display:'block', marginBottom:6 }}>Obiettivo dell'analisi</label>
-                <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
+              <div style={{ marginBottom:16 }}>
+                <label style={{ fontSize:12, fontWeight:600, color:'var(--text-primary)', display:'block', marginBottom:8 }}>Obiettivo dell'analisi</label>
+                <div style={{ display:'flex', flexWrap:'wrap', gap:8 }}>
                   {[['completa','🔍 Analisi completa'],['regole','📋 Verifica regole'],['costi','💰 Ottimizza costi'],['rendimento','📈 Massimizza rendimento'],['rischio','🛡️ Riduci rischio']].map(([val, label]) => (
                     <button key={val} onClick={() => setOpzioni(o => ({...o, obiettivo: val}))}
-                      style={{ padding:'5px 12px', borderRadius:20, border:`1px solid ${opzioni.obiettivo === val ? 'var(--accent-blue)' : 'var(--border)'}`,
+                      style={{ padding:'7px 14px', borderRadius:20, border:`1px solid ${opzioni.obiettivo === val ? 'var(--accent-blue)' : 'var(--border)'}`,
                         background: opzioni.obiettivo === val ? 'var(--accent-blue)' : 'var(--bg-primary)',
                         color: opzioni.obiettivo === val ? '#fff' : 'var(--text-primary)', cursor:'pointer', fontSize:12, fontWeight: opzioni.obiettivo === val ? 600 : 400 }}>
                       {label}
@@ -267,34 +272,34 @@ function AIModal({ portfolio, onClose }) {
               </div>
 
               {/* Disponibilità modifiche */}
-              <div style={{ marginBottom:10 }}>
-                <label style={{ fontSize:11, fontWeight:600, color:'var(--text-primary)', display:'block', marginBottom:6 }}>Disponibilità alle modifiche</label>
-                <div style={{ display:'flex', gap:6 }}>
-                  {[['conservativo','🔒 Conservativo','Solo segnalazioni'],['moderato','⚖️ Moderato','Max 2 modifiche'],['radicale','🔄 Radicale','Tutte le modifiche']].map(([val, label, desc]) => (
+              <div style={{ marginBottom:16 }}>
+                <label style={{ fontSize:12, fontWeight:600, color:'var(--text-primary)', display:'block', marginBottom:8 }}>Disponibilità alle modifiche</label>
+                <div style={{ display:'flex', gap:8 }}>
+                  {[['conservativo','🔒 Conservativo','Solo segnalazioni, nessuna modifica'],['moderato','⚖️ Moderato','Max 2 modifiche, preferisci ribilanciamenti'],['radicale','🔄 Radicale','Tutte le modifiche necessarie']].map(([val, label, desc]) => (
                     <div key={val} onClick={() => setOpzioni(o => ({...o, disponibilita: val}))}
-                      style={{ flex:1, padding:'7px 10px', borderRadius:8, border:`1px solid ${opzioni.disponibilita === val ? 'var(--accent-blue)' : 'var(--border)'}`,
+                      style={{ flex:1, padding:'10px 12px', borderRadius:8, border:`1px solid ${opzioni.disponibilita === val ? 'var(--accent-blue)' : 'var(--border)'}`,
                         background: opzioni.disponibilita === val ? 'rgba(59,130,246,0.08)' : 'var(--bg-primary)', cursor:'pointer' }}>
-                      <div style={{ fontSize:11, fontWeight:600, color: opzioni.disponibilita === val ? 'var(--accent-blue)' : 'var(--text-primary)', marginBottom:2 }}>{label}</div>
-                      <div style={{ fontSize:10, color:'var(--text-muted)' }}>{desc}</div>
+                      <div style={{ fontSize:12, fontWeight:600, color: opzioni.disponibilita === val ? 'var(--accent-blue)' : 'var(--text-primary)', marginBottom:3 }}>{label}</div>
+                      <div style={{ fontSize:11, color:'var(--text-muted)', lineHeight:1.4 }}>{desc}</div>
                     </div>
                   ))}
                 </div>
               </div>
 
               {/* Riga: Soglia P&L + Max USA */}
-              <div style={{ display:'flex', gap:10, marginBottom:10 }}>
+              <div style={{ display:'flex', gap:12, marginBottom:16 }}>
                 <div style={{ flex:1 }}>
-                  <label style={{ fontSize:11, fontWeight:600, color:'var(--text-primary)', display:'block', marginBottom:4 }}>Soglia min. P&L per vendita — opzionale</label>
+                  <label style={{ fontSize:12, fontWeight:600, color:'var(--text-primary)', display:'block', marginBottom:6 }}>Soglia min. P&L per vendita — opzionale</label>
                   <div style={{ display:'flex', alignItems:'center', gap:8 }}>
                     <input type="number" className="input" placeholder="Es: -5 (non vendere se perdi più del 5%)"
                       value={opzioni.sogliaVendita} onChange={e => setOpzioni(o => ({...o, sogliaVendita: e.target.value}))}
                       style={{ flex:1 }} />
                     <span style={{ fontSize:12, color:'var(--text-muted)', flexShrink:0 }}>%</span>
                   </div>
-                  
+                  <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:3 }}>Valore negativo = soglia di perdita massima accettabile</div>
                 </div>
                 <div style={{ flex:1 }}>
-                  <label style={{ fontSize:11, fontWeight:600, color:'var(--text-primary)', display:'block', marginBottom:4 }}>Limite esposizione USA</label>
+                  <label style={{ fontSize:12, fontWeight:600, color:'var(--text-primary)', display:'block', marginBottom:6 }}>Limite esposizione USA</label>
                   <select className="input" value={opzioni.maxUSA} onChange={e => setOpzioni(o => ({...o, maxUSA: e.target.value}))}>
                     <option value="No max">Nessun limite</option>
                     <option value="60%">Max 60%</option>
@@ -306,39 +311,49 @@ function AIModal({ portfolio, onClose }) {
 
               {/* Note libere */}
               <div style={{ marginBottom:8 }}>
-                <label style={{ fontSize:11, fontWeight:600, color:'var(--text-primary)', display:'block', marginBottom:4 }}>Note o preferenze — opzionale</label>
+                <label style={{ fontSize:12, fontWeight:600, color:'var(--text-primary)', display:'block', marginBottom:6 }}>Orizzonte temporale</label>
+                <div style={{ display:'flex', gap:6, marginBottom:12 }}>
+                  {[['BREVE','< 5 anni'],['MEDIO','5-10 anni'],['LUNGO','> 10 anni']].map(([val,lab]) => (
+                    <div key={val} onClick={() => setOrizzonte(val)}
+                      style={{ flex:1, padding:'7px 8px', borderRadius:8, cursor:'pointer', textAlign:'center',
+                        border:'1px solid ' + (orizzonte===val ? 'var(--accent-blue)' : 'var(--border)'),
+                        background: orizzonte===val ? 'rgba(59,130,246,0.1)' : 'var(--bg-primary)' }}>
+                      <div style={{ fontSize:12, fontWeight:700, color: orizzonte===val ? 'var(--accent-blue)' : 'var(--text-primary)' }}>{val}</div>
+                      <div style={{ fontSize:10, color:'var(--text-muted)' }}>{lab}</div>
+                    </div>
+                  ))}
+                </div>
+
+                <label style={{ fontSize:12, fontWeight:600, color:'var(--text-primary)', display:'block', marginBottom:6 }}>Note o preferenze — opzionale</label>
                 <input type="text" className="input" placeholder="Es: voglio mantenere l'ETF Gold, evitare obbligazionario..."
                   value={opzioni.note} onChange={e => setOpzioni(o => ({...o, note: e.target.value}))} />
               </div>
+            </div>
 
-              {/* Strategia Bucket */}
               <div style={{ marginBottom:8, padding:'10px 12px', borderRadius:8, border:'1px solid var(--border)', background:'var(--bg-secondary)' }}>
                 <label style={{ display:'flex', alignItems:'center', gap:8, cursor:'pointer', marginBottom: bucket.attivo ? 10 : 0 }}>
                   <input type="checkbox" checked={bucket.attivo} onChange={e => setBucket(b => ({...b, attivo: e.target.checked}))} />
-                  <span style={{ fontSize:12, fontWeight:600 }}>🪣 Due bucket temporali: breve (2-3 anni) + lungo</span>
+                  <span style={{ fontSize:12, fontWeight:600 }}>Strategia a due bucket</span>
                   <span style={{ fontSize:11, color:'var(--text-muted)' }}>— opzionale</span>
                 </label>
                 {bucket.attivo && (
-                  <div style={{ display:'flex', alignItems:'center', gap:10, marginTop:6 }}>
-                    <span style={{ fontSize:10, color:'var(--accent-blue)', fontWeight:600, flexShrink:0 }}>🔵 {bucket.pctBreve}%</span>
+                  <div>
+                    <div style={{ display:'flex', justifyContent:'space-between', fontSize:11, marginBottom:4 }}>
+                      <span style={{ color:'var(--accent-blue)', fontWeight:600 }}>BREVE: {bucket.pctBreve}%</span>
+                      <span style={{ color:'var(--accent-amber)', fontWeight:600 }}>LUNGO: {100-bucket.pctBreve}%</span>
+                    </div>
                     <input type="range" min={10} max={80} step={5} value={bucket.pctBreve}
                       onChange={e => setBucket(b => ({...b, pctBreve: parseInt(e.target.value)}))}
-                      style={{ flex:1, accentColor:'var(--accent-blue)' }} />
-                    <span style={{ fontSize:10, color:'var(--accent-amber)', fontWeight:600, flexShrink:0 }}>🟡 {100-bucket.pctBreve}%</span>
+                      style={{ width:'100%', accentColor:'var(--accent-blue)', marginBottom:8 }} />
+                    <div style={{ fontSize:10, color:'var(--text-muted)', marginBottom:3 }}>Orizzonte breve (anni, max 5)</div>
                     <input className="input" type="number" min={1} max={5} value={bucket.anniBreve}
                       onChange={e => setBucket(b => ({...b, anniBreve: parseInt(e.target.value)||1}))}
-                      style={{ fontSize:11, padding:'3px 6px', width:48 }} title="Anni breve" />
-                    <span style={{ fontSize:10, color:'var(--text-muted)' }}>/ </span>
-                    <input className="input" type="number" min={5} max={30} value={bucket.anniLungo}
-                      onChange={e => setBucket(b => ({...b, anniLungo: parseInt(e.target.value)||5}))}
-                      style={{ fontSize:11, padding:'3px 6px', width:48 }} title="Anni lungo" />
-                    <span style={{ fontSize:10, color:'var(--text-muted)', flexShrink:0 }}>anni</span>
+                      style={{ fontSize:12, padding:'4px 8px', width:80 }} />
                   </div>
                 )}
               </div>
-            </div>
 
-            <div style={{ display:'flex', justifyContent:'flex-end', gap:10, paddingTop:10, flexShrink:0 }}>
+            <div style={{ display:'flex', justifyContent:'flex-end', gap:10, paddingTop:8, flexShrink:0 }}>
               <button className="btn btn-ghost" onClick={onClose}>Annulla</button>
               <button className="btn btn-primary" onClick={avviaAnalisi}
                 style={{ display:'flex', alignItems:'center', gap:8 }}>

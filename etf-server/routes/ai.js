@@ -81,7 +81,12 @@ function verificaRendimentoComplessivo(buckets, profilo) {
 
 // ── Posizionamento tattico: matrice profilo × orizzonte × macro ──────────
 function getPosizionetattica(profilo, orizzonteAnni, macro) {
-  const anni = parseInt(orizzonteAnni) || 5;
+  // Supporta sia valori numerici che etichette BREVE/MEDIO/LUNGO
+  let anni;
+  if (orizzonteAnni === 'BREVE') anni = 3;
+  else if (orizzonteAnni === 'MEDIO') anni = 7;
+  else if (orizzonteAnni === 'LUNGO') anni = 15;
+  else anni = parseInt(orizzonteAnni) || 7;
   const breve = anni <= 3;
   const lungo = anni > 7;
 
@@ -220,7 +225,12 @@ function getSmartBetaSuggeriti(profilo, scenario, fascia) {
 
 // ── Modulazione regole per orizzonte temporale ───────────────────────────
 function modulaRegolePerOrizzonte(regoleBase, orizzonteAnni) {
-  const anni = parseInt(orizzonteAnni) || 5;
+  // Supporta sia valori numerici che etichette BREVE/MEDIO/LUNGO
+  let anni;
+  if (orizzonteAnni === 'BREVE') anni = 3;
+  else if (orizzonteAnni === 'MEDIO') anni = 7;
+  else if (orizzonteAnni === 'LUNGO') anni = 15;
+  else anni = parseInt(orizzonteAnni) || 7;
   const r = { ...regoleBase };
 
   if (anni <= 3) {

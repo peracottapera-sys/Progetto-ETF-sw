@@ -7,13 +7,12 @@ function CreaPortafoglioModal({ portfolioId, onClose, initialProfilo, initialDat
   const { applicaPortafoglioAI } = useApp();
   const [form, setForm] = useState({
     profilo: initialProfilo || 'Bilanciato',
-    orizzonteAnni: 10,
+    orizzonteAnni: 'MEDIO',
     capitale: initialData?.capitale ? String(initialData.capitale) : '',
     preferenze: '',
     escludiDistribuzione: true,
     maxUSA: 'No max',
   });
-  const [bucket, setBucket] = useState({ attivo: false, pctBreve: 30, anniBreve: 3 });
   const [spiegazione, setSpiegazione] = useState(initialData?.spiegazione || '');
   const [selezione, setSelezione] = useState(initialData?.selezione || []);
   const [approvate, setApprovate] = useState(() => {
@@ -41,9 +40,7 @@ function CreaPortafoglioModal({ portfolioId, onClose, initialProfilo, initialDat
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           profilo: form.profilo,
-          orizzonteAnni: form.orizzonteAnni,
-          bucketBreve: bucket.attivo ? { pct: bucket.pctBreve, anni: bucket.anniBreve } : undefined,
-          bucketLungo: bucket.attivo ? { pct: 100 - bucket.pctBreve, anni: parseInt(form.orizzonteAnni) || 10 } : undefined,
+          orizzonteAnni: form.orizzonteAnni === 'BREVE' ? 3 : form.orizzonteAnni === 'LUNGO' ? 15 : 7,
           capitale: form.capitale ? parseFloat(form.capitale) : null,
           preferenze: form.preferenze,
           escludiDistribuzione: form.escludiDistribuzione,
@@ -120,31 +117,18 @@ function CreaPortafoglioModal({ portfolioId, onClose, initialProfilo, initialDat
                   </select>
                 </div>
                 <div style={{ flex:1 }}>
-                  <label className="form-label">Orizzonte (anni)</label>
-                  <input className="input" type="number" min="1" max="30"
-                    value={form.orizzonteAnni} onChange={e => setForm(f => ({ ...f, orizzonteAnni: e.target.value }))} />
-
-              {/* Strategia Bucket */}
-              <div style={{ marginTop:10, padding:'8px 12px', borderRadius:8, border:'1px solid var(--border)', background:'var(--bg-secondary)' }}>
-                <label style={{ display:'flex', alignItems:'center', gap:8, cursor:'pointer' }}>
-                  <input type="checkbox" checked={bucket.attivo} onChange={e => setBucket(b => ({...b, attivo: e.target.checked}))} />
-                  <span style={{ fontSize:12, fontWeight:600 }}>🪣 Due bucket temporali: breve (2-3 anni) + lungo</span>
-                  <span style={{ fontSize:11, color:'var(--text-muted)' }}>— opzionale</span>
-                </label>
-                {bucket.attivo && (
-                  <div style={{ display:'flex', alignItems:'center', gap:10, marginTop:6 }}>
-                    <span style={{ fontSize:10, color:'var(--accent-blue)', fontWeight:600, flexShrink:0 }}>🔵 {bucket.pctBreve}%</span>
-                    <input type="range" min={10} max={80} step={5} value={bucket.pctBreve}
-                      onChange={e => setBucket(b => ({...b, pctBreve: parseInt(e.target.value)}))}
-                      style={{ flex:1, accentColor:'var(--accent-blue)' }} />
-                    <span style={{ fontSize:10, color:'var(--accent-amber)', fontWeight:600, flexShrink:0 }}>🟡 {100-bucket.pctBreve}%</span>
-                    <input className="input" type="number" min={1} max={5} value={bucket.anniBreve}
-                      onChange={e => setBucket(b => ({...b, anniBreve: parseInt(e.target.value)||1}))}
-                      style={{ fontSize:11, padding:'3px 6px', width:48 }} title="Anni breve" />
-                    <span style={{ fontSize:10, color:'var(--text-muted)' }}>/ {form.orizzonteAnni} anni</span>
+                  <label className="form-label">Orizzonte temporale</label>
+                  <div style={{ display:'flex', gap:6, marginTop:4 }}>
+                    {[['BREVE','< 5 anni'],['MEDIO','5-10 anni'],['LUNGO','> 10 anni']].map(([val,lab]) => (
+                      <div key={val} onClick={() => setForm(f => ({...f, orizzonteAnni: val}))}
+                        style={{ flex:1, padding:'6px 8px', borderRadius:8, border:`1px solid ${form.orizzonteAnni===val?'var(--accent-blue)':'var(--border)'}`,
+                          background: form.orizzonteAnni===val?'rgba(59,130,246,0.1)':'var(--bg-primary)',
+                          cursor:'pointer', textAlign:'center' }}>
+                        <div style={{ fontSize:11, fontWeight:700, color: form.orizzonteAnni===val?'var(--accent-blue)':'var(--text-primary)' }}>{val}</div>
+                        <div style={{ fontSize:10, color:'var(--text-muted)' }}>{lab}</div>
+                      </div>
+                    ))}
                   </div>
-                )}
-              </div>
                 </div>
               </div>
               {/* Riga 2: Capitale + Max USA */}
