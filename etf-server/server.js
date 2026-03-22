@@ -178,7 +178,7 @@ async function initDB() {
   ];
   for (const [key,label,cat,val,min,max,desc] of aiConfigDefaults) {
     await pool.q(
-      `INSERT INTO ai_config (key,label,categoria,valore,min_val,max_val,descrizione) VALUES ($1,$2,$3,$4,$5,$6,$7) ON CONFLICT (key) DO NOTHING`,
+      `INSERT INTO ai_config (key,label,categoria,valore,min_val,max_val,descrizione) VALUES ($1,$2,$3,$4,$5,$6,$7) ON CONFLICT (key) DO UPDATE SET valore=EXCLUDED.valore, label=EXCLUDED.label, categoria=EXCLUDED.categoria, min_val=EXCLUDED.min_val, max_val=EXCLUDED.max_val, descrizione=EXCLUDED.descrizione`,
       [key,label,cat,val,min,max,desc]
     );
   }
