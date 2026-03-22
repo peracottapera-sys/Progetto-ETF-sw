@@ -167,6 +167,57 @@ function getPosizionetattica(profilo, orizzonteAnni, macro) {
   };
 }
 
+// ── Fattori Smart Beta consigliati per scenario macro ────────────────────
+function getSmartBetaSuggeriti(profilo, scenario, fascia) {
+  // Matrice: scenario → fattori pro-ciclici vs difensivi
+  const PROCICLIC  = ['Value', 'Momentum', 'Small Cap'];
+  const DIFENSIVI  = ['Low Volatility', 'Quality', 'Dividend'];
+  const NEUTRI     = ['Equal Weight', 'Multi-Factor'];
+
+  const map = {
+    STAGFLAZIONE_LATENTE: {
+      Prudente:   { preferiti: ['Low Volatility', 'Quality', 'Dividend'], evitare: ['Momentum', 'Small Cap'] },
+      Bilanciato: { preferiti: ['Value', 'Low Volatility', 'Dividend'], evitare: ['Small Cap', 'Momentum'] },
+      Aggressivo: { preferiti: ['Value', 'Momentum'], evitare: ['Low Volatility'] },
+    },
+    CRISI_MERCATI: {
+      Prudente:   { preferiti: ['Low Volatility', 'Quality'], evitare: ['Momentum', 'Small Cap', 'Value'] },
+      Bilanciato: { preferiti: ['Quality', 'Low Volatility'], evitare: ['Small Cap', 'Momentum'] },
+      Aggressivo: { preferiti: ['Momentum', 'Value'], evitare: ['Low Volatility'] },
+    },
+    EASING_CICLO: {
+      Prudente:   { preferiti: ['Quality', 'Dividend'], evitare: ['Small Cap'] },
+      Bilanciato: { preferiti: ['Momentum', 'Quality', 'Value'], evitare: [] },
+      Aggressivo: { preferiti: ['Momentum', 'Small Cap', 'Value'], evitare: ['Low Volatility', 'Quality'] },
+    },
+    ESPANSIONE: {
+      Prudente:   { preferiti: ['Quality', 'Dividend'], evitare: [] },
+      Bilanciato: { preferiti: ['Momentum', 'Value', 'Quality'], evitare: [] },
+      Aggressivo: { preferiti: ['Momentum', 'Small Cap', 'Value'], evitare: [] },
+    },
+    RECESSIONE_RISCHIO: {
+      Prudente:   { preferiti: ['Low Volatility', 'Quality', 'Dividend'], evitare: ['Small Cap', 'Value', 'Momentum'] },
+      Bilanciato: { preferiti: ['Quality', 'Low Volatility'], evitare: ['Small Cap', 'Momentum'] },
+      Aggressivo: { preferiti: ['Quality', 'Value'], evitare: ['Momentum', 'Small Cap'] },
+    },
+    NEUTRO: {
+      Prudente:   { preferiti: ['Quality', 'Low Volatility', 'Dividend'], evitare: [] },
+      Bilanciato: { preferiti: ['Multi-Factor', 'Quality'], evitare: [] },
+      Aggressivo: { preferiti: ['Momentum', 'Value', 'Multi-Factor'], evitare: [] },
+    },
+  };
+
+  const scenarioMap = map[scenario] || map.NEUTRO;
+  const result = scenarioMap[profilo] || scenarioMap.Bilanciato;
+
+  // Modifica per orizzonte breve: privilegia sempre difensivi anche per Aggressivo
+  if (fascia === 'breve' && profilo !== 'Aggressivo') {
+    return { preferiti: ['Low Volatility', 'Quality', 'Dividend'], evitare: ['Small Cap', 'Momentum'] };
+  }
+
+  return result;
+}
+
 // ── Modulazione regole per orizzonte temporale ───────────────────────────
 function modulaRegolePerOrizzonte(regoleBase, orizzonteAnni) {
   const anni = parseInt(orizzonteAnni) || 5;
@@ -253,7 +304,7 @@ router.post('/analisi', async (req, res) => {
   // Arricchisci con dati reali da etf_catalog (maxdd1y, vol1y potrebbero essere 0 lato client)
   const isinList = etfSelezionatiRaw.map(e => `'${e.isin}'`).join(',');
   const catalogRows = isinList.length > 2
-    ? (await db.query(`SELECT isin, maxdd1y, vol1y, aum_mln FROM etf_catalog WHERE isin IN (${isinList})`)).rows
+    ? (await db.query(`SELECT isin, maxdd1y, vol1y, aum_mln, smart_beta_factor FROM etf_catalog WHERE isin IN (${isinList})`)).rows
     : [];
   const catalogMap = new Map(catalogRows.map(r => [r.isin, r]));
 
@@ -263,6 +314,7 @@ router.post('/analisi', async (req, res) => {
       ...e,
       maxDrawdown: (cat?.maxdd1y != null ? cat.maxdd1y : (e.maxDrawdown || null)),
       variabilita: (cat?.vol1y != null ? cat.vol1y : (e.variabilita || null)),
+      smartBeta: cat?.smart_beta_factor || e.smartBeta || null,
       capitalizzazione: (cat?.aum_mln != null ? cat.aum_mln : (e.capitalizzazione || null)),
     };
   });
@@ -310,7 +362,11 @@ ${giorniVita < 7 ? `⚠️ PORTAFOGLIO CREATO ${giorniVita} GIORNI FA: è molto 
 ${regole.noteOrizzonte || ''}
 
 ## POSIZIONAMENTO TATTICO (Profilo × Orizzonte × Macro)
-${(() => { try { const pt = getPosizionetattica(portfolio.riskProfile, portfolio.orizzonteAnni || 5, macroData); return `Scenario macro corrente: ${pt.scenario}\n${pt.testo}`; } catch(e) { return ''; } })()}
+${(() => { try {
+  const pt = getPosizionetattica(portfolio.riskProfile, portfolio.orizzonteAnni || 5, macroData);
+  const sb = getSmartBetaSuggeriti(portfolio.riskProfile, pt.scenario, pt.fascia);
+  return `Scenario macro corrente: ${pt.scenario}\n${pt.testo}\n\nFATTORI SMART BETA consigliati per questo scenario: PRIVILEGIA ${sb.preferiti.join(', ')}${sb.evitare.length ? ` | EVITA/RIDUCI ${sb.evitare.join(', ')}` : ''}\nNota: se nel portafoglio sono presenti ETF Smart Beta, valuta la loro coerenza con i fattori consigliati.`;
+} catch(e) { return ''; } })()}
 ${hasBuckets ? `
 ## STRUTTURA BUCKET
 Questo portafoglio usa una strategia a DUE BUCKET:
@@ -340,14 +396,14 @@ Peso contesto macro: ${regole.pesoMacro || 'MEDIO'}
 ${etfSelezionati.map(e => {
     const dd = e.maxDrawdown && e.maxDrawdown !== 0 ? e.maxDrawdown+'%' : 'N/D(non disponibile)';
     const vol = e.variabilita && e.variabilita !== 0 ? e.variabilita+'%' : 'N/D(non disponibile)';
-    return `- ${e.name} (${e.isin}) | ${e.categoria||'N/D'} | TER:${e.ter}% | Vol1A:${vol} | MaxDD1A:${dd} | Perf1A:${e.perf1y||0}% | Perf5A:${e.perf5y||0}% | AUM:${e.capitalizzazione||'N/D'}M€`;
+    return `- ${e.name} (${e.isin}) | ${e.categoria||'N/D'}${e.smartBeta ? ' ['+e.smartBeta+']' : ''} | TER:${e.ter}% | Vol1A:${vol} | MaxDD1A:${dd} | Perf1A:${e.perf1y||0}% | Perf5A:${e.perf5y||0}% | AUM:${e.capitalizzazione||'N/D'}M€`;
   }).join('\n')}
 
 ## ETF NEL PORTAFOGLIO MA NON SELEZIONATI (${etfNonSelezionati.length}):
 ${etfNonSelezionati.slice(0,20).map(e => `- ${e.name} (${e.isin}) | ${e.categoria||'N/D'} | TER:${e.ter}% | Vol1A:${e.variabilita||'N/D'}% | Perf1A:${e.perf1y||0}%`).join('\n') || 'Nessuno'}
 
 ## ETF DAL CATALOGO COMPATIBILI COL PROFILO (puoi suggerire "aggiungi"):
-${etfCatalogo.map(e => `- ${e.name} (${e.isin}) | ${e.categoria} | TER:${e.ter}% | Quotaz:€${e.quotazione||0} | Vol1A:${e.variabilita||'N/D'}% | Perf1A:${e.perf1y||0}%`).join('\n')}
+${etfCatalogo.map(e => `- ${e.name} (${e.isin}) | ${e.categoria}${e.smartBeta ? ' ['+e.smartBeta+']' : ''} | TER:${e.ter}% | Quotaz:€${e.quotazione||0} | Vol1A:${e.variabilita||'N/D'}% | Perf1A:${e.perf1y||0}%`).join('\n')}
 
 ${macroContext}
 

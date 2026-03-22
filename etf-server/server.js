@@ -185,6 +185,7 @@ async function initDB() {
   // Migrazioni sicure
   await pool.q('ALTER TABLE etf_catalog ADD COLUMN IF NOT EXISTS maxdd5y REAL');
   await pool.q("ALTER TABLE portfolio_etf ADD COLUMN IF NOT EXISTS bucket TEXT DEFAULT 'LUNGO'");
+  await pool.q('ALTER TABLE etf_catalog ADD COLUMN IF NOT EXISTS smart_beta_factor TEXT');
   console.log('✓ Database PostgreSQL pronto');
 }
 
