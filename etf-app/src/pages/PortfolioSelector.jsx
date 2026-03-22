@@ -10,7 +10,7 @@ export default function PortfolioSelector() {
   // step: 'list' | 'new' | 'ai-prompt' | 'ai-loading' | 'ai-result'
   const [step, setStep] = useState('list');
   const [form, setForm] = useState({ name: '', riskProfile: 'Prudente', maxUSA: 'No max' });
-  const [aiForm, setAiForm] = useState({ orizzonteAnni: 10, capitale: '', preferenze: '', escludiDistribuzione: true, usaBucket: false, pctBreve: 30, anniBreve: 3, rendBreve: '', anniLungo: 10, rendLungo: '' });
+  const [aiForm, setAiForm] = useState({ orizzonteAnni: 'MEDIO', capitale: '', preferenze: '', escludiDistribuzione: true, usaBucket: false, pctBreve: 30, anniBreve: 3, rendBreve: '', anniLungo: 10, rendLungo: '' });
   const [error, setError] = useState('');
   const [newPortfolioId, setNewPortfolioId] = useState(null);
   const [aiRisultato, setAiRisultato] = useState(null); // { spiegazione, selezione }
@@ -35,7 +35,7 @@ export default function PortfolioSelector() {
         body: JSON.stringify({
           portfolioId: newPortfolioId,
           profilo: form.riskProfile,
-          orizzonteAnni: parseInt(aiForm.orizzonteAnni) || 10,
+          orizzonteAnni: aiForm.orizzonteAnni === 'BREVE' ? 3 : aiForm.orizzonteAnni === 'LUNGO' ? 15 : 7,
           bucketBreve: aiForm.usaBucket ? { pct: aiForm.pctBreve, anni: aiForm.anniBreve, targetRend: parseFloat(aiForm.rendBreve) || null } : undefined,
           bucketLungo: aiForm.usaBucket ? { pct: 100 - aiForm.pctBreve, anni: aiForm.anniLungo, targetRend: parseFloat(aiForm.rendLungo) || null } : undefined,
           capitale: aiForm.capitale || null,
@@ -191,9 +191,18 @@ export default function PortfolioSelector() {
             </div>
             {error && <div className="alert alert-warning" style={{ marginBottom: 16 }}>{error}</div>}
             <div className="form-group">
-              <label className="form-label">Orizzonte temporale (anni)</label>
-              <input className="input" type="number" min={1} max={30} value={aiForm.orizzonteAnni}
-                onChange={e => setAiForm(f => ({ ...f, orizzonteAnni: e.target.value }))} />
+              <label className="form-label">Orizzonte temporale</label>
+              <div style={{ display:'flex', gap:8, marginTop:4 }}>
+                {[['BREVE','< 5 anni'],['MEDIO','5-10 anni'],['LUNGO','> 10 anni']].map(([val,lab]) => (
+                  <div key={val} onClick={() => setAiForm(f => ({...f, orizzonteAnni: val}))}
+                    style={{ flex:1, padding:'8px 10px', borderRadius:8, cursor:'pointer', textAlign:'center',
+                      border:'1px solid ' + (aiForm.orizzonteAnni===val ? 'var(--accent-blue)' : 'var(--border)'),
+                      background: aiForm.orizzonteAnni===val ? 'rgba(59,130,246,0.1)' : 'var(--bg-primary)' }}>
+                    <div style={{ fontSize:13, fontWeight:700, color: aiForm.orizzonteAnni===val ? 'var(--accent-blue)' : 'var(--text-primary)' }}>{val}</div>
+                    <div style={{ fontSize:11, color:'var(--text-muted)' }}>{lab}</div>
+                  </div>
+                ))}
+              </div>
             </div>
             <div className="form-group">
               <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, marginBottom: 8 }}>
