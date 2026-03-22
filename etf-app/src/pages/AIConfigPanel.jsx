@@ -104,6 +104,9 @@ export default function AIConfigPanel() {
   // Totale pesi attuali
   const totPesi = config.reduce((s, c) => s + (modified[c.key] ?? c.valore), 0);
 
+  const [aperti, setAperti] = useState({});
+  const toggleCat = (cat) => setAperti(a => ({ ...a, [cat]: !a[cat] }));
+
   return (
     <div className="card">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
@@ -123,24 +126,38 @@ export default function AIConfigPanel() {
       {!loading && Object.entries(byCategoria).map(([cat, items]) => {
         if (!items.length) return null;
         const c = CAT_COLORE[cat];
+        const isOpen = !!aperti[cat];
+        const ptCat = items.reduce((s, i) => s + (modified[i.key] ?? i.valore), 0);
         return (
-          <div key={cat} style={{ marginBottom: 10 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: c.testo, textTransform: 'uppercase',
-              letterSpacing: '0.06em', marginBottom: 4, display: 'flex', justifyContent: 'space-between' }}>
-              <span>{cat}</span>
-              <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>
-                {items.reduce((s, i) => s + (modified[i.key] ?? i.valore), 0)} pt
-              </span>
+          <div key={cat} style={{ marginBottom: 6, borderRadius: 8, border: `1px solid ${c.border}44`, overflow: 'hidden' }}>
+            <div onClick={() => toggleCat(cat)}
+              style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                padding: '8px 12px', background: c.bg, cursor: 'pointer', userSelect: 'none' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: c.testo, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                  {cat}
+                </span>
+                <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{c.label.split('—')[1]?.trim()}</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ fontSize: 12, fontWeight: 600, color: c.testo }}>{ptCat} pt</span>
+                <span style={{ fontSize: 14, color: c.testo, display: 'inline-block',
+                  transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>▾</span>
+              </div>
             </div>
-            {items.map(item => (
-              <SliderRow key={item.key} item={{ ...item, valore: modified[item.key] ?? item.valore }}
-                onChange={handleChange} />
-            ))}
+            {isOpen && (
+              <div style={{ padding: '8px 10px', background: 'var(--bg-card)' }}>
+                {items.map(item => (
+                  <SliderRow key={item.key} item={{ ...item, valore: modified[item.key] ?? item.valore }}
+                    onChange={handleChange} />
+                ))}
+              </div>
+            )}
           </div>
         );
       })}
 
-      {!loading && (
+            {!loading && (
         <div style={{ display: 'flex', gap: 10, marginTop: 8, alignItems: 'center' }}>
           <button className="btn btn-primary" onClick={handleSave}
             disabled={saving || totModificate === 0}
