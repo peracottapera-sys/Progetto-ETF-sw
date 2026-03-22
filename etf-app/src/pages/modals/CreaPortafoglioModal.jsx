@@ -14,6 +14,7 @@ function CreaPortafoglioModal({ portfolioId, onClose, initialProfilo, initialDat
     maxUSA: 'No max',
   });
   const [spiegazione, setSpiegazione] = useState(initialData?.spiegazione || '');
+  const [scenarioMacro, setScenarioMacro] = useState(initialData?.scenarioMacro || '');
   const [selezione, setSelezione] = useState(initialData?.selezione || []);
   const [approvate, setApprovate] = useState(() => {
     if (!initialData?.selezione) return {};
@@ -53,6 +54,7 @@ function CreaPortafoglioModal({ portfolioId, onClose, initialProfilo, initialDat
       const data = await res.json();
       if (data.selezione) {
         setSpiegazione(data.spiegazione);
+        setScenarioMacro(data.scenarioMacro || '');
         setSelezione(data.selezione);
         const initApp = {}, initPesi = {};
         data.selezione.forEach((s, i) => {
@@ -456,13 +458,10 @@ function CreaPortafoglioModal({ portfolioId, onClose, initialProfilo, initialDat
                           const sbList = Object.entries(sbMap);
                           const sbTot = sbList.reduce((t, [, n]) => t + n, 0);
 
-                          // Scenario macro — calcolato lato client
-                          const scenarioLabel = (() => {
-                            const sp = spiegazione || '';
-                            const m = sp.match(/Scenario macro corrente:\s*([A-Z_]+)/);
-                            if (m) return m[1].replace(/_/g,' ');
-                            return 'NEUTRO';
-                          })();
+                          // Scenario macro — letto dal backend (scenarioMacro nello stato)
+                          const scenarioLabel = scenarioMacro
+                            ? scenarioMacro.replace(/_/g, ' ')
+                            : 'NEUTRO';
                           const scenColore = scenarioLabel.includes('CRISI') ? 'var(--accent-red)'
                             : scenarioLabel.includes('STAGFLAZ') || scenarioLabel.includes('SHOCK') ? 'var(--accent-amber)'
                             : scenarioLabel.includes('ESPANSIONE') || scenarioLabel.includes('EASING') ? 'var(--accent-green)'

@@ -1026,6 +1026,9 @@ IMPORTANTE: se la quota azionaria calcolata non rientra nel range obbligatorio, 
         perf5y: etf.perf5y,
         capitalizzazione: etf.capitalizzazione,
         variabilita: etf.variabilita,
+        maxDrawdown: etf.maxDrawdown ?? null,       // FIX: era mancante → DD max N/D
+        maxDrawdown5y: etf.maxDrawdown5y ?? null,   // FIX: era mancante → DD max 5A N/D
+        smartBeta: etf.smartBeta || null,           // FIX: era mancante → Smart Beta —
         annoNascita,
         quotazioneAcquisto: quotazioneReale || null,
       };
@@ -1213,8 +1216,15 @@ IMPORTANTE: se la quota azionaria calcolata non rientra nel range obbligatorio, 
       }
     }
 
-    console.log(`  ✓ Portafoglio AI: ${selezione.length} ETF consigliati + ${selezioneConAlternative.length - selezione.length} alternative`);
-    res.json({ spiegazione, selezione: selezioneConAlternative, capitaleUsato: conCapitale ? parseFloat(capitale) : null, avvisoMaxUSA });
+    // Calcola scenario macro da includere nella risposta (per il frontend)
+    let scenarioMacro = 'NEUTRO';
+    try {
+      const pt = getPosizionetattica(profilo, orizzonteAnni || 5, macroData);
+      scenarioMacro = pt.scenario || 'NEUTRO';
+    } catch (e) { /* fallback NEUTRO */ }
+
+    console.log(`  ✓ Portafoglio AI: ${selezione.length} ETF consigliati + ${selezioneConAlternative.length - selezione.length} alternative | scenario: ${scenarioMacro}`);
+    res.json({ spiegazione, selezione: selezioneConAlternative, capitaleUsato: conCapitale ? parseFloat(capitale) : null, avvisoMaxUSA, scenarioMacro });
   } catch (err) {
     res.status(500).json({ error: 'Errore creazione portafoglio AI: ' + err.message });
   }
