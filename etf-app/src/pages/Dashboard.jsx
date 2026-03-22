@@ -258,9 +258,11 @@ export default function Dashboard({ setActiveTab }) {
                       <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{etf.categoria}</span>
                       {etf.smartBeta && (
                         <span style={{ fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 4,
-                          background: 'rgba(112,48,160,0.12)', color: '#7030A0', border: '1px solid rgba(112,48,160,0.25)',
+                          background: etf.smartBeta === 'ESG' ? 'rgba(16,185,129,0.12)' : 'rgba(112,48,160,0.12)',
+                          color: etf.smartBeta === 'ESG' ? '#059669' : '#7030A0',
+                          border: '1px solid ' + (etf.smartBeta === 'ESG' ? 'rgba(16,185,129,0.25)' : 'rgba(112,48,160,0.25)'),
                           whiteSpace: 'nowrap' }}>
-                          ⚡ {etf.smartBeta}
+                          {etf.smartBeta === 'ESG' ? '🌱' : '⚡'} {etf.smartBeta}
                         </span>
                       )}
                     </div>

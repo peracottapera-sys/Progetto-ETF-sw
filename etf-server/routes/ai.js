@@ -375,7 +375,9 @@ ${regole.noteOrizzonte || ''}
 ${(() => { try {
   const pt = getPosizionetattica(portfolio.riskProfile, portfolio.orizzonteAnni || 5, macroData);
   const sb = getSmartBetaSuggeriti(portfolio.riskProfile, pt.scenario, pt.fascia);
-  return `Scenario macro corrente: ${pt.scenario}\n${pt.testo}\n\nFATTORI SMART BETA consigliati per questo scenario: PRIVILEGIA ${sb.preferiti.join(', ')}${sb.evitare.length ? ` | EVITA/RIDUCI ${sb.evitare.join(', ')}` : ''}\nNota: se nel portafoglio sono presenti ETF Smart Beta, valuta la loro coerenza con i fattori consigliati.`;
+  const etfSmartBeta = etfSelezionati.filter(e => e.smartBeta && e.smartBeta !== 'ESG').map(e => e.smartBeta + '(' + e.isin + ')').join(', ');
+  const etfEsg = etfSelezionati.filter(e => e.smartBeta === 'ESG').map(e => e.isin).join(', ');
+  return `Scenario macro corrente: ${pt.scenario}\n${pt.testo}\n\nFATTORI SMART BETA consigliati per questo scenario: PRIVILEGIA ${sb.preferiti.join(', ')}${sb.evitare.length ? ' | EVITA/RIDUCI ' + sb.evitare.join(', ') : ''}\n${etfSmartBeta ? 'ETF fattoriali in portafoglio: ' + etfSmartBeta + ' — valuta coerenza con fattori consigliati.' : ''}${etfEsg ? ' ETF ESG presenti: ' + etfEsg + ' (classificazione ESG — non influenza posizionamento tattico).' : ''}`;
 } catch(e) { return ''; } })()}
 ${hasBuckets ? `
 ## STRUTTURA BUCKET
