@@ -272,6 +272,16 @@ app.post('/api/ai/config/reset', authMiddleware, async (req, res) => {
 });
 
 // ── App Logs endpoint ────────────────────────────────────────────────────
+app.delete('/api/admin/logs', authMiddleware, async (req, res) => {
+  try {
+    const { ids } = req.body;
+    if (!Array.isArray(ids) || ids.length === 0) return res.status(400).json({ error: 'Nessun ID fornito' });
+    const ph = ids.map((_, i) => `$${i+1}`).join(',');
+    const { rowCount } = await pool.query(`DELETE FROM app_logs WHERE id IN (${ph})`, ids);
+    res.json({ ok: true, eliminati: rowCount });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 app.get('/api/admin/logs', authMiddleware, async (req, res) => {
   try {
     const limit = Math.min(parseInt(req.query.limit) || 200, 500);

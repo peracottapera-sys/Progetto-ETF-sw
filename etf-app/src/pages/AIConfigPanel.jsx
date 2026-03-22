@@ -21,16 +21,20 @@ function SliderRow({ item, onChange }) {
   };
 
   return (
-    <div style={{ padding: '5px 8px', borderRadius: 6, background: cat.bg,
-      border: `1px solid ${cat.border}33`, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 8 }}>
-      <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-primary)', flex: 1, minWidth: 0,
-        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={item.descrizione}>
-        {item.label}
+    <div style={{ padding: '6px 8px', borderRadius: 6, background: cat.bg,
+      border: `1px solid ${cat.border}33`, marginBottom: 4 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-primary)' }}>{item.label}</div>
+          {item.descrizione && (
+            <div style={{ fontSize: 9, color: 'var(--text-muted)', marginTop: 2, lineHeight: 1.3 }}>{item.descrizione}</div>
+          )}
+        </div>
+        <input type="range" min={item.min_val} max={item.max_val} step={1} value={val}
+          onChange={handleChange}
+          style={{ width: 80, accentColor: cat.border, cursor: 'pointer', flexShrink: 0 }} />
+        <span style={{ fontSize: 11, fontWeight: 700, color: cat.testo, minWidth: 20, textAlign: 'right', flexShrink: 0 }}>{val}</span>
       </div>
-      <input type="range" min={item.min_val} max={item.max_val} step={1} value={val}
-        onChange={handleChange}
-        style={{ width: 80, accentColor: cat.border, cursor: 'pointer', flexShrink: 0 }} />
-      <span style={{ fontSize: 11, fontWeight: 700, color: cat.testo, minWidth: 20, textAlign: 'right', flexShrink: 0 }}>{val}</span>
     </div>
   );
 }
