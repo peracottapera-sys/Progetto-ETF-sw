@@ -114,7 +114,7 @@ export function Settings() {
         </div>
 
         {/* Colonna centrale — Pesi Motore AI */}
-        <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ width: '55%', flexShrink: 0 }}>
           <AIConfigPanel />
         </div>
 

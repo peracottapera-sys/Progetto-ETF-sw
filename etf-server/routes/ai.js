@@ -79,6 +79,47 @@ function verificaRendimentoComplessivo(buckets, profilo) {
   };
 }
 
+// ── Assegnazione automatica ETF ai bucket ────────────────────────────────
+function assegnaBucketAutomatico(etf) {
+  // Regole: categoria → bucket
+  const cat = (etf.categoria || '').toLowerCase();
+  const sb  = (etf.smartBeta || '').toLowerCase();
+
+  // BREVE: obbligazionario breve, monetario, low volatility, dividend
+  if (cat.includes('monetar') || cat.includes('liquidit')) return 'BREVE';
+  if (cat.includes('obblig') && (cat.includes('1-3') || cat.includes('breve') || cat.includes('short') || cat.includes('0-1') || cat.includes('1-5'))) return 'BREVE';
+  if (sb === 'low volatility' || sb === 'dividend') return 'BREVE';
+
+  // LUNGO: azionario, tematico, emergenti, commodity, oro
+  if (cat.includes('azionario') || cat.includes('equity') || cat.includes('tematico') || cat.includes('emergenti')) return 'LUNGO';
+  if (cat.includes('oro') || cat.includes('commodity') || cat.includes('real asset')) return 'LUNGO';
+  if (sb === 'momentum' || sb === 'small cap' || sb === 'value') return 'LUNGO';
+
+  // Default: LUNGO per tutto il resto (obbligaz. medio-lungo, corporate, ecc.)
+  return 'LUNGO';
+}
+
+// ── Descrizione testuale bucket per prompt ─────────────────────────────────
+function descrizioneBucket(bucket, profilo, macroData) {
+  const orizzLabel = bucket.orizzonte_anni <= 4 ? 'BREVE' : bucket.orizzonte_anni >= 10 ? 'LUNGO' : 'MEDIO';
+  const regoleBucket = {
+    BREVE: {
+      Prudente:   'Protezione capitale. Solo obblig. breve duration (1-3Y), monetario EUR, Low Volatility. Max azionario 10%.',
+      Bilanciato: 'Stabilita. Obblig. breve-medio, Dividend, Low Vol. Max azionario 25%.',
+      Aggressivo: 'Liquidita tattica. Obblig. breve, monetario, Value ciclici selettivi. Max azionario 35%.',
+    },
+    LUNGO: {
+      Prudente:   'Crescita prudente. Azionario difensivo (Quality, Dividend), obblig. medio-lungo. Max azionario 35%.',
+      Bilanciato: 'Crescita bilanciata. Mix azionario globale e obblig. Fattori Value/Quality. Azionario 50-70%.',
+      Aggressivo: 'Massimizzazione. Azionario globale, emergenti, tematici, Small Cap, Momentum. Azionario 80%+.',
+    },
+  };
+  const regola = regoleBucket[orizzLabel]?.[profilo] || 'Parametri standard del profilo.';
+  return `Bucket ${bucket.tipo} (${bucket.pct_allocazione}% capitale | Orizzonte: ${bucket.orizzonte_anni} anni | ${orizzLabel})
+Regole: ${regola}
+Target rendimento: ${bucket.rendimento_target_annuo ? bucket.rendimento_target_annuo + '% annuo' : 'non specificato (usa minimo profilo)'}`;
+}
+
 // ── Posizionamento tattico: matrice profilo × orizzonte × macro ──────────
 function getPosizionetattica(profilo, orizzonteAnni, macro) {
   // Supporta sia valori numerici che etichette BREVE/MEDIO/LUNGO
@@ -380,17 +421,22 @@ ${(() => { try {
   return `Scenario macro corrente: ${pt.scenario}\n${pt.testo}\n\nFATTORI SMART BETA consigliati per questo scenario: PRIVILEGIA ${sb.preferiti.join(', ')}${sb.evitare.length ? ' | EVITA/RIDUCI ' + sb.evitare.join(', ') : ''}\n${etfSmartBeta ? 'ETF fattoriali in portafoglio: ' + etfSmartBeta + ' — valuta coerenza con fattori consigliati.' : ''}${etfEsg ? ' ETF ESG presenti: ' + etfEsg + ' (classificazione ESG — non influenza posizionamento tattico).' : ''}`;
 } catch(e) { return ''; } })()}
 ${hasBuckets ? `
-## STRUTTURA BUCKET
-Questo portafoglio usa una strategia a DUE BUCKET:
-${buckets.map(b => `- Bucket ${b.tipo}: ${b.pct_allocazione}% del capitale | Orizzonte ${b.orizzonte_anni} anni | Target rendimento: ${b.rendimento_target_annuo || 'non specificato'}% annuo`).join('\n')}
+## PIANIFICAZIONE A DUE ORIZZONTI (Due Bucket)
+Questo portafoglio e diviso in due componenti con logiche distinte:
+
+${buckets.map(b => descrizioneBucket(b, portfolio.riskProfile, macroData)).join('\n\n')}
 
 VINCOLO RENDIMENTO COMPLESSIVO:
 ${checkRend?.nota || ''}
-${!checkRend?.ok ? `Il bucket LUNGO (ETF con bucket='LUNGO') deve puntare a rendimento >= ${checkRend?.targetLungoMinimo}% annuo per rispettare il minimo del profilo ${portfolio.riskProfile}.` : ''}
+${!checkRend?.ok ? `⚠️ AZIONE RICHIESTA: il bucket LUNGO deve essere piu aggressivo per raggiungere almeno ${checkRend?.targetLungoMinimo}% annuo.` : ''}
 
-Ogni ETF ha un'etichetta bucket (BREVE o LUNGO). Nelle modifiche mantieni questa distinzione:
-- ETF con bucket BREVE: privilegia bassa volatilità, obbligazionario breve, liquidità
-- ETF con bucket LUNGO: privilegia crescita, azionario, tematico` : ''}
+ASSEGNAZIONE ETF AI BUCKET (per ETF senza etichetta, usa questa logica):
+- BREVE: obbligaz. breve duration, monetario, Low Volatility, Dividend
+- LUNGO: azionario globale/tematico/emergenti, Quality, Value, Momentum, Small Cap
+- In caso di dubbio: assegna a LUNGO
+
+ANALISI PER SOTTO-PORTAFOGLIO:
+Valuta separatamente la coerenza di ciascun bucket. Un ETF azionario in bucket BREVE e quasi sempre incoerente (segnalalo). Un ETF monetario in bucket LUNGO e uno spreco di potenziale (segnalalo se costituisce >20% del bucket lungo).` : ''}
 Categorie obbligazionarie preferite per questo orizzonte: ${regole.durataObbligaz || 'standard'}
 Peso contesto macro: ${regole.pesoMacro || 'MEDIO'}
 

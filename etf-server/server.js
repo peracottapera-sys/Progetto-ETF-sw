@@ -161,20 +161,28 @@ async function initDB() {
   }
   // Seed ai_config — valori default scorecard
   const aiConfigDefaults = [
-    ['peso_num_etf','N. ETF nel portafoglio','HARD',11,0,20,'Peso della regola sul numero di ETF'],
-    ['peso_quota_azion','Quota azionaria target','HARD',15,0,20,'Peso del target azionario per profilo'],
-    ['peso_max_drawdown','Max Drawdown 1Y','HARD',12,0,20,'Peso vincolo drawdown singolo ETF'],
-    ['peso_capitaliz','Capitalizzazione minima','HARD',10,0,20,'Peso filtro AUM minimo'],
-    ['peso_limite_usa','Limite esposizione USA','HARD',7,0,20,'Peso vincolo geografico USA'],
-    ['peso_ter','TER ponderato','SOFT',10,0,15,'Peso costo totale ponderato'],
-    ['peso_correlazione','Correlazione tra ETF','SOFT',9,0,15,'Peso diversificazione (corr <0.6)'],
-    ['peso_volatilita','Volatilita media','SOFT',7,0,15,'Peso volatilita ponderata'],
-    ['peso_hedging','Hedging valuta non EUR','SOFT',4,0,15,'Peso copertura valutaria'],
-    ['peso_vix','VIX (volatilita mercato)','MACRO',4,0,10,'Peso VIX nelle raccomandazioni'],
-    ['peso_tassi','Tassi BCE/Fed','MACRO',4,0,10,'Peso tassi interesse'],
-    ['peso_inflazione','Inflazione EU/USA','MACRO',3,0,10,'Peso inflazione'],
-    ['peso_petrolio','Petrolio Brent','MACRO',2,0,10,'Peso petrolio'],
-    ['peso_curva_eurusd','Curva tassi / EUR/USD','MACRO',2,0,10,'Peso curva e cambio'],
+    // HARD: totale 52
+    ['peso_quota_azion',    'Quota azionaria target',   'HARD', 14, 0, 20, 'Target azionario per profilo (+/-10%)'],
+    ['peso_volatilita',     'Volatilita media port.',   'HARD', 11, 0, 20, 'Vol media ponderata <= limite profilo'],
+    ['peso_max_drawdown',   'Max Drawdown 1Y',          'HARD',  8, 0, 20, 'Drawdown singolo ETF <= limite profilo'],
+    ['peso_num_etf',        'N. ETF nel portafoglio',   'HARD',  8, 0, 20, 'Numero ETF nel range min-max profilo'],
+    ['peso_capitaliz',      'Capitalizzazione minima',  'HARD',  6, 0, 20, 'AUM >= minimo per profilo'],
+    ['peso_limite_usa',     'Limite esposizione USA',   'HARD',  5, 0, 20, 'Vincolo geografico USA se impostato'],
+    // SOFT: totale 18
+    ['peso_ter',            'TER ponderato',            'SOFT',  8, 0, 15, 'Costo totale ponderato del portafoglio'],
+    ['peso_correlazione',   'Correlazione tra ETF',     'SOFT',  6, 0, 15, 'Diversificazione coppie ETF (<0.6)'],
+    ['peso_hedging',        'Hedging valuta non EUR',   'SOFT',  4, 0, 15, 'Copertura valutaria per profilo'],
+    // MACRO: totale 14
+    ['peso_tassi',          'Tassi BCE/Fed',            'MACRO', 4, 0, 10, 'Tassi interesse e outlook banche centrali'],
+    ['peso_vix',            'VIX (volatilita mercato)', 'MACRO', 3, 0, 10, 'Volatilita mercato e risk-off'],
+    ['peso_inflazione',     'Inflazione EU/USA',        'MACRO', 3, 0, 10, 'Pressione inflattiva corrente'],
+    ['peso_petrolio',       'Petrolio Brent',           'MACRO', 2, 0, 10, 'Shock petrolio e inflazione secondaria'],
+    ['peso_curva_eurusd',   'Curva tassi / EUR/USD',    'MACRO', 2, 0, 10, 'Curva rendimenti e cambio valutario'],
+    // BUCKET/FATTORI: totale 16
+    ['peso_bucket_coerenza','Coerenza ETF-Bucket',      'BUCKET', 5, 0, 10, 'ETF coerente con orizzonte del bucket'],
+    ['peso_smartbeta',      'Smart Beta vs scenario',   'BUCKET', 4, 0, 10, 'Fattore ETF adatto a scenario macro'],
+    ['peso_rend_compless',  'Rendimento complessivo',   'BUCKET', 4, 0, 10, 'Rend. pesato >= minimo del profilo'],
+    ['peso_divers_fattori', 'Diversificazione fattori', 'BUCKET', 3, 0, 10, 'Varieta fattori Smart Beta in portafoglio'],
   ];
   for (const [key,label,cat,val,min,max,desc] of aiConfigDefaults) {
     await pool.q(
@@ -260,13 +268,24 @@ app.put('/api/ai/config/:key', authMiddleware, async (req, res) => {
 app.post('/api/ai/config/reset', authMiddleware, async (req, res) => {
   try {
     await pool.query(`UPDATE ai_config SET valore = CASE
-      WHEN key='peso_num_etf' THEN 11 WHEN key='peso_quota_azion' THEN 15
-      WHEN key='peso_max_drawdown' THEN 12 WHEN key='peso_capitaliz' THEN 10
-      WHEN key='peso_limite_usa' THEN 7 WHEN key='peso_ter' THEN 10
-      WHEN key='peso_correlazione' THEN 9 WHEN key='peso_volatilita' THEN 7
-      WHEN key='peso_hedging' THEN 4 WHEN key='peso_vix' THEN 4
-      WHEN key='peso_tassi' THEN 4 WHEN key='peso_inflazione' THEN 3
-      WHEN key='peso_petrolio' THEN 2 WHEN key='peso_curva_eurusd' THEN 2
+      WHEN key='peso_quota_azion'     THEN 14
+      WHEN key='peso_volatilita'      THEN 11
+      WHEN key='peso_max_drawdown'    THEN 8
+      WHEN key='peso_num_etf'         THEN 8
+      WHEN key='peso_capitaliz'       THEN 6
+      WHEN key='peso_limite_usa'      THEN 5
+      WHEN key='peso_ter'             THEN 8
+      WHEN key='peso_correlazione'    THEN 6
+      WHEN key='peso_hedging'         THEN 4
+      WHEN key='peso_tassi'           THEN 4
+      WHEN key='peso_vix'             THEN 3
+      WHEN key='peso_inflazione'      THEN 3
+      WHEN key='peso_petrolio'        THEN 2
+      WHEN key='peso_curva_eurusd'    THEN 2
+      WHEN key='peso_bucket_coerenza' THEN 5
+      WHEN key='peso_smartbeta'       THEN 4
+      WHEN key='peso_rend_compless'   THEN 4
+      WHEN key='peso_divers_fattori'  THEN 3
       ELSE valore END, updated_at=NOW()`);
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }

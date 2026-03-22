@@ -4,9 +4,10 @@ import { useApp } from '../context/AppContext';
 const API = process.env.REACT_APP_API_URL || (window.location.hostname === 'localhost' ? 'http://localhost:3001' : '');
 
 const CAT_COLORE = {
-  HARD:  { bg: 'rgba(192,0,0,0.08)', border: '#C00000', testo: '#C00000', label: 'HARD — Vincolo assoluto' },
-  SOFT:  { bg: 'rgba(237,125,49,0.08)', border: '#ED7D31', testo: '#B45309', label: 'SOFT — Preferenza ottimizzabile' },
-  MACRO: { bg: 'rgba(112,48,160,0.08)', border: '#7030A0', testo: '#7030A0', label: 'MACRO — Contesto di mercato' },
+  HARD:   { bg: 'rgba(192,0,0,0.08)',   border: '#C00000', testo: '#C00000', label: 'HARD — Vincolo assoluto' },
+  SOFT:   { bg: 'rgba(237,125,49,0.08)',border: '#ED7D31', testo: '#B45309', label: 'SOFT — Preferenza ottimizzabile' },
+  MACRO:  { bg: 'rgba(112,48,160,0.08)',border: '#7030A0', testo: '#7030A0', label: 'MACRO — Contesto di mercato' },
+  BUCKET: { bg: 'rgba(16,185,129,0.08)',border: '#059669', testo: '#059669', label: 'BUCKET — Orizzonti e fattori' },
 };
 
 function SliderRow({ item, onChange }) {
@@ -21,19 +22,20 @@ function SliderRow({ item, onChange }) {
   };
 
   return (
-    <div style={{ padding: '5px 8px', borderRadius: 6, background: cat.bg,
-      border: `1px solid ${cat.border}33`, marginBottom: 3,
-      display: 'flex', alignItems: 'center', gap: 8 }}>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)' }}>{item.label}</span>
-        {item.descrizione && (
-          <span style={{ fontSize: 10, color: 'var(--text-muted)', marginLeft: 6 }}>{item.descrizione}</span>
-        )}
+    <div style={{ padding: '6px 8px', borderRadius: 6, background: cat.bg,
+      border: `1px solid ${cat.border}33`, marginBottom: 4 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-primary)' }}>{item.label}</div>
+          {item.descrizione && (
+            <div style={{ fontSize: 9, color: 'var(--text-muted)', marginTop: 2, lineHeight: 1.3 }}>{item.descrizione}</div>
+          )}
+        </div>
+        <input type="range" min={item.min_val} max={item.max_val} step={1} value={val}
+          onChange={handleChange}
+          style={{ width: 80, accentColor: cat.border, cursor: 'pointer', flexShrink: 0 }} />
+        <span style={{ fontSize: 11, fontWeight: 700, color: cat.testo, minWidth: 20, textAlign: 'right', flexShrink: 0 }}>{val}</span>
       </div>
-      <input type="range" min={item.min_val} max={item.max_val} step={1} value={val}
-        onChange={handleChange}
-        style={{ width: 90, accentColor: cat.border, cursor: 'pointer', flexShrink: 0 }} />
-      <span style={{ fontSize: 12, fontWeight: 700, color: cat.testo, minWidth: 22, textAlign: 'right', flexShrink: 0 }}>{val}</span>
     </div>
   );
 }
@@ -94,7 +96,7 @@ export default function AIConfigPanel() {
   };
 
   const totModificate = Object.keys(modified).length;
-  const byCategoria = ['HARD', 'SOFT', 'MACRO'].reduce((acc, cat) => {
+  const byCategoria = ['HARD', 'SOFT', 'MACRO', 'BUCKET'].reduce((acc, cat) => {
     acc[cat] = config.filter(c => c.categoria === cat);
     return acc;
   }, {});
@@ -122,9 +124,9 @@ export default function AIConfigPanel() {
         if (!items.length) return null;
         const c = CAT_COLORE[cat];
         return (
-          <div key={cat} style={{ marginBottom: 8 }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: c.testo, textTransform: 'uppercase',
-              letterSpacing: '0.06em', marginBottom: 3, display: 'flex', justifyContent: 'space-between' }}>
+          <div key={cat} style={{ marginBottom: 10 }}>
+            <div style={{ fontSize: 9, fontWeight: 700, color: c.testo, textTransform: 'uppercase',
+              letterSpacing: '0.06em', marginBottom: 4, display: 'flex', justifyContent: 'space-between' }}>
               <span>{cat}</span>
               <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>
                 {items.reduce((s, i) => s + (modified[i.key] ?? i.valore), 0)} pt
