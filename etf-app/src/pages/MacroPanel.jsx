@@ -2,6 +2,30 @@ import React, { useState, useEffect } from 'react';
 
 const API = process.env.REACT_APP_API_URL || (window.location.hostname === 'localhost' ? 'http://localhost:3001' : '');
 
+function calcolaScenario(dati) {
+  if (!dati) return null;
+  const vix = parseFloat(dati.vix) || 20;
+  const brent = parseFloat(dati.brent) || 80;
+  const tassoFed = parseFloat(dati.tassoFed) || 4.5;
+  const tassoBce = parseFloat(dati.tassoBce) || 3.0;
+  const inflUSA = parseFloat(dati.inflUSA) || 3.0;
+
+  const tassiAlti = tassoFed > 4.0 || tassoBce > 3.0;
+  const rischioRialzo = tassiAlti && brent > 85 && inflUSA > 3.0;
+  const vixMoltoAlto = vix > 35;
+  const vixAlto = vix > 25;
+  const tagliAttesi = tassoFed < 4.0 || tassoBce < 3.0;
+  const petrolioCaldo = brent > 90;
+
+  if (rischioRialzo)   return { label: 'STAGFLAZIONE LATENTE', colore: '#ED7D31', icon: '⚠️', desc: 'Tassi fermi con rischio rialzo — petrolio alto, inflazione persistente' };
+  if (vixMoltoAlto)    return { label: 'CRISI MERCATI',         colore: '#C00000', icon: '🔴', desc: 'VIX > 35 — alta volatilità, risk-off diffuso' };
+  if (vixAlto)         return { label: 'VOLATILITÀ ELEVATA',    colore: '#ED7D31', icon: '🟠', desc: 'VIX 25-35 — attenzione, mercati instabili' };
+  if (tagliAttesi && inflUSA < 3.0) return { label: 'EASING CICLO', colore: '#059669', icon: '🟢', desc: 'Tassi in calo — contesto favorevole per azionario' };
+  if (petrolioCaldo)   return { label: 'SHOCK PETROLIO',        colore: '#B45309', icon: '🟡', desc: 'Brent > 90$ — rischio inflazione secondaria' };
+  if (vix < 18 && !tassiAlti) return { label: 'ESPANSIONE',     colore: '#059669', icon: '🟢', desc: 'Bassa volatilità, tassi favorevoli — mercati positivi' };
+  return                        { label: 'NEUTRO',               colore: '#6B7280', icon: '⚪', desc: 'Contesto di mercato nella norma' };
+}
+
 function Pill({ label, valore, unita = '', colore, sub, perf }) {
   return (
     <div style={{ background: 'var(--bg-primary)', borderRadius: 7, padding: '7px 10px', border: '1px solid var(--border)', minWidth: 88 }}>
@@ -145,6 +169,25 @@ export default function MacroPanel({ token }) {
         </div>
 
         {tab === 'indicatori' && <>
+        {/* Badge Scenario Macro */}
+        {(() => {
+          const s = calcolaScenario(dati);
+          if (!s) return null;
+          return (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px',
+              borderRadius: 10, marginBottom: 12,
+              background: s.colore + '18', border: '2px solid ' + s.colore + '55' }}>
+              <span style={{ fontSize: 22 }}>{s.icon}</span>
+              <div>
+                <div style={{ fontSize: 15, fontWeight: 800, color: s.colore, letterSpacing: '0.04em' }}>
+                  {s.label}
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>{s.desc}</div>
+              </div>
+            </div>
+          );
+        })()}
+
         {/* Riga 1: Volatilità e mercati */}
         <div style={{ fontSize: 9, color: 'var(--text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.06em', display:'flex', alignItems:'center', gap:4 }}>
           Volatilità e Mercati
