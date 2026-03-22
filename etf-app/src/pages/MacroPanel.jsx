@@ -148,7 +148,7 @@ export default function MacroPanel({ token }) {
         {/* Riga 1: Volatilità e mercati */}
         <div style={{ fontSize: 9, color: 'var(--text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.06em', display:'flex', alignItems:'center', gap:4 }}>
           Volatilità e Mercati
-          <a href="https://tradingeconomics.com/forecast/market" target="_blank" rel="noopener noreferrer" style={{ fontSize:11, color:'var(--accent-blue)', textDecoration:'underline', textUnderlineOffset:'2px', fontWeight:500 }}>↗ TE</a>
+          <a href="https://it.tradingeconomics.com/" target="_blank" rel="noopener noreferrer" style={{ fontSize:11, color:'var(--accent-blue)', textDecoration:'underline', textUnderlineOffset:'2px', fontWeight:500 }}>↗ TE</a>
         </div>
         <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 8 }}>
           <Pill label="VIX" valore={dati.vix} colore={colorVIX(dati.vix)} sub={dati.vixLabel} />

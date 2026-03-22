@@ -22,19 +22,19 @@ function SliderRow({ item, onChange }) {
   };
 
   return (
-    <div style={{ padding: '6px 8px', borderRadius: 6, background: cat.bg,
-      border: `1px solid ${cat.border}33`, marginBottom: 4 }}>
+    <div style={{ padding: '8px 10px', borderRadius: 6, background: cat.bg,
+      border: `1px solid ${cat.border}33`, marginBottom: 5 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-primary)' }}>{item.label}</div>
+          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{item.label}</div>
           {item.descrizione && (
-            <div style={{ fontSize: 9, color: 'var(--text-muted)', marginTop: 2, lineHeight: 1.3 }}>{item.descrizione}</div>
+            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2, lineHeight: 1.3 }}>{item.descrizione}</div>
           )}
         </div>
         <input type="range" min={item.min_val} max={item.max_val} step={1} value={val}
           onChange={handleChange}
           style={{ width: 80, accentColor: cat.border, cursor: 'pointer', flexShrink: 0 }} />
-        <span style={{ fontSize: 11, fontWeight: 700, color: cat.testo, minWidth: 20, textAlign: 'right', flexShrink: 0 }}>{val}</span>
+        <span style={{ fontSize: 13, fontWeight: 700, color: cat.testo, minWidth: 22, textAlign: 'right', flexShrink: 0 }}>{val}</span>
       </div>
     </div>
   );
@@ -125,7 +125,7 @@ export default function AIConfigPanel() {
         const c = CAT_COLORE[cat];
         return (
           <div key={cat} style={{ marginBottom: 10 }}>
-            <div style={{ fontSize: 9, fontWeight: 700, color: c.testo, textTransform: 'uppercase',
+            <div style={{ fontSize: 11, fontWeight: 700, color: c.testo, textTransform: 'uppercase',
               letterSpacing: '0.06em', marginBottom: 4, display: 'flex', justifyContent: 'space-between' }}>
               <span>{cat}</span>
               <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>
