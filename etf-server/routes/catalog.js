@@ -197,7 +197,7 @@ async function aggiornaPrezziSelettivo(pool, fetchETF, isins, motivo = 'manual')
       }
       if (!dati) {
         // Auto-fix: prova suffissi alternativi
-        for (const suf of ['.MI', '.AS', '.DE', '.PA', '.L', '.F', '.SW']) {
+        for (const suf of ['.MI', '.AS', '.DE', '.PA', '.L', '.F', '.SW', '.IR', '.SG']) {
           const t = isin + suf;
           const r = await fetchQuoteDirect(t);
           if (r?.quotazione > 0) {
@@ -249,7 +249,7 @@ async function aggiornaPrezziCompleto(pool, fetchETF, motivo = 'scheduled') {
       if (!dati?.quotazione) {
         const { rows: tr } = await pool.query('SELECT ticker_yahoo FROM etf_catalog WHERE isin=$1', [isin]);
         const tickerDB = tr[0]?.ticker_yahoo;
-        for (const suf of ['.MI', '.AS', '.DE', '.PA', '.L', '.F', '.SW']) {
+        for (const suf of ['.MI', '.AS', '.DE', '.PA', '.L', '.F', '.SW', '.IR', '.SG']) {
           const t = isin + suf;
           if (t === tickerDB + suf) continue; // evita riprova stesso ticker
           try {

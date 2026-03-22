@@ -91,7 +91,7 @@ async function fetchETF(isin) {
     const dati = await fetchQuote(ticker);
     if (dati) return { isin, ...dati, fonte: 'yahoo', aggiornato: new Date().toISOString() };
   }
-  for (const suf of ['.MI', '.AS', '.DE', '.PA', '.F', '.L', '.SW']) {
+  for (const suf of ['.MI', '.AS', '.DE', '.PA', '.F', '.L', '.SW', '.IR', '.SG']) {
     const t = isin + suf;
     const dati = await fetchQuote(t);
     if (dati?.quotazione) {
