@@ -431,6 +431,69 @@ function CreaPortafoglioModal({ portfolioId, onClose, initialProfilo, initialDat
                           {corrMax && <Pill label="Corr.max" value={corrMax} color={parseFloat(corrMax) > 0.6 ? 'var(--accent-amber)' : 'var(--accent-green)'} />}
                           <Pill label="Exp.USA~" value={expUSA+'%'} color={expUSA > 60 ? 'var(--accent-red)' : expUSA > 30 ? 'var(--accent-amber)' : 'var(--accent-green)'} />
                         </div>
+
+                        {/* Riga 2: Vol max 5A, Drawdown max 5A, Smart Beta, Scenario */}
+                        {(() => {
+                          // Max volatilità 5A tra tutti gli ETF consigliati
+                          const volMax = consigliati.reduce((max, s) => {
+                            const v = parseFloat(s.variabilita) || 0;
+                            return v > max ? v : max;
+                          }, 0);
+
+                          // Max drawdown 5A — usa maxDrawdown5y se disponibile, altrimenti maxDrawdown
+                          const ddMax = consigliati.reduce((max, s) => {
+                            const v = Math.abs(parseFloat(s.maxDrawdown5y || s.maxDrawdown) || 0);
+                            return v > max ? v : max;
+                          }, 0);
+
+                          // Smart Beta: conta ETF con fattore e lista categorie uniche
+                          const sbMap = {};
+                          consigliati.forEach(s => {
+                            if (s.smartBeta && s.smartBeta !== 'ESG') {
+                              sbMap[s.smartBeta] = (sbMap[s.smartBeta] || 0) + 1;
+                            }
+                          });
+                          const sbList = Object.entries(sbMap);
+                          const sbTot = sbList.reduce((t, [, n]) => t + n, 0);
+
+                          // Scenario macro — calcolato lato client
+                          const scenarioLabel = (() => {
+                            const sp = spiegazione || '';
+                            const m = sp.match(/Scenario macro corrente:\s*([A-Z_]+)/);
+                            if (m) return m[1].replace(/_/g,' ');
+                            return 'NEUTRO';
+                          })();
+                          const scenColore = scenarioLabel.includes('CRISI') ? 'var(--accent-red)'
+                            : scenarioLabel.includes('STAGFLAZ') || scenarioLabel.includes('SHOCK') ? 'var(--accent-amber)'
+                            : scenarioLabel.includes('ESPANSIONE') || scenarioLabel.includes('EASING') ? 'var(--accent-green)'
+                            : 'var(--text-muted)';
+
+                          return (
+                            <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginTop:2 }}>
+                              <Pill label="Vol. max 5A"
+                                value={volMax > 0 ? volMax.toFixed(1)+'%' : 'N/D'}
+                                color={volMax > 20 ? 'var(--accent-red)' : volMax > 12 ? 'var(--accent-amber)' : 'var(--accent-green)'} />
+                              <Pill label="DD max 5A"
+                                value={ddMax > 0 ? '-'+ddMax.toFixed(1)+'%' : 'N/D'}
+                                color={ddMax > 35 ? 'var(--accent-red)' : ddMax > 20 ? 'var(--accent-amber)' : 'var(--accent-green)'} />
+                              <div style={{ display:'flex', flexDirection:'column', alignItems:'center', background:'var(--bg-primary)', borderRadius:8, padding:'8px 12px', border:'1px solid var(--border)', minWidth:90 }}>
+                                <span style={{ fontSize:11, color:'var(--text-secondary)', marginBottom:2 }}>Smart Beta</span>
+                                <span style={{ fontSize:13, fontWeight:700, color:'#7030A0' }}>
+                                  {sbTot > 0 ? `${sbTot} ETF` : '—'}
+                                </span>
+                                {sbList.length > 0 && (
+                                  <span style={{ fontSize:9, color:'var(--text-muted)', textAlign:'center', marginTop:2, lineHeight:1.2 }}>
+                                    {sbList.map(([k]) => k).join(', ')}
+                                  </span>
+                                )}
+                              </div>
+                              <div style={{ display:'flex', flexDirection:'column', alignItems:'center', background:'var(--bg-primary)', borderRadius:8, padding:'8px 12px', border:'1px solid var(--border)', minWidth:110 }}>
+                                <span style={{ fontSize:11, color:'var(--text-secondary)', marginBottom:2 }}>Scenario Macro</span>
+                                <span style={{ fontSize:11, fontWeight:700, color: scenColore, textAlign:'center' }}>{scenarioLabel}</span>
+                              </div>
+                            </div>
+                          );
+                        })()}
                       </div>
                     </div>
                   </div>
