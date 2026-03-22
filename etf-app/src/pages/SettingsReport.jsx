@@ -5,6 +5,24 @@ import AIConfigPanel from './AIConfigPanel';
 export function Settings() {
   const { currentUser, updateUser, currentPortfolio } = useApp();
   const [form, setForm] = useState({ email: currentUser.email || '', newPwd: '', confirmPwd: '' });
+  const [aggiorning, setAggiorning] = useState(false);
+  const [msgAgg, setMsgAgg] = useState('');
+  const { token } = useApp();
+  const API = process.env.REACT_APP_API_URL || (window.location.hostname === 'localhost' ? 'http://localhost:3001' : '');
+
+  const forzaAggiornamento = async () => {
+    setAggiorning(true); setMsgAgg('');
+    try {
+      const res = await fetch(`${API}/api/etf-catalog/admin/trigger-update`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ motivo: 'manual-full' }),
+      });
+      const data = await res.json();
+      setMsgAgg('Aggiornamento avviato — controlla i log tra qualche minuto');
+    } catch { setMsgAgg('Errore avvio aggiornamento'); }
+    finally { setAggiorning(false); }
+  };
   const [saved, setSaved] = useState('');
   const [error, setError] = useState('');
 
@@ -22,6 +40,23 @@ export function Settings() {
   return (
     <div style={{ padding: '20px 16px' }}>
       <h2 style={{ fontFamily: 'DM Serif Display, serif', fontSize: 24, marginBottom: 24 }}>Impostazioni</h2>
+
+      {/* Banner aggiornamento prezzi */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 16px', borderRadius: 10,
+        background: 'var(--bg-secondary)', border: '1px solid var(--border)', marginBottom: 20 }}>
+        <span style={{ fontSize: 18 }}>🔄</span>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 13, fontWeight: 600 }}>Aggiornamento Prezzi Catalogo</div>
+          <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+            Aggiornamento automatico ogni giorno alle 18:00. Forza un aggiornamento completo di tutti i 2573 ETF (richiede ~20 min).
+          </div>
+          {msgAgg && <div style={{ fontSize: 11, color: 'var(--accent-green)', marginTop: 4 }}>{msgAgg}</div>}
+        </div>
+        <button className="btn btn-secondary" onClick={forzaAggiornamento} disabled={aggiorning}
+          style={{ fontSize: 12, whiteSpace: 'nowrap', flexShrink: 0 }}>
+          {aggiorning ? '⏳ Avvio...' : '⚡ Forza Aggiornamento Completo'}
+        </button>
+      </div>
 
       <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
 

@@ -288,16 +288,39 @@ async function aggiornaPrezziCompleto(pool, fetchETF, motivo = 'scheduled') {
   return { ok, err, data: oggi };
 }
 
-function schedulaAggiornamento18(pool, fetchETF) {
+async function schedulaAggiornamento18(pool, fetchETF) {
+  const oggi = new Date().toISOString().slice(0, 10);
+
+  // Controlla se l'aggiornamento di oggi è già stato fatto
+  try {
+    const { rows } = await pool.query(
+      "SELECT ts FROM app_logs WHERE evento='AGGIORNA_PREZZI_AUTO' AND ts::date = CURRENT_DATE ORDER BY ts DESC LIMIT 1"
+    );
+    if (rows.length > 0) {
+      console.log(`[scheduler] Aggiornamento di oggi già eseguito alle ${rows[0].ts.toLocaleTimeString('it-IT')} — salto`);
+    } else {
+      // Se siamo dopo le 18:00 e non è stato fatto, fallo subito
+      const ora = new Date();
+      if (ora.getHours() >= 18) {
+        console.log('[scheduler] Siamo dopo le 18:00 e update non ancora eseguito — avvio ora');
+        await aggiornaPrezziCompleto(pool, fetchETF, 'scheduled-recovery');
+      }
+    }
+  } catch (e) {
+    console.error('[scheduler] Errore check log:', e.message);
+  }
+
+  // Programma prossime 18:00
   const ora = new Date();
   const prossime18 = new Date(ora);
   prossime18.setHours(18, 0, 0, 0);
   if (prossime18 <= ora) prossime18.setDate(prossime18.getDate() + 1);
   const msAlle18 = prossime18 - ora;
-  console.log(`[scheduler] Prossimo aggiornamento prezzi: ${prossime18.toLocaleString('it-IT')}`);
+  console.log(`[scheduler] Prossimo aggiornamento prezzi: ${prossime18.toLocaleString('it-IT')} (tra ${Math.round(msAlle18/1000/60)} min)`);
+
   setTimeout(async () => {
     await aggiornaPrezziCompleto(pool, fetchETF, 'scheduled-18:00');
-    schedulaAggiornamento18(pool, fetchETF);
+    schedulaAggiornamento18(pool, fetchETF); // riprogramma per domani
   }, msAlle18);
 }
 
