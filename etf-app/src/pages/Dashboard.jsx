@@ -236,10 +236,10 @@ export default function Dashboard({ setActiveTab }) {
                 <Th k="p6m">6 Mesi</Th>
                 <Th k="p1y">1 Anno</Th>
                 <Th k="p5y">5 Anni</Th>
-                <th style={{ fontSize: 12 }}>Tax%</th>
+                <th style={{ fontSize: 12, width: 46 }}>Tax%</th>
                 <Th k="quotazione">Quota €</Th>
-                <Th k="cap">Dim. Fnd (M€)</Th>
-                <th style={{ fontSize: 12 }}>Anno Lancio</th>
+                <Th k="cap">AUM</Th>
+                <th style={{ fontSize: 12, width: 50 }}>Anno</th>
                 <th style={{ fontSize: 12, width: 60 }}></th>
               </tr>
             </thead>
@@ -258,16 +258,9 @@ export default function Dashboard({ setActiveTab }) {
                     <div style={{ fontWeight: 500, fontSize: 14, maxWidth: 220, whiteSpace: 'normal', lineHeight: 1.4 }}>{etf.name}</div>
                     <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{etf.emittente}</div>
                     <div style={{ display: 'flex', gap: 4, alignItems: 'center', marginTop: 2, flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{etf.categoria}</span>
-                      {etf.smartBeta && (
-                        <span style={{ fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 4,
-                          background: etf.smartBeta === 'ESG' ? 'rgba(16,185,129,0.12)' : 'rgba(112,48,160,0.12)',
-                          color: etf.smartBeta === 'ESG' ? '#059669' : '#7030A0',
-                          border: '1px solid ' + (etf.smartBeta === 'ESG' ? 'rgba(16,185,129,0.25)' : 'rgba(112,48,160,0.25)'),
-                          whiteSpace: 'nowrap' }}>
-                          {etf.smartBeta === 'ESG' ? '🌱' : '⚡'} {etf.smartBeta}
-                        </span>
-                      )}
+                      <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
+                        {etf.categoria}{etf.smartBeta ? ` · ${etf.smartBeta}` : ''}
+                      </span>
                     </div>
                   </td>
                   <td>
