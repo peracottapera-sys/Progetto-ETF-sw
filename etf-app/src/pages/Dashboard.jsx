@@ -240,7 +240,7 @@ export default function Dashboard({ setActiveTab }) {
                 <Th k="quotazione">Quota €</Th>
                 <Th k="cap">Dim. Fnd (M€)</Th>
                 <th style={{ fontSize: 12 }}>Anno Lancio</th>
-                <th style={{ fontSize: 12 }}>Acquisto</th>
+                <th style={{ fontSize: 12, width: 60 }}></th>
               </tr>
             </thead>
             <tbody>
@@ -249,7 +249,10 @@ export default function Dashboard({ setActiveTab }) {
                   Nessun ETF disponibile.
                 </td></tr>
               ) : filtered.map(etf => (
-                <tr key={etf.isin} style={{ opacity: etf.selected ? 1 : 0.6 }}>
+                <tr key={etf.isin}
+                  style={{ opacity: etf.selected ? 1 : 0.6 }}
+                  onMouseEnter={e => e.currentTarget.querySelector('.azioni-cell')?.style && (e.currentTarget.querySelector('.azioni-cell').style.opacity = '1')}
+                  onMouseLeave={e => e.currentTarget.querySelector('.azioni-cell')?.style && (e.currentTarget.querySelector('.azioni-cell').style.opacity = '0')}>
                   <td><div className="checkbox-cell"><input type="checkbox" checked={!!etf.selected} onChange={() => toggleEtfSelection(portfolioId, etf.isin)} /></div></td>
                   <td>
                     <div style={{ fontWeight: 500, fontSize: 14, maxWidth: 220, whiteSpace: 'normal', lineHeight: 1.4 }}>{etf.name}</div>
@@ -297,15 +300,29 @@ export default function Dashboard({ setActiveTab }) {
                         VENDUTO
                       </span>
                     ) : (
-                      <div style={{ display: 'flex', gap: 6 }}>
-                        <button className="btn btn-secondary" style={{ fontSize: 12, padding: '4px 10px', opacity: etf.selected ? 1 : 0.4 }}
-                          disabled={!etf.selected} onClick={() => setAcquistoEtf(etf)}>
-                          {etf.acquisto ? '✏️ Modifica' : '+ Acquisto'}
+                      <div className="azioni-cell" style={{ display: 'flex', gap: 4, opacity: 0, transition: 'opacity 0.15s' }}>
+                        <button
+                          title={etf.acquisto ? 'Modifica acquisto' : 'Registra acquisto'}
+                          disabled={!etf.selected}
+                          onClick={() => setAcquistoEtf(etf)}
+                          style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 6,
+                            width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            cursor: etf.selected ? 'pointer' : 'default', fontSize: 14,
+                            opacity: etf.selected ? 1 : 0.3, transition: 'background 0.1s' }}
+                          onMouseEnter={e => { if (etf.selected) e.currentTarget.style.background = 'var(--bg-secondary)'; }}
+                          onMouseLeave={e => { e.currentTarget.style.background = 'none'; }}>
+                          {etf.acquisto ? '✏️' : '＋'}
                         </button>
                         {etf.selected && etf.acquisto?.quantita > 0 && (
-                          <button className="btn btn-danger" style={{ fontSize: 12, padding: '4px 10px' }}
-                            onClick={() => setVenditaEtf(etf)} title="Registra vendita">
-                            📤
+                          <button
+                            title="Registra vendita"
+                            onClick={() => setVenditaEtf(etf)}
+                            style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 6,
+                              width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              cursor: 'pointer', fontSize: 14, transition: 'background 0.1s' }}
+                            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.12)'; e.currentTarget.style.borderColor = 'var(--accent-red)'; }}
+                            onMouseLeave={e => { e.currentTarget.style.background = 'none'; e.currentTarget.style.borderColor = 'var(--border)'; }}>
+                            💰
                           </button>
                         )}
                       </div>
