@@ -197,15 +197,21 @@ async function aggiornaPrezziSelettivo(pool, fetchETF, isins, motivo = 'manual')
       }
       if (!dati) {
         // Auto-fix: prova suffissi alternativi
+        // ⚠ NON sovrascrivere ticker mnemonici reali (es. MVEU.MI) con ISIN.suffisso
+        const isIsinTicker = !ticker || /^[A-Z]{2}[A-Z0-9]{10}\./.test(ticker);
         for (const suf of ['.MI', '.AS', '.DE', '.PA', '.L', '.F', '.SW', '.IR', '.SG']) {
           const t = isin + suf;
           const r = await fetchQuoteDirect(t);
           if (r?.quotazione > 0) {
             dati = r;
             tickerUsato = t;
-            // Aggiorna il ticker nel DB
-            await pool.query('UPDATE etf_catalog SET ticker_yahoo=$1 WHERE isin=$2', [t, isin]);
-            console.log(`[update-selettivo] 🔧 Auto-fix ticker ${isin}: ${ticker || 'N/A'} → ${t}`);
+            // Aggiorna il ticker nel DB SOLO se quello attuale è già ISIN.suffisso o mancante
+            if (isIsinTicker) {
+              await pool.query('UPDATE etf_catalog SET ticker_yahoo=$1 WHERE isin=$2', [t, isin]);
+              console.log(`[update-selettivo] 🔧 Auto-fix ticker ${isin}: ${ticker || 'N/A'} → ${t}`);
+            } else {
+              console.log(`[update-selettivo] ⚠ Ticker mnemonico ${ticker} protetto per ${isin} (trovato ${t} ma non salvato)`);
+            }
             break;
           }
           await new Promise(r => setTimeout(r, 150));
@@ -249,6 +255,8 @@ async function aggiornaPrezziCompleto(pool, fetchETF, motivo = 'scheduled') {
       if (!dati?.quotazione) {
         const { rows: tr } = await pool.query('SELECT ticker_yahoo FROM etf_catalog WHERE isin=$1', [isin]);
         const tickerDB = tr[0]?.ticker_yahoo;
+        // ⚠ NON sovrascrivere ticker mnemonici reali (es. MVEU.MI) con ISIN.suffisso
+        const isIsinTicker = !tickerDB || /^[A-Z]{2}[A-Z0-9]{10}\./.test(tickerDB);
         for (const suf of ['.MI', '.AS', '.DE', '.PA', '.L', '.F', '.SW', '.IR', '.SG']) {
           const t = isin + suf;
           if (t === tickerDB + suf) continue; // evita riprova stesso ticker
@@ -259,8 +267,12 @@ async function aggiornaPrezziCompleto(pool, fetchETF, motivo = 'scheduled') {
             const prezzo = data?.chart?.result?.[0]?.meta?.regularMarketPrice;
             if (prezzo > 0) {
               dati = { quotazione: prezzo, perf1m: null, perf6m: null, perf1y: null, perf5y: null };
-              await pool.query('UPDATE etf_catalog SET ticker_yahoo=$1 WHERE isin=$2', [t, isin]);
-              console.log(`[auto-update] 🔧 Auto-fix ticker ${isin} → ${t}`);
+              if (isIsinTicker) {
+                await pool.query('UPDATE etf_catalog SET ticker_yahoo=$1 WHERE isin=$2', [t, isin]);
+                console.log(`[auto-update] 🔧 Auto-fix ticker ${isin} → ${t}`);
+              } else {
+                console.log(`[auto-update] ⚠ Ticker mnemonico ${tickerDB} protetto per ${isin} (trovato ${t} ma non salvato)`);
+              }
               break;
             }
           } catch {}
