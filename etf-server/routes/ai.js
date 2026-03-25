@@ -193,6 +193,31 @@ function getPosizionetattica(profilo, orizzonteAnni, macro) {
       Bilanciato: { breve: 'Tagli tassi: favorisce azionario growth e obbligazioni. Sovrappesa growth/tech moderatamente. Allunga duration.', medio: 'Ciclo espansivo: aumenta azionario verso upper range. Tech e growth in sovrappeso.', lungo: 'Contesto molto favorevole. Massimizza azionario nel range del profilo.' },
       Aggressivo: { breve: 'Tagli tassi = carburante per azionario growth. SOVRAPPESA: tech, growth, emergenti, tematici (AI, clean energy). Riduci obbligazioni al minimo.', medio: 'Ciclo rialzista. Massima esposizione azionario. Tematici e emergenti.', lungo: 'Espansione sostenuta. Azionario globale, emergenti, tematici. Niente obbligazioni.' },
     },
+    SHOCK_PETROLIO: {
+      Prudente:   { breve: 'Petrolio alto: inflazione importata in arrivo. PROTEGGITI: inflation-linked EUR, obblig. breve, monetario. EVITA: azionario ciclico, trasporti, consumer discretionary. Oro come hedge reale.', medio: 'Impatto transitorio sul medio termine. Mantieni quota inflation-linked, riduci duration. Azionario difensivo (utility, healthcare).', lungo: 'Lo shock petrolifero si riassorbe a lungo termine. Mix standard con piccola quota commodity come hedge.' },
+      Bilanciato: { breve: 'Petrolio alto: favorisce energy ETF e commodity. SOVRAPPESA: energy, commodity, inflation-linked. RIDUCI: consumer discretionary, trasporti. Oro max 10% come hedge.', medio: 'Tilt verso value e dividend. Energy in sovrappeso tattico. Obbligazioni breve-medio termine.', lungo: 'Ciclo passeggero. Mantieni mix bilanciato con tilt commodity/energy.' },
+      Aggressivo: { breve: 'Petrolio alto = opportunità energy. MASSIMIZZA: ETF energy, commodity, azionario value. Riduci obbligazioni. Oro per diversificazione.', medio: 'Energy e commodity in forte sovrappeso. Azionario globale con tilt value.', lungo: 'Mantieni aggressivo standard, energia come alpha tattico.' },
+    },
+    VOLATILITA_ELEVATA: {
+      Prudente:   { breve: 'VIX >25: aumenta difensività. Monetario EUR, obblig. gov. breve. Riduci azionario verso lower bound del range.', medio: 'Volatilità elevata ma non crisi. Mantieni profilo, privilegia ETF Low Volatility e Quality.', lungo: 'Volatilità transitoria. Mantieni mix standard, non vendere.' },
+      Bilanciato: { breve: 'VIX >25: tilt difensivo. Low Volatility e Dividend in sovrappeso. Riduci azionario ciclico.', medio: 'Selettività aumentata. Privilegia Quality e Low Volatility. Mantieni obblig. investment grade.', lungo: 'Opportunità di ribilanciamento. Mantieni esposizione azionaria.' },
+      Aggressivo: { breve: 'VIX >25: attenzione selettiva. Riduci beta, aumenta Quality. Mantieni liquidità per opportunità.', medio: 'Volatilità crea occasioni. Accumula su cali. Tematici selettivi.', lungo: 'Mantieni aggressivo. La volatilità è normale su orizzonti lunghi.' },
+    },
+    INFLAZIONE_SURRISCALDATA: {
+      Prudente:   { breve: 'Inflazione alta senza tassi alti: situazione anomala. Inflation-linked EUR obbligatorio. Evita obblig. nominali lungo termine. Oro come riserva di valore.', medio: 'Privilegia asset reali: inflation-linked, commodity ETF, real estate. Riduci nominali.', lungo: 'Inflazione transitoria a lungo termine. Mantieni mix con quota inflation-linked.' },
+      Bilanciato: { breve: 'Inflazione alta: sovrappesa inflation-linked, commodity, real asset. Riduci obblig. nominali. Azionario value e dividend resistono meglio.', medio: 'Tilt verso asset reali e value. Energy e commodity come hedge inflazione.', lungo: 'Mix standard con quota commodity/inflation-linked per protezione.' },
+      Aggressivo: { breve: 'Inflazione alta senza tassi alti = rally commodity e real asset. SOVRAPPESA: commodity, energy, real estate ETF. Tech e growth sotto pressione.', medio: 'Value e commodity in sovrappeso. Riduci duration obbligazionaria.', lungo: 'Mantieni aggressivo con tilt verso inflation-resistant assets.' },
+    },
+    RECESSIONE_RISCHIO: {
+      Prudente:   { breve: 'Curva invertita: rischio recessione. MASSIMA DIFESA: obblig. gov. breve, monetario. Azionario al minimo del range. Quality e Low Volatility obbligatori.', medio: 'Recessione possibile: aumenta duration obbligazionaria (i tagli tassi sono vicini). Riduci azionario ciclico.', lungo: 'Le recessioni creano opportunità. Mantieni esposizione azionaria con tilt difensivo.' },
+      Bilanciato: { breve: 'Curva invertita: tilt difensivo forte. Quality, Low Volatility, obblig. gov. medio termine. Riduci ciclici e small cap.', medio: 'Posizionati per tagli tassi: allunga duration obbligazionaria. Mantieni azionario difensivo.', lungo: 'Mantieni mix bilanciato. La recessione è un ciclo, non un trend.' },
+      Aggressivo: { breve: 'Curva invertita: riduci beta. Quality over Momentum. Mantieni liquidità per entrare su minimi.', medio: 'Posizionati per la ripresa post-recessione. Accumula azionario globale su cali.', lungo: 'Massima opportunità storica. Accumula aggressivamente su cali.' },
+    },
+    ESPANSIONE: {
+      Prudente:   { breve: 'Contesto espansivo con bassa volatilità. Mix standard del profilo. Puoi allungare leggermente la duration obbligazionaria.', medio: 'Ottimo per obbligazioni e azionario difensivo. Mantieni mix standard.', lungo: 'Fase espansiva favorevole. Mix standard ottimale.' },
+      Bilanciato: { breve: 'Espansione con bassa volatilità: contesto ideale. Azionario verso upper bound del range. Momentum e Quality in sovrappeso.', medio: 'Contesto molto favorevole. Massimizza azionario nel range. Growth e Momentum premiati.', lungo: 'Fase espansiva prolungata. Mantieni azionario alto, diversificazione geografica.' },
+      Aggressivo: { breve: 'Espansione con bassa volatilità: massima esposizione. Growth, Momentum, tematici. Obbligazioni al minimo.', medio: 'Condizioni ideali per aggressivo. Azionario globale, emergenti, tematici ad alto beta.', lungo: 'Espansione = massima opportunità. Azionario globale diversificato, zero obbligazioni.' },
+    },
     NEUTRO: {
       Prudente: { breve: 'Contesto neutro. Applica regole standard del profilo.', medio: 'Standard.', lungo: 'Standard.' },
       Bilanciato: { breve: 'Contesto neutro. Mix standard.', medio: 'Standard.', lungo: 'Standard.' },
@@ -749,6 +774,20 @@ async function getEtfPerProfilo(profilo, escludiDistribuzione = false, filtriRil
   };
   const f = filtri[profilo] || filtri.Bilanciato;
 
+  // Eccezione filtri vol/dd per commodity e oro: hanno vol più alta per natura
+  // ma sono asset reali importanti per diversificazione — filtri allargati a 22%/−25%
+  const escludiVolFilter = profilo !== 'Aggressivo'
+    ? `AND (vol1y IS NULL OR vol1y <= $3
+           OR categoria IN ('Oro / Materie Prime', 'Commodity', 'Real Asset')
+           OR name ILIKE '%gold%' OR name ILIKE '%oro%' OR name ILIKE '%commodity%')`
+    : `AND (vol1y IS NULL OR vol1y <= $3)`;
+
+  const escludiDdFilter = profilo !== 'Aggressivo'
+    ? `AND maxdd1y IS NOT NULL AND (maxdd1y >= $4
+           OR (maxdd1y >= -25 AND (categoria IN ('Oro / Materie Prime', 'Commodity', 'Real Asset')
+               OR name ILIKE '%gold%' OR name ILIKE '%oro%' OR name ILIKE '%commodity%')))`
+    : `AND maxdd1y IS NOT NULL AND maxdd1y >= $4`;
+
   // Per profilo Aggressivo: escludi obbligazionari piccoli e poco redditizi
   const escludiObblAggressivo = profilo === 'Aggressivo'
     ? `AND NOT (
@@ -775,13 +814,14 @@ async function getEtfPerProfilo(profilo, escludiDistribuzione = false, filtriRil
   const { rows: _rawRows } = await db.query(`
     SELECT isin, name, valuta, aum_mln, ter,
            perf1m, perf6m, perf1y, perf5y,
-           vol1y, maxdd1y, maxdd5y, distribuzione, categoria
+           vol1y, maxdd1y, maxdd5y, distribuzione, categoria,
+           smart_beta_factor
     FROM etf_catalog
     WHERE active = 1
       AND aum_mln >= $1
       AND (ter IS NULL OR ter <= $2)
-      AND (vol1y IS NULL OR vol1y <= $3)
-      AND maxdd1y IS NOT NULL AND maxdd1y >= $4
+      ${escludiVolFilter}
+      ${escludiDdFilter}
       AND (maxdd5y IS NULL OR maxdd5y >= $5)
       ${escludiObblAggressivo}
     ORDER BY aum_mln DESC
@@ -861,9 +901,10 @@ ${preferenze ? `
 
 ## REGOLE OBBLIGATORIE PROFILO ${profilo.toUpperCase()}:
 - Rendimento atteso: ${regole.rendimentoMin} / ${regole.rendimentoMax}
+- ⚠️ VINCOLO RENDIMENTO MINIMO: il portafoglio deve avere un rendimento atteso NETTO stimato ≥ ${RENDIMENTO_MIN_PROFILO[profilo] || 4.0}% annuo. Calcola: rendimento lordo atteso (basato su perf5y ponderata) MENO TER ponderato MENO tassazione stimata (26% sui guadagni). Se non raggiungi il minimo, sostituisci ETF a basso rendimento o riduci il TER.
 - Quota azionaria: OBBLIGATORIA tra ${regole.azionarioTarget-regole.azionarioRange}% e ${regole.azionarioTarget+regole.azionarioRange}% (target ${regole.azionarioTarget}%). Verifica i pesi prima di rispondere.
 - Numero ETF: massimo ${regole.maxETF}
-- TER portafoglio: preferibile <${regole.terPreferito}%, max ${regole.terMax}%
+- ⚠️ VINCOLO TER: il TER medio PONDERATO del portafoglio DEVE essere < ${regole.terPreferito}%. Se un singolo ETF ha TER > ${regole.terPreferito}%, includilo SOLO se porta un contributo di diversificazione o rendimento insostituibile. MAX assoluto per singolo ETF: ${regole.terMax}%. Un ETF con TER elevato che erode il rendimento sotto soglia NON deve essere incluso.
 - Capitalizzazione minima per ETF: ${regole.capMin}M€
 - ${regole.maxDrawdown ? `Max drawdown storico: ≤${Math.abs(regole.maxDrawdown)}% in valore assoluto` : 'Drawdown: nessun limite formale'}
 - ${regole.volatilita ? `Volatilità storica: ≤${regole.volatilita}%` : 'Volatilità: nessun limite'}
@@ -1050,11 +1091,35 @@ IMPORTANTE: se la quota azionaria calcolata non rientra nel range obbligatorio, 
                         'dividend', 'small cap', 'small-cap', 'nasdaq', 's&p 500', 's&p500',
                         'stoxx 50', 'stoxx50', 'high yield', 'inflation', 'aggregate',
                         'government', 'treasury', 'corporate', 'emerging', 'world'];
+
+      // Settori tematici: se due ETF appartengono allo stesso settore ma aree diverse
+      // vengono considerati correlati (es. Consumer Staples WW + Consumer Staples EU)
+      const SETTORI_TEMATICI = [
+        'consumer staples', 'consumer discret', 'health', 'healthcare', 'salute',
+        'energy', 'energia', 'financial', 'banche', 'technology', 'tecnolog',
+        'utilities', 'utility', 'industrial', 'material', 'real estate', 'immobil',
+        'communication', 'telecom', 'infrastructure', 'clean energy', 'robotics',
+        'automation', 'water', 'food', 'agri',
+      ];
+      const getSettore = (name) => {
+        const n = (name || '').toLowerCase();
+        return SETTORI_TEMATICI.find(s => n.includes(s)) || null;
+      };
+
       const getFattoreCorr = (name) => {
         const n = (name || '').toLowerCase();
         return FATTORI_CORR.find(f => n.includes(f)) || '__generic__';
       };
+
+      // Chiave dedup: categoria geografica macro + fattore + settore tematico
+      // Due ETF con stesso settore tematico (es. Consumer Staples) ma area diversa
+      // vengono trattati come correlati e deduplicati
       const getCatKeyCorr = (etf) => {
+        const settore = getSettore(etf.name);
+        if (settore) {
+          // Per tematici settoriali: ignora l'area geografica, usa solo il settore
+          return `settore::${settore}`;
+        }
         const cat = (etf.categoria || 'sconosciuta').toLowerCase().replace(/\s+/g, '_');
         const fattore = getFattoreCorr(etf.name);
         return `${cat}::${fattore}`;
