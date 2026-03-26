@@ -960,7 +960,20 @@ IMPORTANTE: se la quota azionaria calcolata non rientra nel range obbligatorio, 
     const spiegazione = parti[0].replace('SPIEGAZIONE:', '').trim();
     let selezione = [];
     if (parti[1]) {
-      try { selezione = JSON.parse(parti[1].trim().match(/\[[\s\S]*\]/)?.[0] || '[]'); } catch {}
+      try { selezione = JSON.parse(parti[1].trim().match(/\[[\s\S]*\]/)?.[0] || '[]'); } catch (e) {
+        console.log(`  [crea-portafoglio] Errore parse JSON: ${e.message}`);
+        console.log(`  [crea-portafoglio] Testo raw dopo PORTAFOGLIO_JSON: ${parti[1].slice(0, 300)}`);
+      }
+    } else {
+      console.log(`  [crea-portafoglio] PORTAFOGLIO_JSON non trovato nella risposta AI`);
+      console.log(`  [crea-portafoglio] Risposta AI (prime 500 char): ${testo.slice(0, 500)}`);
+    }
+    console.log(`  [crea-portafoglio] AI ha selezionato ${selezione.length} ETF: ${selezione.map(s => s.isin).join(', ')}`);
+    // Verifica quali ISIN non sono nel pool disponibile
+    const isinDisponibili = new Set(etfDisponibili.map(e => e.isin));
+    const isinNonTrovati = selezione.filter(s => !isinDisponibili.has(s.isin));
+    if (isinNonTrovati.length > 0) {
+      console.log(`  [crea-portafoglio] ⚠ ISIN non nel pool disponibile: ${isinNonTrovati.map(s => s.isin).join(', ')}`);
     }
 
 
