@@ -952,7 +952,7 @@ IMPORTANTE: se la quota azionaria calcolata non rientra nel range obbligatorio, 
 
   try {
     const message = await getAnthropic().messages.create({
-      model: 'claude-opus-4-6', max_tokens: 2000,
+      model: 'claude-opus-4-6', max_tokens: 3500,
       messages: [{ role: 'user', content: prompt }],
     });
     const testo = message.content[0].text;
