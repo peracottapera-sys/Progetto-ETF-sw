@@ -1045,6 +1045,7 @@ IMPORTANTE: se la quota azionaria calcolata non rientra nel range obbligatorio, 
 
     // Leggi prezzi aggiornati da prezzi_storici DB — tutti gli ISIN del catalogo (per consigliati E alternative)
     const prezziDB = {};
+    const quotazioniCatalogo = {}; // fallback: quotazione diretta dal catalogo
     try {
       const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10); // ultimi 30gg
       // Leggi tutti i prezzi recenti in una query sola
@@ -1055,6 +1056,12 @@ IMPORTANTE: se la quota azionaria calcolata non rientra nel range obbligatorio, 
       // Tieni solo il più recente per ISIN
       allPrezzi.forEach(r => { if (!prezziDB[r.isin]) prezziDB[r.isin] = r.prezzo; });
       console.log(`  [crea-portafoglio] Prezzi da DB: ${Object.keys(prezziDB).length} ISIN disponibili`);
+      // Leggi quotazione diretta dal catalogo come fallback per ETF senza prezzi_storici
+      const { rows: quotRows } = await db.query(
+        'SELECT isin, quotazione FROM etf_catalog WHERE quotazione IS NOT NULL AND quotazione > 0'
+      );
+      quotRows.forEach(r => { quotazioniCatalogo[r.isin] = r.quotazione; });
+      console.log(`  [crea-portafoglio] Quotazioni catalogo (fallback): ${Object.keys(quotazioniCatalogo).length} ISIN`);
     } catch (e) {
       console.log('  [crea-portafoglio] Errore lettura prezzi DB:', e.message);
     }
@@ -1065,10 +1072,12 @@ IMPORTANTE: se la quota azionaria calcolata non rientra nel range obbligatorio, 
       const etf = etfDisponibili.find(e => e.isin === s.isin);
       if (!etf) return s;
       const info = ETF_INFO_MAP[s.isin] || {};
-      const quotazioneReale = prezziDB[s.isin] || info.q || 0;
+      // Priorità: 1) prezzi_storici DB (Yahoo aggiornato) 2) ETF_INFO_MAP (statico) 3) quotazione catalogo
+      const quotazioneReale = prezziDB[s.isin] || info.q || quotazioniCatalogo[s.isin] || 0;
       const annoNascita = info.a || null;
       if (prezziDB[s.isin]) console.log(`    ${s.isin}: EUR${quotazioneReale} (DB Yahoo)`);
       else if (info.q) console.log(`    ${s.isin}: EUR${quotazioneReale} (mappa fallback)`);
+      else if (quotazioniCatalogo[s.isin]) console.log(`    ${s.isin}: EUR${quotazioneReale} (catalogo fallback)`);
       else console.log(`    ${s.isin}: EUR0 WARN nessun prezzo`);
       const enriched = {
         ...s,
