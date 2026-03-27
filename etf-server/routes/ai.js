@@ -802,12 +802,16 @@ async function getEtfPerProfilo(profilo, escludiDistribuzione = false, filtriRil
   // ISIN con prezzo disponibile: ticker_yahoo nel catalogo OPPURE prezzo in prezzi_storici
   let isinConPrezzoInDB = new Set();
   try {
-    // ETF con ticker Yahoo nel catalogo
-    const { rows: _tickerRows } = await db.query("SELECT isin FROM etf_catalog WHERE ticker_yahoo IS NOT NULL AND ticker_yahoo != ''");
+    // ETF con ticker Yahoo nel catalogo E quotazione > 0 (hanno prezzo reale aggiornato)
+    const { rows: _tickerRows } = await db.query(
+      "SELECT isin FROM etf_catalog WHERE ticker_yahoo IS NOT NULL AND ticker_yahoo != '' AND quotazione > 0"
+    );
     _tickerRows.forEach(r => isinConPrezzoInDB.add(r.isin));
-    // ETF con prezzo storico recente
+    // ETF con prezzo storico recente (anche se quotazione catalogo è 0)
     const cutoffTicker = new Date(Date.now() - 30*24*60*60*1000).toISOString().slice(0,10);
-    const { rows: _pricedIsins } = await db.query('SELECT DISTINCT isin FROM prezzi_storici WHERE data >= $1 AND prezzo > 0', [cutoffTicker]);
+    const { rows: _pricedIsins } = await db.query(
+      'SELECT DISTINCT isin FROM prezzi_storici WHERE data >= $1 AND prezzo > 0', [cutoffTicker]
+    );
     _pricedIsins.forEach(r => isinConPrezzoInDB.add(r.isin));
   } catch {}
 
