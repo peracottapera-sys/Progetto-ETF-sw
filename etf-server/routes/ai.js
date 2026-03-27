@@ -814,8 +814,11 @@ async function getEtfPerProfilo(profilo, escludiDistribuzione = false, filtriRil
   const { rows: _rawRows } = await db.query(`
     SELECT isin, name, valuta, aum_mln, ter,
            perf1m, perf6m, perf1y, perf5y,
-           vol1y, maxdd1y, maxdd5y, distribuzione, categoria,
-           smart_beta_factor
+           perf2024, perf2023, perf2022,
+           vol1y, vol3y, vol5y,
+           maxdd1y, maxdd5y, maxdd_max,
+           distribuzione, categoria, smart_beta_factor,
+           data_lancio, partecipazioni, sostenibile
     FROM etf_catalog
     WHERE active = 1
       AND aum_mln >= $1
@@ -831,7 +834,6 @@ async function getEtfPerProfilo(profilo, escludiDistribuzione = false, filtriRil
   const rows = _rawRows
     .filter(e => isinConPrezzoInDB.has(e.isin))
     .filter(e => !escludiDistribuzione || e.distribuzione !== 'Distribuzione')
-    // Escludi ETF senza NESSUN dato storico — devono avere almeno perf1y o perf5y non-null
     .filter(e => e.perf1y !== null || e.perf5y !== null);
 
   return rows.map(e => ({
@@ -843,15 +845,24 @@ async function getEtfPerProfilo(profilo, escludiDistribuzione = false, filtriRil
     tassazione:       26,
     capitalizzazione: e.aum_mln ?? 0,
     variabilita:      e.vol1y ?? 0,
+    vol3y:            e.vol3y ?? null,
+    vol5y:            e.vol5y ?? null,
     maxDrawdown:      e.maxdd1y ?? 0,
     maxDrawdown5y:    e.maxdd5y ?? 0,
+    maxDrawdownMax:   e.maxdd_max ?? null,
     valuta:           e.valuta || 'EUR',
     quotazione:       0,
     perf1m:           e.perf1m ?? 0,
     perf6m:           e.perf6m ?? 0,
     perf1y:           e.perf1y ?? 0,
     perf5y:           e.perf5y ?? 0,
+    perf2024:         e.perf2024 ?? null,
+    perf2023:         e.perf2023 ?? null,
+    perf2022:         e.perf2022 ?? null,
     distribuzione:    e.distribuzione || 'N/D',
+    dataLancio:       e.data_lancio ? new Date(e.data_lancio).getFullYear() : null,
+    partecipazioni:   e.partecipazioni ?? null,
+    sostenibile:      e.sostenibile ?? null,
   }));
 }
 
@@ -923,7 +934,17 @@ Azionario Globale, Azionario USA, Azionario Europa, Azionario Emergenti, Azionar
 
 ${macroContext}
 ## ETF DISPONIBILI:
-${etfDisponibili.map(e => `- ${e.name} (${e.isin}) | Cat: ${e.categoria} | TER: ${e.ter}% | Vol1A: ${e.variabilita}% | Cap: ${e.capitalizzazione}M€ | Perf1A: ${e.perf1y}% | Perf5A: ${e.perf5y}%`).join('\n')}
+${etfDisponibili.map(e => {
+  const vol = e.vol3y ? `Vol1A:${e.variabilita}% Vol3A:${e.vol3y}%` : `Vol1A:${e.variabilita}%`;
+  const dd = e.maxDrawdownMax ? `DD1A:${e.maxDrawdown}% DDMax:${e.maxDrawdownMax}%` : `DD1A:${e.maxDrawdown}%`;
+  const perf = e.perf2024 ? `Perf1A:${e.perf1y}% Perf2024:${e.perf2024}% Perf2023:${e.perf2023 || 'N/D'}%` : `Perf1A:${e.perf1y}% Perf5A:${e.perf5y}%`;
+  const extra = [
+    e.dataLancio ? `Anno:${e.dataLancio}` : null,
+    e.partecipazioni ? `Titoli:${e.partecipazioni}` : null,
+    e.sostenibile ? 'ESG' : null,
+  ].filter(Boolean).join(' ');
+  return `- ${e.name} (${e.isin}) | Cat:${e.categoria} | TER:${e.ter}% | ${vol} | ${dd} | ${perf} | AUM:${e.capitalizzazione}M€${extra ? ' | '+extra : ''}`;
+}).join('\n')}
 
 ## VINCOLI AGGIUNTIVI OBBLIGATORI:
 - La volatilità media PONDERATA del portafoglio non deve superare ${regole.volatilita !== null ? regole.volatilita+'%' : 'nessun limite'} annuo
