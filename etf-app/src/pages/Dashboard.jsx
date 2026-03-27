@@ -122,6 +122,7 @@ export default function Dashboard({ setActiveTab }) {
       sub: avgPerf5y !== 0
         ? <span>ponderata · <span style={{ color: avgPerf5y > 0 ? 'var(--accent-green)' : 'var(--accent-red)' }}>{avgPerf5y > 0 ? '+' : ''}{avgPerf5y.toFixed(1)}%</span> 5A</span>
         : 'ponderata per valore',
+      nota: 'Rendimenti passati · non garanzia futura',
     },
     { label: 'Valore Acquistato', value: `€ ${valoreAcquistato.toLocaleString('it-IT', { maximumFractionDigits: 0 })}`, valueColor: 'var(--text-primary)', sub: 'valore di carico' },
   ];
@@ -188,6 +189,7 @@ export default function Dashboard({ setActiveTab }) {
               <div style={{ fontSize: 10, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 3 }}>{s.label}</div>
               <div style={{ fontFamily: 'DM Serif Display, serif', fontSize: 18, color: s.valueColor, lineHeight: 1.2 }}>{s.value}</div>
               <div style={{ fontSize: 10, color: 'var(--text-secondary)', marginTop: 2 }}>{s.sub}</div>
+              {s.nota && <div style={{ fontSize: 9, color: 'var(--text-muted)', marginTop: 3, fontStyle: 'italic' }}>{s.nota}</div>}
             </div>
           ))}
         </div>
