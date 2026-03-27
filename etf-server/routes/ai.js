@@ -831,8 +831,8 @@ async function getEtfPerProfilo(profilo, escludiDistribuzione = false, filtriRil
   const rows = _rawRows
     .filter(e => isinConPrezzoInDB.has(e.isin))
     .filter(e => !escludiDistribuzione || e.distribuzione !== 'Distribuzione')
-    // Escludi ETF senza dati storici minimi — non valutabili dall'AI
-    .filter(e => (e.perf1y !== null && e.perf1y !== 0) || (e.perf5y !== null && e.perf5y !== 0));
+    // Escludi ETF senza NESSUN dato storico — devono avere almeno perf1y o perf5y non-null
+    .filter(e => e.perf1y !== null || e.perf5y !== null);
 
   return rows.map(e => ({
     isin:             e.isin,
@@ -980,6 +980,10 @@ IMPORTANTE: se la quota azionaria calcolata non rientra nel range obbligatorio, 
       console.log(`  [crea-portafoglio] Risposta AI (prime 500 char): ${testo.slice(0, 500)}`);
     }
     console.log(`  [crea-portafoglio] AI ha selezionato ${selezione.length} ETF: ${selezione.map(s => s.isin).join(', ')}`);
+    // Se 0 ETF, logga la risposta completa per debug
+    if (selezione.length === 0) {
+      console.log(`  [crea-portafoglio] RISPOSTA AI COMPLETA:\n${testo}`);
+    }
     // Verifica quali ISIN non sono nel pool disponibile
     const isinDisponibili = new Set(etfDisponibili.map(e => e.isin));
     const isinNonTrovati = selezione.filter(s => !isinDisponibili.has(s.isin));
