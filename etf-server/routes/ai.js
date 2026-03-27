@@ -946,24 +946,29 @@ Esempi bassa correlazione: azionario globale + emergenti, azionario + obbligazio
 - Vincola le alternative: le alternative devono avere correlazione <soglia con i consigliati già selezionati.
 - Nella SPIEGAZIONE indica le coppie con correlazione stimata più alta.
 
-## FORMATO RISPOSTA:
+## FORMATO RISPOSTA — SEGUI ESATTAMENTE, NON DEVIARE:
+⚠️ CRITICO: NON usare tabelle markdown (|col|col|), NON fare calcoli intermedi lunghi, NON ribilanciare più volte. Fai i calcoli mentalmente e scrivi SOLO il risultato finale.
+
 SPIEGAZIONE:
-[Max 2 frasi: logica del portafoglio e scelte principali. NON citare rendimenti attesi specifici. NON ripetere i calcoli numerici — quelli vanno nella sezione VERIFICA.]
-[Poi su una riga: METRICHE: azionaria:XX% | vol:XX% | TER:XX% | maxDD:-XX% | corr_max:0.XX]
+[Max 2 frasi: logica del portafoglio. NON citare rendimenti specifici. NON tabelle.]
+[Una riga: METRICHE: azionaria:XX% | vol:XX% | TER:XX% | maxDD:-XX% | corr_max:0.XX]
 
 VERIFICA:
-quota_azionaria: XX% (deve essere tra ${regole.azionarioTarget-regole.azionarioRange}% e ${regole.azionarioTarget+regole.azionarioRange}%)
+quota_azionaria: XX% (range ${regole.azionarioTarget-regole.azionarioRange}%-${regole.azionarioTarget+regole.azionarioRange}%)
 somma_pesi: 100%
 
 PORTAFOGLIO_JSON:
-[{"isin": "ISIN", "peso": 30, "motivo": "motivo breve"}]
+[{"isin": "ISIN", "peso": 30, "motivo": "max 80 caratteri"}]
 
-I pesi devono sommare a 100. Max ${regole.maxETF} ETF. Solo ISIN dalla lista disponibile.
-IMPORTANTE: se la quota azionaria calcolata non rientra nel range obbligatorio, ribilancia i pesi prima di rispondere.`;
+REGOLE FORMATO:
+- Il JSON deve essere l'ULTIMA cosa che scrivi
+- Pesi devono sommare a 100. Max ${regole.maxETF} ETF. Solo ISIN dalla lista disponibile
+- Se la quota azionaria non rientra nel range: correggi i pesi PRIMA di scrivere il JSON
+- NON aggiungere nulla dopo il JSON`;
 
   try {
     const message = await getAnthropic().messages.create({
-      model: 'claude-sonnet-4-6', max_tokens: 2500,
+      model: 'claude-sonnet-4-6', max_tokens: 4000,
       messages: [{ role: 'user', content: prompt }],
     });
     const testo = message.content[0].text;
