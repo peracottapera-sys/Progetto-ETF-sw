@@ -350,7 +350,7 @@ module.exports = (db, fetchETF, ETF_INFO_MAP) => {
   const router = express.Router();
 
 router.post('/analisi', async (req, res) => {
-  const { portfolio } = req.body;
+  const { portfolio, opzioni } = req.body;
   if (!portfolio) return res.status(400).json({ error: 'Portfolio mancante' });
   console.log(`[${new Date().toLocaleTimeString()}] Analisi AI: ${portfolio.name}`);
   log(EVENTI.AI_ANALISI, { portafoglio: portfolio.name, profilo: portfolio.riskProfile, obiettivo: opzioni?.obiettivo || 'completa' }, req.user?.username).catch(() => {});
@@ -802,16 +802,12 @@ async function getEtfPerProfilo(profilo, escludiDistribuzione = false, filtriRil
   // ISIN con prezzo disponibile: ticker_yahoo nel catalogo OPPURE prezzo in prezzi_storici
   let isinConPrezzoInDB = new Set();
   try {
-    // ETF con ticker Yahoo nel catalogo E quotazione > 0 (hanno prezzo reale aggiornato)
-    const { rows: _tickerRows } = await db.query(
-      "SELECT isin FROM etf_catalog WHERE ticker_yahoo IS NOT NULL AND ticker_yahoo != '' AND quotazione > 0"
-    );
+    // ETF con ticker Yahoo nel catalogo
+    const { rows: _tickerRows } = await db.query("SELECT isin FROM etf_catalog WHERE ticker_yahoo IS NOT NULL AND ticker_yahoo != ''");
     _tickerRows.forEach(r => isinConPrezzoInDB.add(r.isin));
-    // ETF con prezzo storico recente (anche se quotazione catalogo è 0)
+    // ETF con prezzo storico recente
     const cutoffTicker = new Date(Date.now() - 30*24*60*60*1000).toISOString().slice(0,10);
-    const { rows: _pricedIsins } = await db.query(
-      'SELECT DISTINCT isin FROM prezzi_storici WHERE data >= $1 AND prezzo > 0', [cutoffTicker]
-    );
+    const { rows: _pricedIsins } = await db.query('SELECT DISTINCT isin FROM prezzi_storici WHERE data >= $1 AND prezzo > 0', [cutoffTicker]);
     _pricedIsins.forEach(r => isinConPrezzoInDB.add(r.isin));
   } catch {}
 
@@ -956,7 +952,7 @@ IMPORTANTE: se la quota azionaria calcolata non rientra nel range obbligatorio, 
 
   try {
     const message = await getAnthropic().messages.create({
-      model: 'claude-opus-4-6', max_tokens: 3500,
+      model: 'claude-sonnet-4-6', max_tokens: 2500,
       messages: [{ role: 'user', content: prompt }],
     });
     const testo = message.content[0].text;
