@@ -565,8 +565,8 @@ R8 — CRITICO: JSON valido e COMPLETO. Non troncare.`;
 
   try {
     const message = await getAnthropic().messages.create({
-      model: 'claude-opus-4-6',
-      max_tokens: 4500,
+      model: 'claude-sonnet-4-6',
+      max_tokens: 3000,
       messages: [{ role: 'user', content: prompt }],
     });
     const testo = message.content[0].text;

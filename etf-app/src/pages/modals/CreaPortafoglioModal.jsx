@@ -434,19 +434,27 @@ function CreaPortafoglioModal({ portfolioId, onClose, initialProfilo, initialDat
                           <Pill label="Exp.USA~" value={expUSA+'%'} color={expUSA > 60 ? 'var(--accent-red)' : expUSA > 30 ? 'var(--accent-amber)' : 'var(--accent-green)'} />
                         </div>
 
-                        {/* Riga 2: Vol max 5A, Drawdown max 5A, Smart Beta, Scenario */}
+                        {/* Riga 2: Vol pond. 5A, DD pond. 5A, Smart Beta, Scenario */}
                         {(() => {
-                          // Max volatilità 5A tra tutti gli ETF consigliati
-                          const volMax = consigliati.reduce((max, s) => {
-                            const v = parseFloat(s.variabilita) || 0;
-                            return v > max ? v : max;
-                          }, 0);
+                          const totPeso = consigliati.reduce((s, e) => s + (parseFloat(e.peso) || 0), 0);
 
-                          // Max drawdown 5A — usa maxDrawdown5y se disponibile, altrimenti maxDrawdown
-                          const ddMax = consigliati.reduce((max, s) => {
-                            const v = Math.abs(parseFloat(s.maxDrawdown5y || s.maxDrawdown) || 0);
-                            return v > max ? v : max;
-                          }, 0);
+                          // Volatilità media PONDERATA sui pesi degli ETF consigliati
+                          const volPond = totPeso > 0
+                            ? consigliati.reduce((sum, s) => {
+                                const v = parseFloat(s.variabilita) || 0;
+                                const p = (parseFloat(s.peso) || 0) / totPeso;
+                                return sum + v * p;
+                              }, 0)
+                            : 0;
+
+                          // Drawdown medio PONDERATO — usa maxDrawdown5y se disponibile, altrimenti maxDrawdown
+                          const ddPond = totPeso > 0
+                            ? consigliati.reduce((sum, s) => {
+                                const v = Math.abs(parseFloat(s.maxDrawdown5y || s.maxDrawdown) || 0);
+                                const p = (parseFloat(s.peso) || 0) / totPeso;
+                                return sum + v * p;
+                              }, 0)
+                            : 0;
 
                           // Smart Beta: conta ETF con fattore e lista categorie uniche
                           const sbMap = {};
@@ -469,12 +477,12 @@ function CreaPortafoglioModal({ portfolioId, onClose, initialProfilo, initialDat
 
                           return (
                             <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginTop:2 }}>
-                              <Pill label="Vol. max 5A"
-                                value={volMax > 0 ? volMax.toFixed(1)+'%' : 'N/D'}
-                                color={volMax > 20 ? 'var(--accent-red)' : volMax > 12 ? 'var(--accent-amber)' : 'var(--accent-green)'} />
-                              <Pill label="DD max 5A"
-                                value={ddMax > 0 ? '-'+ddMax.toFixed(1)+'%' : 'N/D'}
-                                color={ddMax > 35 ? 'var(--accent-red)' : ddMax > 20 ? 'var(--accent-amber)' : 'var(--accent-green)'} />
+                              <Pill label="Vol. pond."
+                                value={volPond > 0 ? volPond.toFixed(1)+'%' : 'N/D'}
+                                color={volPond > 16 ? 'var(--accent-red)' : volPond > 10 ? 'var(--accent-amber)' : 'var(--accent-green)'} />
+                              <Pill label="DD pond."
+                                value={ddPond > 0 ? '-'+ddPond.toFixed(1)+'%' : 'N/D'}
+                                color={ddPond > 25 ? 'var(--accent-red)' : ddPond > 15 ? 'var(--accent-amber)' : 'var(--accent-green)'} />
                               <div style={{ display:'flex', flexDirection:'column', alignItems:'center', background:'var(--bg-primary)', borderRadius:8, padding:'8px 12px', border:'1px solid var(--border)', minWidth:90 }}>
                                 <span style={{ fontSize:11, color:'var(--text-secondary)', marginBottom:2 }}>Smart Beta</span>
                                 <span style={{ fontSize:13, fontWeight:700, color:'#7030A0' }}>
