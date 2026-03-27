@@ -890,7 +890,7 @@ Crea un portafoglio ETF ottimale rispettando RIGOROSAMENTE le regole del profilo
 
 ## PARAMETRI INVESTITORE:
 - Profilo: ${profilo}
-- Orizzonte temporale: ${orizzonteAnni} anni
+- Orizzonte temporale: ${parseInt(orizzonteAnni||5)<=3 ? 'BREVE (entro 5 anni)' : parseInt(orizzonteAnni||5)<=7 ? 'MEDIO (5-10 anni)' : 'LUNGO (oltre 10 anni)'}
 - Classe orizzonte: ${parseInt(orizzonteAnni||5)<=3?'BREVE (<=3 anni)':parseInt(orizzonteAnni||5)<=7?'MEDIO (3-7 anni)':'LUNGO (>7 anni)'}
 - ${regole.noteOrizzonte || ''}
 - POSIZIONAMENTO TATTICO: ${(() => { try { const pt = getPosizionetattica(profilo, orizzonteAnni||5, macroData); return `[${pt.scenario}] ${pt.testo}`; } catch(e) { return 'standard'; } })()}
@@ -904,7 +904,11 @@ ${preferenze ? `
 
 ## REGOLE OBBLIGATORIE PROFILO ${profilo.toUpperCase()}:
 - Rendimento atteso: ${regole.rendimentoMin} / ${regole.rendimentoMax}
-- ⚠️ VINCOLO RENDIMENTO MINIMO: il portafoglio deve avere un rendimento atteso NETTO stimato ≥ ${RENDIMENTO_MIN_PROFILO[profilo] || 4.0}% annuo. Calcola: rendimento lordo atteso (basato su perf5y ponderata) MENO TER ponderato MENO tassazione stimata (26% sui guadagni). Se non raggiungi il minimo, sostituisci ETF a basso rendimento o riduci il TER.
+- ⚠️ VINCOLO RENDIMENTO MINIMO: il portafoglio deve avere un rendimento atteso NETTO stimato ≥ ${RENDIMENTO_MIN_PROFILO[profilo] || 4.0}% annuo.
+- ⚠️ VINCOLO RENDIMENTO MASSIMO: NON proiettare mai un rendimento netto superiore a ${{Prudente:'4.5',Bilanciato:'7.0',Aggressivo:'10.0'}[profilo] || '7.0'}% annuo. I dati perf5y riflettono un ciclo eccezionale (2020-2024) non ripetibile — NON usarli come stima futura.
+- ⚠️ METODO STIMA RENDIMENTO: usa SEMPRE questi rendimenti attesi storici di lungo periodo (20-30 anni), NON perf5y:
+  Azionario Globale/USA/Europa: ~7% lordo | Emergenti: ~6-7% lordo | Obblig. Gov EUR: ~2-3% lordo | Obblig. Corp EUR: ~3-4% lordo | Inflation-Linked: ~2-3% lordo | Oro/Commodity: ~4-5% lordo | Monetario EUR: ~2-3% lordo
+  Rendimento netto = lordo × 0.74 (dopo tasse 26%) − TER ponderato
 - Quota azionaria: OBBLIGATORIA tra ${regole.azionarioTarget-regole.azionarioRange}% e ${regole.azionarioTarget+regole.azionarioRange}% (target ${regole.azionarioTarget}%). Verifica i pesi prima di rispondere.
 - Numero ETF: massimo ${regole.maxETF}
 - ⚠️ VINCOLO TER: il TER medio PONDERATO del portafoglio DEVE essere < ${regole.terPreferito}%. Se un singolo ETF ha TER > ${regole.terPreferito}%, includilo SOLO se porta un contributo di diversificazione o rendimento insostituibile. MAX assoluto per singolo ETF: ${regole.terMax}%. Un ETF con TER elevato che erode il rendimento sotto soglia NON deve essere incluso.
