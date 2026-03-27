@@ -823,13 +823,16 @@ async function getEtfPerProfilo(profilo, escludiDistribuzione = false, filtriRil
       ${escludiVolFilter}
       ${escludiDdFilter}
       AND (maxdd5y IS NULL OR maxdd5y >= $5)
+      AND (perf1y IS NOT NULL OR perf5y IS NOT NULL)
       ${escludiObblAggressivo}
     ORDER BY aum_mln DESC
     LIMIT 300
   `, [f.minAum, f.maxTer, f.maxVol, f.maxDrawdown, f.maxDd5y]);
   const rows = _rawRows
     .filter(e => isinConPrezzoInDB.has(e.isin))
-    .filter(e => !escludiDistribuzione || e.distribuzione !== 'Distribuzione');
+    .filter(e => !escludiDistribuzione || e.distribuzione !== 'Distribuzione')
+    // Escludi ETF senza dati storici minimi — non valutabili dall'AI
+    .filter(e => (e.perf1y !== null && e.perf1y !== 0) || (e.perf5y !== null && e.perf5y !== 0));
 
   return rows.map(e => ({
     isin:             e.isin,
@@ -926,14 +929,22 @@ ${maxUSA && maxUSA !== 'No max' ? `- ⚠️ VINCOLO TASSATIVO MAX USA: la somma 
 - Le performance passate NON sono garanzia di rendimenti futuri: usa perf1y/5y solo per confronto relativo, NON come stima di rendimento futuro
 ${escludiDistribuzione ? `- VINCOLO TASSATIVO: seleziona SOLO ETF ad Accumulazione (Acc). ESCLUDI ASSOLUTAMENTE qualsiasi ETF a Distribuzione (Dist/Distributing). Questo vale sia per i consigliati che per le alternative. Se un ETF ha "Distributing" o "Dist" nel nome o nel suo tipo di replica, NON includerlo.` : ''}
 
-## VINCOLO CORRELAZIONE (soft, tutti i profili):
+## VINCOLO CORRELAZIONE (differenziato per profilo e asset class):
 Stima la correlazione tra ogni coppia di ETF in base a categoria, area geografica e fattori.
-Regola: correlazione stimata tra due ETF NON deve superare 0.6.
-Esempi di alta correlazione (>0.6): due ETF azionari globali MSCI World, due ETF Value globali, due ETF S&P500.
-Esempi di bassa correlazione (<0.4): azionario + obbligazionario, azionario + liquidità, globale + emergenti.
-- Questo vincolo è SOFT: se rispettarlo richiede di sforare vol o drawdown oltre le soglie del profilo, puoi ignorarlo.
-- Vincola le alternative: per ogni ETF top, le alternative devono avere correlazione <0.6 con gli altri ETF già selezionati. Se non trovi 2 alternative con correlazione bassa, proponi solo 1 alternativa (non zero).
-- Nella SPIEGAZIONE indica esplicitamente le coppie con correlazione stimata più alta.
+
+**Soglie per profilo ${profilo}:**
+${profilo === 'Prudente'
+  ? '- Azionario vs Azionario: correlazione max 0.70 — il pool obbligazionario è naturalmente correlato, non penalizzarlo\n- Obbligazionario vs Obbligazionario: correlazione max 0.85 — accettabile per natura della categoria\n- Cross asset class: nessun limite — azionario + obbligazionario sono sempre decorrelati'
+  : profilo === 'Bilanciato'
+  ? '- Azionario vs Azionario: correlazione max 0.60 — evita duplicati geografici e settoriali\n- Obbligazionario vs Obbligazionario: correlazione max 0.75 — varietà di duration e tipo\n- Cross asset class: nessun limite'
+  : '- Azionario vs Azionario: correlazione max 0.50 — massima diversificazione, evita overlap geografici\n- Obbligazionario vs Obbligazionario: correlazione max 0.70\n- Cross asset class: nessun limite'}
+
+Esempi alta correlazione AZIONARIA (da evitare): due ETF MSCI World, due ETF S&P500, due ETF Value globali, due ETF Consumer Staples (anche se aree diverse).
+Esempi bassa correlazione: azionario globale + emergenti, azionario + obbligazionario, azionario + oro, Europa + Asia.
+- Questo vincolo è SOFT per obbligazionari: se rispettarlo richiede di sforare vol o drawdown, puoi ignorarlo.
+- È più RIGIDO per azionari: due ETF azionari con correlazione stimata >soglia devono essere giustificati esplicitamente.
+- Vincola le alternative: le alternative devono avere correlazione <soglia con i consigliati già selezionati.
+- Nella SPIEGAZIONE indica le coppie con correlazione stimata più alta.
 
 ## FORMATO RISPOSTA:
 SPIEGAZIONE:
@@ -1136,11 +1147,27 @@ IMPORTANTE: se la quota azionaria calcolata non rientra nel range obbligatorio, 
       // Chiave dedup: categoria geografica macro + fattore + settore tematico
       // Due ETF con stesso settore tematico (es. Consumer Staples) ma area diversa
       // vengono trattati come correlati e deduplicati
+      // Per obbligazionari: dedup più permissivo per Prudente (natura alta correlazione)
+      const isObbligazionario = (etf) => (etf.categoria || '').toLowerCase().includes('obblig') ||
+        (etf.categoria || '').toLowerCase().includes('governat') ||
+        (etf.categoria || '').toLowerCase().includes('corporate') ||
+        (etf.categoria || '').toLowerCase().includes('monetar');
+
       const getCatKeyCorr = (etf) => {
         const settore = getSettore(etf.name);
         if (settore) {
           // Per tematici settoriali: ignora l'area geografica, usa solo il settore
           return `settore::${settore}`;
+        }
+        // Per obbligazionari con profilo Prudente: dedup solo su categoria+fattore_principale
+        // (evita di rimuovere obbligazionari naturalmente correlati ma complementari per duration)
+        if (isObbligazionario(etf) && profilo === 'Prudente') {
+          const cat = (etf.categoria || 'sconosciuta').toLowerCase().replace(/\s+/g, '_');
+          const fattore = getFattoreCorr(etf.name);
+          // Per Prudente: distingui anche per duration (short/long) così non rimuove diversità
+          const duration = etf.name.toLowerCase().includes('1-3') || etf.name.toLowerCase().includes('short') ? 'short'
+            : etf.name.toLowerCase().includes('7-10') || etf.name.toLowerCase().includes('long') ? 'long' : 'mid';
+          return `${cat}::${fattore}::${duration}`;
         }
         const cat = (etf.categoria || 'sconosciuta').toLowerCase().replace(/\s+/g, '_');
         const fattore = getFattoreCorr(etf.name);
