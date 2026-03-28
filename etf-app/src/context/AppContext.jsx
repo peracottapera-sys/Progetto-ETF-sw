@@ -130,6 +130,7 @@ function mergeEtfs(selections, acquisti) {
         valuta:           master?.valuta           || sel.valuta           || 'EUR',
         hedged:           master?.hedged           ?? false,
         tipo:             sel.tipo                 || master?.tipo         || 'consigliato',
+        bucket:           sel.bucket               || 'LUNGO',
         perf1m:           master?.perf1m           ?? sel.perf1m           ?? 0,
         perf6m:           master?.perf6m           ?? sel.perf6m           ?? 0,
         perf1y:           master?.perf1y           ?? sel.perf1y           ?? 0,
