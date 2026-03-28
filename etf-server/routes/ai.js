@@ -848,35 +848,50 @@ async function getEtfPerProfilo(profilo, escludiDistribuzione = false, filtriRil
   } catch {}
 
   const { rows: _rawRows } = await db.query(`
-    SELECT isin, name, valuta, aum_mln, ter,
-           perf1m, perf6m, perf1y, perf5y,
-           perf2024, perf2023, perf2022,
-           vol1y, vol3y, vol5y,
-           maxdd1y, maxdd5y, maxdd_max,
-           distribuzione, categoria, smart_beta_factor,
-           data_lancio, partecipazioni, sostenibile
-    FROM etf_catalog
-    WHERE active = 1
-      AND (ter IS NULL OR ter <= $2)
-      ${escludiVolFilter}
-      ${escludiDdFilter}
-      AND (maxdd5y IS NULL OR maxdd5y >= $5)
-      AND (perf1y IS NOT NULL OR perf5y IS NOT NULL)
-      ${escludiObblAggressivo}
-      AND (
-        -- Fascia 1: AUM >= soglia standard → sempre eligibile
-        aum_mln >= $1
-        OR
-        -- Fascia 2: AUM 30-soglia → eligibile se ETF giovane (< 3 anni)
-        (aum_mln >= 30 AND aum_mln < $1
-         AND data_lancio >= CURRENT_DATE - INTERVAL '3 years')
-        OR
-        -- Fascia 3: AUM 10-30M€ → eligibile solo se molto giovane (< 18 mesi)
-        (aum_mln >= 10 AND aum_mln < 30
-         AND data_lancio >= CURRENT_DATE - INTERVAL '18 months')
-      )
-    ORDER BY aum_mln DESC
-    LIMIT 300
+    WITH pool_grande AS (
+      -- Top 270 ETF per AUM (i "grandi" — sempre eligibili)
+      SELECT isin, name, valuta, aum_mln, ter,
+             perf1m, perf6m, perf1y, perf5y,
+             perf2024, perf2023, perf2022,
+             vol1y, vol3y, vol5y,
+             maxdd1y, maxdd5y, maxdd_max,
+             distribuzione, categoria, smart_beta_factor,
+             data_lancio, partecipazioni, sostenibile
+      FROM etf_catalog
+      WHERE active = 1
+        AND aum_mln >= $1
+        AND (ter IS NULL OR ter <= $2)
+        ${escludiVolFilter}
+        ${escludiDdFilter}
+        AND (maxdd5y IS NULL OR maxdd5y >= $5)
+        AND (perf1y IS NOT NULL OR perf5y IS NOT NULL)
+        ${escludiObblAggressivo}
+      ORDER BY aum_mln DESC
+      LIMIT 270
+    ),
+    pool_giovani AS (
+      -- Top 30 ETF giovani sotto soglia AUM (promettenti)
+      SELECT isin, name, valuta, aum_mln, ter,
+             perf1m, perf6m, perf1y, perf5y,
+             perf2024, perf2023, perf2022,
+             vol1y, vol3y, vol5y,
+             maxdd1y, maxdd5y, maxdd_max,
+             distribuzione, categoria, smart_beta_factor,
+             data_lancio, partecipazioni, sostenibile
+      FROM etf_catalog
+      WHERE active = 1
+        AND aum_mln >= 10
+        AND aum_mln < $1
+        AND data_lancio >= CURRENT_DATE - INTERVAL '3 years'
+        AND (ter IS NULL OR ter <= $2)
+        AND (perf1y IS NOT NULL OR perf5y IS NOT NULL)
+        ${escludiObblAggressivo}
+      ORDER BY data_lancio DESC
+      LIMIT 30
+    )
+    SELECT * FROM pool_grande
+    UNION
+    SELECT * FROM pool_giovani
   `, [f.minAum, f.maxTer, f.maxVol, f.maxDrawdown, f.maxDd5y]);
   const rows = _rawRows
     .filter(e => isinConPrezzoInDB.has(e.isin))
