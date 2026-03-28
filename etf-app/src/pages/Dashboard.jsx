@@ -25,6 +25,8 @@ export default function Dashboard({ setActiveTab }) {
   const [pendingData, setPendingData] = useState(null);
   const [hasBuckets, setHasBuckets] = useState(false);
 
+  const portfolioId = currentPortfolio?.id;
+
   // Apri automaticamente il modal con il risultato AI proveniente dal PortfolioSelector
   React.useEffect(() => {
     if (pendingAIResult && currentPortfolio && pendingAIResult.portfolioId === currentPortfolio.id) {
@@ -60,7 +62,7 @@ export default function Dashboard({ setActiveTab }) {
 
   if (!currentPortfolio) return null;
 
-  const { etfs, id: portfolioId, riskProfile, name, maxUSA } = currentPortfolio;
+  const { etfs, riskProfile, name, maxUSA } = currentPortfolio;
 
   const handleAggiornaPressi = async () => {
     setAggiornando(true);
