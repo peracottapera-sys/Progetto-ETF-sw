@@ -81,21 +81,37 @@ function verificaRendimentoComplessivo(buckets, profilo) {
 
 // ── Assegnazione automatica ETF ai bucket ────────────────────────────────
 function assegnaBucketAutomatico(etf) {
-  // Regole: categoria → bucket
-  const cat = (etf.categoria || '').toLowerCase();
-  const sb  = (etf.smartBeta || '').toLowerCase();
+  const cat  = (etf.categoria || '').toLowerCase();
+  const sb   = (etf.smartBeta || '').toLowerCase();
+  const name = (etf.name || '').toLowerCase();
 
-  // BREVE: obbligazionario breve, monetario, low volatility, dividend
+  // BREVE: monetario, liquidità, ultra-short, overnight
   if (cat.includes('monetar') || cat.includes('liquidit')) return 'BREVE';
-  if (cat.includes('obblig') && (cat.includes('1-3') || cat.includes('breve') || cat.includes('short') || cat.includes('0-1') || cat.includes('1-5'))) return 'BREVE';
+  if (name.includes('ultra-short') || name.includes('ultra short') || name.includes('overnight')
+      || name.includes('eonia') || name.includes('estr') || name.includes('money market')) return 'BREVE';
+
+  // BREVE: obbligazionario breve duration
+  if (cat.includes('obblig') && (cat.includes('1-3') || cat.includes('breve') || cat.includes('short')
+      || cat.includes('0-1') || cat.includes('1-5') || cat.includes('0-3'))) return 'BREVE';
+
+  // BREVE: categoria "Altro" con vol bassa → probabilmente monetario/breve non classificato
+  if (cat === 'altro' && etf.variabilita !== undefined && parseFloat(etf.variabilita) < 2) return 'BREVE';
+
+  // BREVE: Smart Beta difensivi
   if (sb === 'low volatility' || sb === 'dividend') return 'BREVE';
 
-  // LUNGO: azionario, tematico, emergenti, commodity, oro
+  // LUNGO: azionario, tematico, emergenti, commodity
   if (cat.includes('azionario') || cat.includes('equity') || cat.includes('tematico') || cat.includes('emergenti')) return 'LUNGO';
-  if (cat.includes('oro') || cat.includes('commodity') || cat.includes('real asset')) return 'LUNGO';
+  if (cat.includes('commodity') || cat.includes('real asset')) return 'LUNGO';
+
+  // ORO: bucket dipende dalla filosofia — di default LUNGO ma può essere hedge nel breve
+  // L'AI decide in base al contesto, qui lo mettiamo LUNGO come default
+  if (cat.includes('oro') || cat.includes('metalli') || cat.includes('gold') || name.includes('gold') || name.includes(' oro')) return 'LUNGO';
+
+  // Smart Beta growth
   if (sb === 'momentum' || sb === 'small cap' || sb === 'value') return 'LUNGO';
 
-  // Default: LUNGO per tutto il resto (obbligaz. medio-lungo, corporate, ecc.)
+  // Default: LUNGO
   return 'LUNGO';
 }
 
@@ -134,7 +150,8 @@ function descrizioneBucket(bucket, profilo, macroData, filosofia = 'difensiva') 
     || regoleBucket[orizzLabel]?.difensiva?.[profilo]
     || 'Parametri standard del profilo.';
 
-  return `Bucket ${bucket.tipo} (${bucket.pct_allocazione}% capitale | Orizzonte: ${bucket.orizzonte_anni} anni | Filosofia: ${filosofia.toUpperCase()})
+  const orizzonteLabel = bucket.orizzonte_anni >= 10 ? "oltre 10 anni" : bucket.orizzonte_anni + " anni";
+  return `Bucket ${bucket.tipo} (${bucket.pct_allocazione}% capitale | Orizzonte: ${orizzonteLabel} | Filosofia: ${filosofia.toUpperCase()})
 Regole: ${regola}
 Target rendimento: ${bucket.rendimento_target_annuo ? bucket.rendimento_target_annuo + '% annuo' : 'non specificato (usa minimo profilo)'}`;
 }

@@ -251,7 +251,11 @@ function CreaPortafoglioModal({ portfolioId, onClose, initialProfilo, initialDat
                         </div>
                         <input type="range" min={10} max={maxPctBreve} step={5} value={pctBreveEffettiva}
                           onChange={e => setBucket(b => ({...b, pctBreve: parseInt(e.target.value)}))}
-                          style={{ width:'100%', accentColor:'var(--accent-blue)', marginBottom:8 }} />
+                          style={{ width:'100%', accentColor:'var(--accent-blue)', marginBottom:2 }} />
+                        <div style={{ display:'flex', justifyContent:'space-between', fontSize:10, color:'var(--text-muted)', marginBottom:8 }}>
+                          <span>min 10%</span>
+                          <span>max {maxPctBreve}%</span>
+                        </div>
 
                         {/* Orizzonte breve */}
                         <div style={{ display:'flex', alignItems:'center', gap:8 }}>
@@ -260,7 +264,7 @@ function CreaPortafoglioModal({ portfolioId, onClose, initialProfilo, initialDat
                             onChange={e => setBucket(b => ({...b, anniBreve: parseInt(e.target.value)||1}))}
                             style={{ fontSize:12, padding:'3px 8px', width:60 }} />
                           <span style={{ fontSize:11, color:'var(--text-muted)' }}>
-                            · Lungo usa orizzonte {form.orizzonteAnni === 'LUNGO' ? '15 anni' : '7 anni'}
+                            · Lungo usa orizzonte {form.orizzonteAnni === 'LUNGO' ? 'oltre 10 anni' : '5-10 anni'}
                           </span>
                         </div>
                       </div>
