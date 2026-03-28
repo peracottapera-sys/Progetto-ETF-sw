@@ -533,6 +533,9 @@ function CreaPortafoglioModal({ portfolioId, onClose, initialProfilo, initialDat
                 );
               })()}
 
+
+                            {/* Consigliati — raggruppati per bucket se attivo */}
+              {(() => {
                 const renderEtf = (s, i) => {
                   const nome = s.name || s.isin;
                   const pesoVal = parseFloat(pesi[i]) || 0;
@@ -589,8 +592,6 @@ function CreaPortafoglioModal({ portfolioId, onClose, initialProfilo, initialDat
                   );
                 };
 
-                            {/* Consigliati — raggruppati per bucket se attivo */}
-              {(() => {
                 const consigliatiList = selezione.map((s, i) => ({ s, i }))
                   .filter(({ s }) => s.tipo === 'consigliato' || !s.tipo);
 
