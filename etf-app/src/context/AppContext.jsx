@@ -455,6 +455,7 @@ export function AppProvider({ children }) {
         perf1y: s.perf1y ?? master?.perf1y ?? 0,
         perf5y: s.perf5y ?? master?.perf5y ?? 0,
         selected: isSelected,
+        bucket: s.bucket || 'LUNGO',
         acquisto: (isSelected && capitale && s.quantita > 0 && quotazione > 0)
           ? { quantita: s.quantita, quotazioneAcquisto: quotazione, dataAcquisto: today }
           : null,
@@ -474,6 +475,7 @@ export function AppProvider({ children }) {
       selected: e.selected,
       tipo: e.tipo,
       quotazione: e.quotazione,
+      bucket: e.bucket || 'LUNGO',
     }));
     const acquistiPayload = nuoviEtfs
       .filter(e => e.acquisto?.quantita > 0)

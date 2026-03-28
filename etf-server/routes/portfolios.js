@@ -126,9 +126,9 @@ module.exports = (pool) => {
       await client.query('DELETE FROM acquisti WHERE portfolio_id = $1', [portfolioId]);
       for (const e of etfs)
         await client.query(
-          `INSERT INTO portfolio_etf (portfolio_id, isin, selected, tipo) VALUES ($1, $2, $3, $4)
-           ON CONFLICT(portfolio_id, isin) DO UPDATE SET selected = EXCLUDED.selected, tipo = EXCLUDED.tipo`,
-          [portfolioId, e.isin, e.selected ? 1 : 0, e.tipo || 'consigliato']
+          `INSERT INTO portfolio_etf (portfolio_id, isin, selected, tipo, bucket) VALUES ($1, $2, $3, $4, $5)
+           ON CONFLICT(portfolio_id, isin) DO UPDATE SET selected = EXCLUDED.selected, tipo = EXCLUDED.tipo, bucket = EXCLUDED.bucket`,
+          [portfolioId, e.isin, e.selected ? 1 : 0, e.tipo || 'consigliato', e.bucket || 'LUNGO']
         );
       for (const a of acquisti)
         if (a.quantita > 0 && a.quotazioneAcquisto > 0)
