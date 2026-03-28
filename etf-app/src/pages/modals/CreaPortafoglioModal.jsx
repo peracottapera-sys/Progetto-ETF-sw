@@ -627,3 +627,61 @@ function CreaPortafoglioModal({ portfolioId, onClose, initialProfilo, initialDat
                 return consigliatiList.map(({ s, i }) => renderEtf(s, i));
               })()}
 
+              {/* Alternative — sezione collassata, informativa */}
+              {selezione.some(s => s.tipo === 'alternativa1' || s.tipo === 'alternativa2') && (
+                <div style={{ marginTop: 20 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8 }}>
+                    📋 Alternative disponibili (aggiunte al portafoglio come riferimento, non selezionate)
+                  </div>
+                  {selezione.map((s, i) => {
+                    if (s.tipo !== 'alternativa1' && s.tipo !== 'alternativa2') return null;
+                    return (
+                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 0', borderBottom: '1px solid var(--border)', opacity: 0.75 }}>
+                        <span style={{ fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 4, background: 'var(--bg-secondary)', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                          {s.tipo === 'alternativa1' ? 'Alt. 1' : 'Alt. 2'}
+                        </span>
+                        <span style={{ fontSize: 12, flex: 1 }}>{s.name || s.isin}</span>
+                        <a href={`https://www.justetf.com/it/etf-profile.html?isin=${s.isin}`} target="_blank" rel="noreferrer"
+                          style={{ fontSize: 10, fontFamily: 'monospace', color: 'var(--accent-blue)', textDecoration: 'none' }}
+                          onClick={e => e.stopPropagation()}>
+                          {s.isin} ↗
+                        </a>
+                        <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{s.categoria}</span>
+                        <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>TER {s.ter ?? '—'}%</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div style={{ borderTop: '1px solid var(--border)', paddingTop: 16, marginTop: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
+          <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+            {step === 'risultato' && `${nApprovate} ETF selezionati`}
+          </div>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button className="btn btn-ghost" onClick={onClose}>Annulla</button>
+            {step === 'form' && (
+              <button className="btn btn-primary" onClick={handleCrea} disabled={loading}
+                style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}>
+                {loading ? '⏳ Elaborazione...' : '✨ Genera Portafoglio'}
+              </button>
+            )}
+            {step === 'risultato' && (
+              <button className="btn btn-primary" onClick={handleApplica}
+                disabled={nApprovate === 0 || (capitale && Math.abs(totPesi - 100) > 5)}
+                style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}>
+                ✓ Applica {nApprovate} ETF al Portafoglio
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+export default CreaPortafoglioModal;
