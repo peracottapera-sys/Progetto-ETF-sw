@@ -56,7 +56,7 @@ export default function Dashboard({ setActiveTab }) {
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ isin, bucket: nuovoBucket }),
       });
-      await loadPortfoliosFromDB();
+      await loadPortfoliosFromDB(token, currentUser?.id);
     } catch {}
   };
 
