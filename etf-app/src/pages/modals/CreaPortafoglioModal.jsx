@@ -31,7 +31,7 @@ function CreaPortafoglioModal({ portfolioId, onClose, initialProfilo, initialDat
   });
   const [loading, setLoading] = useState(false);
   const [errore, setErrore] = useState('');
-  const [bucket, setBucket] = useState({ attivo: false, pctBreve: 30, anniBreve: 3 });
+  const [bucket, setBucket] = useState({ attivo: false, pctBreve: 20, anniBreve: 3, filosofia: 'difensiva' });
   const [step, setStep] = useState(initialData?.selezione?.length > 0 ? 'risultato' : 'form');
 
   const handleCrea = async () => {
@@ -44,7 +44,7 @@ function CreaPortafoglioModal({ portfolioId, onClose, initialProfilo, initialDat
         body: JSON.stringify({
           profilo: form.profilo,
           orizzonteAnni: form.orizzonteAnni === 'BREVE' ? 3 : form.orizzonteAnni === 'LUNGO' ? 15 : 7,
-          bucketBreve: bucket.attivo ? { pct: Math.min(bucket.pctBreve, form.orizzonteAnni === 'LUNGO' ? 40 : 20), anni: bucket.anniBreve, filosofia: bucket.filosofia || 'difensiva' } : undefined,
+          bucketBreve: bucket.attivo ? { pct: Math.min(bucket.pctBreve, 40), anni: bucket.anniBreve, filosofia: bucket.filosofia || 'difensiva' } : undefined,
           bucketLungo: bucket.attivo ? { pct: 100 - Math.min(bucket.pctBreve, form.orizzonteAnni === 'LUNGO' ? 40 : 20), anni: form.orizzonteAnni === 'LUNGO' ? 15 : 7 } : undefined,
           capitale: form.capitale ? parseFloat(form.capitale) : null,
           preferenze: form.preferenze,
@@ -127,7 +127,16 @@ function CreaPortafoglioModal({ portfolioId, onClose, initialProfilo, initialDat
                   <label className="form-label">Orizzonte temporale</label>
                   <div style={{ display:'flex', gap:6, marginTop:4 }}>
                     {[['BREVE','< 5 anni'],['MEDIO','5-10 anni'],['LUNGO','> 10 anni']].map(([val,lab]) => (
-                      <div key={val} onClick={() => setForm(f => ({...f, orizzonteAnni: val}))}
+                      <div key={val} onClick={() => {
+                        setForm(f => ({...f, orizzonteAnni: val}));
+                        // Aggiorna pctBreve al default del nuovo orizzonte se era al default precedente
+                        setBucket(b => {
+                          const prevDefault = form.orizzonteAnni === 'LUNGO' ? 30 : 20;
+                          const newDefault  = val === 'LUNGO' ? 30 : 20;
+                          if (b.pctBreve === prevDefault) return {...b, pctBreve: newDefault};
+                          return b;
+                        });
+                      }}
                         style={{ flex:1, padding:'6px 8px', borderRadius:8, border:`1px solid ${form.orizzonteAnni===val?'var(--accent-blue)':'var(--border)'}`,
                           background: form.orizzonteAnni===val?'rgba(59,130,246,0.1)':'var(--bg-primary)',
                           cursor:'pointer', textAlign:'center' }}>
@@ -184,10 +193,11 @@ function CreaPortafoglioModal({ portfolioId, onClose, initialProfilo, initialDat
                 const bucketDisponibile = !isPrudente && !isBreve;
 
                 // Limiti % bucket breve per orizzonte
-                const maxPctBreve = isLungo ? 40 : 20; // MEDIO max 20%, LUNGO max 40%
+                const MAX_PCT_BREVE = 40; // max fisso uguale per tutti
+                const defaultPctBreve = isLungo ? 30 : 20; // default per orizzonte
 
-                // Se l'utente cambia orizzonte e il bucket va fuori range, adatta
-                const pctBreveEffettiva = Math.min(bucket.pctBreve, maxPctBreve);
+                // Valore effettivo: mai oltre il max fisso
+                const pctBreveEffettiva = Math.min(bucket.pctBreve, MAX_PCT_BREVE);
 
                 if (!bucketDisponibile) {
                   return (
@@ -209,7 +219,7 @@ function CreaPortafoglioModal({ portfolioId, onClose, initialProfilo, initialDat
                         onChange={e => setBucket(b => ({
                           ...b,
                           attivo: e.target.checked,
-                          pctBreve: Math.min(b.pctBreve, maxPctBreve), // adatta al limite
+                          pctBreve: b.pctBreve || defaultPctBreve, // usa default se non impostato
                           filosofia: b.filosofia || 'difensiva',
                         }))}
                         style={{ width:16, height:16, cursor:'pointer', accentColor:'var(--accent-blue)' }} />
@@ -243,18 +253,18 @@ function CreaPortafoglioModal({ portfolioId, onClose, initialProfilo, initialDat
                           {(bucket.filosofia||'difensiva') === 'difensiva'
                             ? 'Il bucket breve viene popolato con ETF difensivi (monetario, obbligazionario breve, low vol).'
                             : 'Il bucket breve mantiene liquidità tattica da impiegare in caso di cali di mercato.'}
-                          {isMedio && <span style={{ color:'var(--accent-amber)' }}> Con orizzonte medio, max {maxPctBreve}% consigliato.</span>}
+                          {isMedio && <span style={{ color:'var(--accent-amber)' }}> Con orizzonte medio, default 20% consigliato.</span>}
                         </div>
                         <div style={{ display:'flex', justifyContent:'space-between', fontSize:12, marginBottom:4 }}>
                           <span style={{ color:'var(--accent-blue)', fontWeight:600 }}>🔵 Breve: {pctBreveEffettiva}%</span>
                           <span style={{ color:'var(--accent-amber)', fontWeight:600 }}>🟡 Lungo: {100-pctBreveEffettiva}%</span>
                         </div>
-                        <input type="range" min={10} max={maxPctBreve} step={5} value={pctBreveEffettiva}
+                        <input type="range" min={10} max={MAX_PCT_BREVE} step={5} value={pctBreveEffettiva}
                           onChange={e => setBucket(b => ({...b, pctBreve: parseInt(e.target.value)}))}
                           style={{ width:'100%', accentColor:'var(--accent-blue)', marginBottom:2 }} />
                         <div style={{ display:'flex', justifyContent:'space-between', fontSize:10, color:'var(--text-muted)', marginBottom:8 }}>
                           <span>min 10%</span>
-                          <span>max {maxPctBreve}%</span>
+                          <span>max 40%</span>
                         </div>
 
                         {/* Orizzonte breve */}
