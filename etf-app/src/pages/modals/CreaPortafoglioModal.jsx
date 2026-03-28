@@ -4,7 +4,7 @@ import { useApp } from '../../context/AppContext';
 const API = process.env.REACT_APP_API_URL || (window.location.hostname === 'localhost' ? 'http://localhost:3001' : '');
 
 function CreaPortafoglioModal({ portfolioId, onClose, initialProfilo, initialData }) {
-  const { applicaPortafoglioAI, token } = useApp();
+  const { applicaPortafoglioAI, token, saveBuckets } = useApp();
   const [form, setForm] = useState({
     profilo: initialProfilo || 'Bilanciato',
     orizzonteAnni: 'MEDIO',
@@ -94,20 +94,12 @@ function CreaPortafoglioModal({ portfolioId, onClose, initialProfilo, initialDat
     });
     await applicaPortafoglioAI(portfolioId, selezioneAggiornata, capitale || 0);
 
-    // Salva i bucket in portfolio_buckets se la pianificazione è attiva
+    // Salva i bucket se la pianificazione è attiva
     if (bucketInfo?.attivo) {
-      try {
-        await fetch(`${API}/api/portfolios/${portfolioId}/buckets`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-          body: JSON.stringify({
-            buckets: [
-              { tipo: 'BREVE', pct_allocazione: bucketInfo.breve.pct, orizzonte_anni: bucketInfo.breve.anni },
-              { tipo: 'LUNGO', pct_allocazione: bucketInfo.lungo.pct, orizzonte_anni: bucketInfo.lungo.anni },
-            ]
-          }),
-        });
-      } catch {}
+      await saveBuckets(portfolioId, [
+        { tipo: 'BREVE', pct_allocazione: bucketInfo.breve.pct, orizzonte_anni: bucketInfo.breve.anni },
+        { tipo: 'LUNGO', pct_allocazione: bucketInfo.lungo.pct, orizzonte_anni: bucketInfo.lungo.anni },
+      ]);
     }
 
     onClose();

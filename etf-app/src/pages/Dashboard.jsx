@@ -10,7 +10,7 @@ import CatalogPanel from './CatalogPanel';
 const API = process.env.REACT_APP_API_URL || (window.location.hostname === 'localhost' ? 'http://localhost:3001' : '');
 
 export default function Dashboard({ setActiveTab }) {
-  const { currentPortfolio, toggleEtfSelection, aggiornaPrezziBatch, token, loadPortfoliosFromDB, currentUser, pendingAIResult, setPendingAIResult, updateEtfBucket } = useApp();
+  const { currentPortfolio, toggleEtfSelection, aggiornaPrezziBatch, token, loadPortfoliosFromDB, currentUser, pendingAIResult, setPendingAIResult, updateEtfBucket, getHasBuckets, loadBuckets } = useApp();
   const [sortKey, setSortKey] = useState('tipo');
   const [sortDir, setSortDir] = useState(1);
   const [filter, setFilter] = useState('tutte');
@@ -23,9 +23,9 @@ export default function Dashboard({ setActiveTab }) {
   const [showMacro, setShowMacro] = useState(false);
   const [showCatalog, setShowCatalog] = useState(false);
   const [pendingData, setPendingData] = useState(null);
-  const [hasBuckets, setHasBuckets] = useState(false);
 
   const portfolioId = currentPortfolio?.id;
+  const hasBuckets = getHasBuckets(portfolioId);
 
   // Apri automaticamente il modal con il risultato AI proveniente dal PortfolioSelector
   React.useEffect(() => {
@@ -36,16 +36,10 @@ export default function Dashboard({ setActiveTab }) {
     }
   }, [pendingAIResult, currentPortfolio]);
 
-  // Controlla se il portafoglio ha bucket configurati
+  // Carica stato bucket dal context
   useEffect(() => {
-    if (!portfolioId || !token) return;
-    fetch(`${API}/api/portfolios/${portfolioId}/buckets`, {
-      headers: { Authorization: `Bearer ${token}` }
-    })
-      .then(r => r.json())
-      .then(data => setHasBuckets(Array.isArray(data) && data.length >= 2))
-      .catch(() => setHasBuckets(false));
-  }, [portfolioId, token]);
+    if (portfolioId) loadBuckets(portfolioId);
+  }, [portfolioId]);
 
   // Cambia bucket di un ETF (BREVE ↔ LUNGO)
   const toggleBucket = async (isin, bucketAttuale) => {

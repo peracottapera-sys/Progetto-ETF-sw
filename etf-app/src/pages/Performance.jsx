@@ -4,7 +4,7 @@ import { useApp } from '../context/AppContext';
 const API = process.env.REACT_APP_API_URL || (window.location.hostname === 'localhost' ? 'http://localhost:3001' : '');
 
 export default function Performance() {
-  const { currentPortfolio, getVendite, annullaVendita, getMinusvalenze, salvaMinusvalenzaManuale, eliminaMinusvalenzaManuale, token } = useApp();
+  const { currentPortfolio, getVendite, annullaVendita, getMinusvalenze, salvaMinusvalenzaManuale, eliminaMinusvalenzaManuale, token, getHasBuckets, loadBuckets } = useApp();
   const [sortKey, setSortKey] = useState('nome');
   const [sortDir, setSortDir] = useState(1);
   const [vendite, setVendite] = useState([]);
@@ -13,7 +13,8 @@ export default function Performance() {
   const [showMinusPanel, setShowMinusPanel] = useState(false);
   const [minusForm, setMinusForm] = useState({ importo: '', data_scadenza: '', note: '', condivisa: true });
   const [savingMinus, setSavingMinus] = useState(false);
-  const [hasBuckets, setHasBuckets] = useState(false);
+
+  const hasBuckets = getHasBuckets(currentPortfolio?.id);
 
   const reloadMinus = () => currentPortfolio?.id && getMinusvalenze(currentPortfolio.id).then(setMinus);
 
@@ -21,18 +22,9 @@ export default function Performance() {
     if (currentPortfolio?.id) {
       getVendite(currentPortfolio.id).then(setVendite);
       getMinusvalenze(currentPortfolio.id).then(setMinus);
+      loadBuckets(currentPortfolio.id);
     }
   }, [currentPortfolio?.id]);
-
-  useEffect(() => {
-    if (!currentPortfolio?.id || !token) return;
-    fetch(`${API}/api/portfolios/${currentPortfolio.id}/buckets`, {
-      headers: { Authorization: `Bearer ${token}` }
-    })
-      .then(r => r.json())
-      .then(data => setHasBuckets(Array.isArray(data) && data.length >= 2))
-      .catch(() => setHasBuckets(false));
-  }, [currentPortfolio?.id, token]);
 
   const handleSalvaMinus = async () => {
     if (!minusForm.importo || parseFloat(minusForm.importo) <= 0) return;

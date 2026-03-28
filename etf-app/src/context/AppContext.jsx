@@ -149,8 +149,9 @@ export function AppProvider({ children }) {
   const [currentPortfolioId, setCurrentPortfolioId] = useState(null);
   const [pendingAIResult, setPendingAIResult] = useState(null); // {portfolioId, selezione, spiegazione}
   const [portfolios, setPortfolios] = useState([]);
-  const [dbMode, setDbMode] = useState(false); // true = server DB, false = localStorage
-  const [dbStatus, setDbStatus] = useState('checking'); // 'checking' | 'online' | 'offline'
+  const [dbMode, setDbMode] = useState(false);
+  const [dbStatus, setDbStatus] = useState('checking');
+  const [portfolioBucketsMap, setPortfolioBucketsMap] = useState({}); // { portfolioId: true/false }
 
   // ── Controlla se server è disponibile ──
   const checkServer = useCallback(async () => {
@@ -630,6 +631,30 @@ export function AppProvider({ children }) {
       toggleEtfSelection, saveAcquisto, aggiornaPrezziBatch, applicaPortafoglioAI, loadPortfoliosFromDB,
       registraVendita, getVendite, annullaVendita,
       getMinusvalenze, salvaMinusvalenzaManuale, eliminaMinusvalenzaManuale,
+      getHasBuckets: (portfolioId) => !!portfolioBucketsMap[portfolioId],
+      saveBuckets: async (portfolioId, bucketsPayload) => {
+        if (!token || !portfolioId || !bucketsPayload?.length) return;
+        try {
+          const res = await fetch(`${API}/api/portfolios/${portfolioId}/buckets`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ buckets: bucketsPayload }),
+          });
+          if (res.ok) {
+            setPortfolioBucketsMap(m => ({ ...m, [portfolioId]: true }));
+          }
+        } catch {}
+      },
+      loadBuckets: async (portfolioId) => {
+        if (!token || !portfolioId) return;
+        try {
+          const res = await fetch(`${API}/api/portfolios/${portfolioId}/buckets`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          const data = await res.json();
+          setPortfolioBucketsMap(m => ({ ...m, [portfolioId]: Array.isArray(data) && data.length >= 2 }));
+        } catch {}
+      },
       updateEtfBucket: (portfolioId, isin, bucket) => {
         setPortfolios(ps => ps.map(p =>
           p.id !== portfolioId ? p : {
