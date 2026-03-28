@@ -100,22 +100,41 @@ function assegnaBucketAutomatico(etf) {
 }
 
 // ── Descrizione testuale bucket per prompt ─────────────────────────────────
-function descrizioneBucket(bucket, profilo, macroData) {
+function descrizioneBucket(bucket, profilo, macroData, filosofia = 'difensiva') {
   const orizzLabel = bucket.orizzonte_anni <= 4 ? 'BREVE' : bucket.orizzonte_anni >= 10 ? 'LUNGO' : 'MEDIO';
+
   const regoleBucket = {
     BREVE: {
-      Prudente:   'Protezione capitale. Solo obblig. breve duration (1-3Y), monetario EUR, Low Volatility. Max azionario 10%.',
-      Bilanciato: 'Stabilita. Obblig. breve-medio, Dividend, Low Vol. Max azionario 25%.',
-      Aggressivo: 'Liquidita tattica. Obblig. breve, monetario, Value ciclici selettivi. Max azionario 35%.',
+      difensiva: {
+        Prudente:   'BUCKET DIFENSIVO: Protezione capitale. Solo obblig. breve duration (1-3Y), monetario EUR, Low Volatility. Max azionario 10%. DEVI includere almeno 1 ETF monetario o obbligazionario breve.',
+        Bilanciato: 'BUCKET DIFENSIVO: Stabilita. Obblig. breve-medio, Dividend, Low Vol. Max azionario 25%. DEVI includere almeno 1 ETF difensivo (monetario, obblig. breve o Low Volatility).',
+        Aggressivo: 'BUCKET DIFENSIVO: Riserva stabile. Obblig. breve termine, monetario EUR. Max azionario 20%. DEVI includere almeno 1 ETF monetario o obbligazionario breve per la protezione del capitale a breve.',
+      },
+      opportunistica: {
+        Prudente:   'BUCKET OPPORTUNISTICO: Liquidita tattica. Monetario EUR ad alto rendimento, obblig. breve. Pronto per acquisti opportunistici. DEVI includere almeno 1 ETF monetario.',
+        Bilanciato: 'BUCKET OPPORTUNISTICO: Liquidita tattica da impiegare su cali di mercato (VIX elevato). Monetario EUR, obblig. breve, eventualmente ETF con bassa correlazione al mercato. DEVI includere almeno 1 ETF monetario o quasi-monetario.',
+        Aggressivo: 'BUCKET OPPORTUNISTICO: Polvere da sparo per acquisti a sconto durante crisi. Monetario EUR o obblig. breve a breve duration. Con VIX >25 questo bucket e pronto per entrare su azionario a prezzi scontati. DEVI includere almeno 1 ETF monetario o obbligazionario breve.',
+      },
     },
     LUNGO: {
-      Prudente:   'Crescita prudente. Azionario difensivo (Quality, Dividend), obblig. medio-lungo. Max azionario 35%.',
-      Bilanciato: 'Crescita bilanciata. Mix azionario globale e obblig. Fattori Value/Quality. Azionario 50-70%.',
-      Aggressivo: 'Massimizzazione. Azionario globale, emergenti, tematici, Small Cap, Momentum. Azionario 80%+.',
+      difensiva: {
+        Prudente:   'BUCKET CRESCITA: Crescita prudente. Azionario difensivo (Quality, Dividend), obblig. medio-lungo. Max azionario 35%.',
+        Bilanciato: 'BUCKET CRESCITA: Crescita bilanciata. Mix azionario globale e obblig. Fattori Value/Quality. Azionario 50-70%.',
+        Aggressivo: 'BUCKET CRESCITA: Massimizzazione. Azionario globale, emergenti, tematici, Small Cap, Momentum. Azionario 80%+.',
+      },
+      opportunistica: {
+        Prudente:   'BUCKET CRESCITA: Crescita prudente con tilt difensivo. Azionario Quality e Dividend, obblig. medio termine.',
+        Bilanciato: 'BUCKET CRESCITA: Mix azionario e obbligazionario. Mantieni esposizione per il rialzo di lungo periodo mentre il bucket breve aspetta opportunita.',
+        Aggressivo: 'BUCKET CRESCITA: Azionario aggressivo globale, emergenti, tematici. Questo e il motore di rendimento mentre il bucket breve aspetta opportunita di acquisto.',
+      },
     },
   };
-  const regola = regoleBucket[orizzLabel]?.[profilo] || 'Parametri standard del profilo.';
-  return `Bucket ${bucket.tipo} (${bucket.pct_allocazione}% capitale | Orizzonte: ${bucket.orizzonte_anni} anni | ${orizzLabel})
+
+  const regola = regoleBucket[orizzLabel]?.[filosofia]?.[profilo]
+    || regoleBucket[orizzLabel]?.difensiva?.[profilo]
+    || 'Parametri standard del profilo.';
+
+  return `Bucket ${bucket.tipo} (${bucket.pct_allocazione}% capitale | Orizzonte: ${bucket.orizzonte_anni} anni | Filosofia: ${filosofia.toUpperCase()})
 Regole: ${regola}
 Target rendimento: ${bucket.rendimento_target_annuo ? bucket.rendimento_target_annuo + '% annuo' : 'non specificato (usa minimo profilo)'}`;
 }
@@ -881,8 +900,9 @@ router.post('/crea-portafoglio', async (req, res) => {
     macroContext = testo || '';
     macroData = dati || {};
   } catch (e) { console.log('[AI] macro non disponibile:', e.message); }
-  const { bucketBreve, bucketLungo } = req.body; // opzionali: { pct, anni, targetRend }
+  const { bucketBreve, bucketLungo } = req.body;
   const hasBuckets = bucketBreve && bucketLungo;
+  const filosofiaBucket = bucketBreve?.filosofia || 'difensiva'; // 'difensiva' | 'opportunistica'
   const checkRend = hasBuckets
     ? verificaRendimentoComplessivo(
         [{tipo:'BREVE', pct_allocazione: bucketBreve.pct, orizzonte_anni: bucketBreve.anni, rendimento_target_annuo: bucketBreve.targetRend},
@@ -931,6 +951,16 @@ ${regole.note ? `- NOTA IMPORTANTE: ${regole.note}` : ''}
 
 ## CATEGORIE AZIONARIE (usale per calcolare la quota azionaria):
 Azionario Globale, Azionario USA, Azionario Europa, Azionario Emergenti, Azionario Tematico, Azionario Pacifico
+
+${hasBuckets ? `## PIANIFICAZIONE A DUE ORIZZONTI — VINCOLO OBBLIGATORIO:
+Filosofia scelta dall'utente: ${filosofiaBucket.toUpperCase()}
+
+${descrizioneBucket({tipo:'BREVE', pct_allocazione: bucketBreve.pct, orizzonte_anni: bucketBreve.anni}, profilo, macroData, filosofiaBucket)}
+
+${descrizioneBucket({tipo:'LUNGO', pct_allocazione: bucketLungo.pct, orizzonte_anni: bucketLungo.anni}, profilo, macroData, filosofiaBucket)}
+
+⚠️ REGOLA CRITICA BUCKET: DEVI selezionare ETF per ENTRAMBI i bucket. Il bucket BREVE deve avere almeno 1 ETF (preferibilmente monetario o obbligazionario breve). Il bucket LUNGO riceve il resto. Se le preferenze utente non sono compatibili con il bucket breve, includi comunque 1 ETF difensivo/monetario nel breve e concentra le preferenze nel lungo.
+` : ''}
 
 ${macroContext}
 ## ETF DISPONIBILI:

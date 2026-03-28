@@ -44,8 +44,8 @@ function CreaPortafoglioModal({ portfolioId, onClose, initialProfilo, initialDat
         body: JSON.stringify({
           profilo: form.profilo,
           orizzonteAnni: form.orizzonteAnni === 'BREVE' ? 3 : form.orizzonteAnni === 'LUNGO' ? 15 : 7,
-          bucketBreve: bucket.attivo ? { pct: bucket.pctBreve, anni: bucket.anniBreve } : undefined,
-          bucketLungo: bucket.attivo ? { pct: 100 - bucket.pctBreve, anni: form.orizzonteAnni === 'LUNGO' ? 15 : 7 } : undefined,
+          bucketBreve: bucket.attivo ? { pct: Math.min(bucket.pctBreve, form.orizzonteAnni === 'LUNGO' ? 40 : 20), anni: bucket.anniBreve, filosofia: bucket.filosofia || 'difensiva' } : undefined,
+          bucketLungo: bucket.attivo ? { pct: 100 - Math.min(bucket.pctBreve, form.orizzonteAnni === 'LUNGO' ? 40 : 20), anni: form.orizzonteAnni === 'LUNGO' ? 15 : 7 } : undefined,
           capitale: form.capitale ? parseFloat(form.capitale) : null,
           preferenze: form.preferenze,
           escludiDistribuzione: form.escludiDistribuzione,
@@ -174,38 +174,100 @@ function CreaPortafoglioModal({ portfolioId, onClose, initialProfilo, initialDat
                 </label>
               </div>
               {/* Pianificazione a due orizzonti */}
-              <div style={{ padding:'10px 12px', borderRadius:8, border:'1px solid var(--border)', background:'var(--bg-secondary)', marginTop:8 }}>
-                <label style={{ display:'flex', alignItems:'center', gap:8, cursor:'pointer', marginBottom: bucket.attivo ? 10 : 0 }}>
-                  <input type="checkbox" checked={bucket.attivo}
-                    onChange={e => setBucket(b => ({...b, attivo: e.target.checked}))}
-                    style={{ width:16, height:16, cursor:'pointer', accentColor:'var(--accent-blue)' }} />
-                  <span style={{ fontSize:13, fontWeight:600 }}>🪣 Pianificazione a due orizzonti</span>
-                  <span style={{ fontSize:11, color:'var(--text-muted)' }}>— opzionale</span>
-                </label>
-                {bucket.attivo && (
-                  <div>
-                    <div style={{ fontSize:11, color:'var(--text-muted)', marginBottom:8 }}>
-                      Dividi il capitale tra una componente a breve termine (protezione) e una a lungo termine (crescita).
+              {(() => {
+                const isPrudente = form.profilo === 'Prudente';
+                const isBreve    = form.orizzonteAnni === 'BREVE';
+                const isMedio    = form.orizzonteAnni === 'MEDIO';
+                const isLungo    = form.orizzonteAnni === 'LUNGO';
+
+                // Regole di disponibilità
+                const bucketDisponibile = !isPrudente && !isBreve;
+
+                // Limiti % bucket breve per orizzonte
+                const maxPctBreve = isLungo ? 40 : 20; // MEDIO max 20%, LUNGO max 40%
+
+                // Se l'utente cambia orizzonte e il bucket va fuori range, adatta
+                const pctBreveEffettiva = Math.min(bucket.pctBreve, maxPctBreve);
+
+                if (!bucketDisponibile) {
+                  return (
+                    <div style={{ padding:'10px 12px', borderRadius:8, border:'1px solid var(--border)', background:'var(--bg-secondary)', marginTop:8, opacity:0.6 }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                        <span style={{ fontSize:13, fontWeight:600, color:'var(--text-muted)' }}>🪣 Pianificazione a due orizzonti</span>
+                        <span style={{ fontSize:11, color:'var(--text-muted)' }}>
+                          {isPrudente ? '— non disponibile per profilo Prudente' : '— non disponibile con orizzonte Breve'}
+                        </span>
+                      </div>
                     </div>
-                    <div style={{ display:'flex', justifyContent:'space-between', fontSize:12, marginBottom:4 }}>
-                      <span style={{ color:'var(--accent-blue)', fontWeight:600 }}>🔵 Breve: {bucket.pctBreve}%</span>
-                      <span style={{ color:'var(--accent-amber)', fontWeight:600 }}>🟡 Lungo: {100-bucket.pctBreve}%</span>
-                    </div>
-                    <input type="range" min={10} max={80} step={5} value={bucket.pctBreve}
-                      onChange={e => setBucket(b => ({...b, pctBreve: parseInt(e.target.value)}))}
-                      style={{ width:'100%', accentColor:'var(--accent-blue)', marginBottom:8 }} />
-                    <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                      <span style={{ fontSize:11, color:'var(--text-muted)' }}>Orizzonte breve (max 5 anni):</span>
-                      <input className="input" type="number" min={1} max={5} value={bucket.anniBreve}
-                        onChange={e => setBucket(b => ({...b, anniBreve: parseInt(e.target.value)||1}))}
-                        style={{ fontSize:12, padding:'3px 8px', width:60 }} />
-                      <span style={{ fontSize:11, color:'var(--text-muted)' }}>
-                        Il lungo usa l orizzonte principale ({form.orizzonteAnni})
-                      </span>
-                    </div>
+                  );
+                }
+
+                return (
+                  <div style={{ padding:'10px 12px', borderRadius:8, border:'1px solid var(--border)', background:'var(--bg-secondary)', marginTop:8 }}>
+                    <label style={{ display:'flex', alignItems:'center', gap:8, cursor:'pointer', marginBottom: bucket.attivo ? 10 : 0 }}>
+                      <input type="checkbox" checked={bucket.attivo}
+                        onChange={e => setBucket(b => ({
+                          ...b,
+                          attivo: e.target.checked,
+                          pctBreve: Math.min(b.pctBreve, maxPctBreve), // adatta al limite
+                          filosofia: b.filosofia || 'difensiva',
+                        }))}
+                        style={{ width:16, height:16, cursor:'pointer', accentColor:'var(--accent-blue)' }} />
+                      <span style={{ fontSize:13, fontWeight:600 }}>🪣 Pianificazione a due orizzonti</span>
+                      <span style={{ fontSize:11, color:'var(--text-muted)' }}>— opzionale</span>
+                    </label>
+
+                    {bucket.attivo && (
+                      <div>
+                        {/* Filosofia bucket */}
+                        <div style={{ display:'flex', gap:8, marginBottom:10 }}>
+                          {[
+                            { val:'difensiva', emoji:'🛡️', label:'Difensivo', desc:'Proteggi il capitale a breve termine' },
+                            { val:'opportunistica', emoji:'⚡', label:'Opportunistico', desc: isMedio ? 'Liquidità tattica (max 20%)' : 'Liquidità per acquisti a sconto' },
+                          ].map(f => (
+                            <div key={f.val}
+                              onClick={() => setBucket(b => ({...b, filosofia: f.val}))}
+                              style={{ flex:1, padding:'8px 10px', borderRadius:8, cursor:'pointer',
+                                border:`1px solid ${(bucket.filosofia||'difensiva')===f.val ? 'var(--accent-blue)' : 'var(--border)'}`,
+                                background:(bucket.filosofia||'difensiva')===f.val ? 'rgba(59,130,246,0.08)' : 'var(--bg-primary)' }}>
+                              <div style={{ fontSize:12, fontWeight:700, color:(bucket.filosofia||'difensiva')===f.val ? 'var(--accent-blue)' : 'var(--text-primary)', marginBottom:2 }}>
+                                {f.emoji} {f.label}
+                              </div>
+                              <div style={{ fontSize:10, color:'var(--text-muted)' }}>{f.desc}</div>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Slider percentuale */}
+                        <div style={{ fontSize:11, color:'var(--text-muted)', marginBottom:6 }}>
+                          {(bucket.filosofia||'difensiva') === 'difensiva'
+                            ? 'Il bucket breve viene popolato con ETF difensivi (monetario, obbligazionario breve, low vol).'
+                            : 'Il bucket breve mantiene liquidità tattica da impiegare in caso di cali di mercato.'}
+                          {isMedio && <span style={{ color:'var(--accent-amber)' }}> Con orizzonte medio, max {maxPctBreve}% consigliato.</span>}
+                        </div>
+                        <div style={{ display:'flex', justifyContent:'space-between', fontSize:12, marginBottom:4 }}>
+                          <span style={{ color:'var(--accent-blue)', fontWeight:600 }}>🔵 Breve: {pctBreveEffettiva}%</span>
+                          <span style={{ color:'var(--accent-amber)', fontWeight:600 }}>🟡 Lungo: {100-pctBreveEffettiva}%</span>
+                        </div>
+                        <input type="range" min={10} max={maxPctBreve} step={5} value={pctBreveEffettiva}
+                          onChange={e => setBucket(b => ({...b, pctBreve: parseInt(e.target.value)}))}
+                          style={{ width:'100%', accentColor:'var(--accent-blue)', marginBottom:8 }} />
+
+                        {/* Orizzonte breve */}
+                        <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                          <span style={{ fontSize:11, color:'var(--text-muted)' }}>Orizzonte breve (anni):</span>
+                          <input className="input" type="number" min={1} max={5} value={bucket.anniBreve}
+                            onChange={e => setBucket(b => ({...b, anniBreve: parseInt(e.target.value)||1}))}
+                            style={{ fontSize:12, padding:'3px 8px', width:60 }} />
+                          <span style={{ fontSize:11, color:'var(--text-muted)' }}>
+                            · Lungo usa orizzonte {form.orizzonteAnni === 'LUNGO' ? '15 anni' : '7 anni'}
+                          </span>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
+                );
+              })()}
 
               {errore && <div className="alert alert-warning">⚠️ {errore}</div>}
               <div className="alert alert-info" style={{ fontSize: 12 }}>
