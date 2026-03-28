@@ -10,7 +10,7 @@ import CatalogPanel from './CatalogPanel';
 const API = process.env.REACT_APP_API_URL || (window.location.hostname === 'localhost' ? 'http://localhost:3001' : '');
 
 export default function Dashboard({ setActiveTab }) {
-  const { currentPortfolio, toggleEtfSelection, aggiornaPrezziBatch, token, loadPortfoliosFromDB, currentUser, pendingAIResult, setPendingAIResult } = useApp();
+  const { currentPortfolio, toggleEtfSelection, aggiornaPrezziBatch, token, loadPortfoliosFromDB, currentUser, pendingAIResult, setPendingAIResult, updateEtfBucket } = useApp();
   const [sortKey, setSortKey] = useState('tipo');
   const [sortDir, setSortDir] = useState(1);
   const [filter, setFilter] = useState('tutte');
@@ -56,7 +56,7 @@ export default function Dashboard({ setActiveTab }) {
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ isin, bucket: nuovoBucket }),
       });
-      await loadPortfoliosFromDB(token, currentUser?.id);
+      updateEtfBucket(portfolioId, isin, nuovoBucket);
     } catch {}
   };
 

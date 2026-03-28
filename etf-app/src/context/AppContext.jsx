@@ -629,6 +629,14 @@ export function AppProvider({ children }) {
       toggleEtfSelection, saveAcquisto, aggiornaPrezziBatch, applicaPortafoglioAI, loadPortfoliosFromDB,
       registraVendita, getVendite, annullaVendita,
       getMinusvalenze, salvaMinusvalenzaManuale, eliminaMinusvalenzaManuale,
+      updateEtfBucket: (portfolioId, isin, bucket) => {
+        setPortfolios(ps => ps.map(p =>
+          p.id !== portfolioId ? p : {
+            ...p,
+            etfs: p.etfs.map(e => e.isin === isin ? { ...e, bucket } : e)
+          }
+        ));
+      },
     }}>
       {children}
     </AppContext.Provider>
