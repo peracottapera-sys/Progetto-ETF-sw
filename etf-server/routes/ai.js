@@ -857,13 +857,24 @@ async function getEtfPerProfilo(profilo, escludiDistribuzione = false, filtriRil
            data_lancio, partecipazioni, sostenibile
     FROM etf_catalog
     WHERE active = 1
-      AND aum_mln >= $1
       AND (ter IS NULL OR ter <= $2)
       ${escludiVolFilter}
       ${escludiDdFilter}
       AND (maxdd5y IS NULL OR maxdd5y >= $5)
       AND (perf1y IS NOT NULL OR perf5y IS NOT NULL)
       ${escludiObblAggressivo}
+      AND (
+        -- Fascia 1: AUM >= soglia standard → sempre eligibile
+        aum_mln >= $1
+        OR
+        -- Fascia 2: AUM 30-soglia → eligibile se ETF giovane (< 3 anni)
+        (aum_mln >= 30 AND aum_mln < $1
+         AND data_lancio >= CURRENT_DATE - INTERVAL '3 years')
+        OR
+        -- Fascia 3: AUM 10-30M€ → eligibile solo se molto giovane (< 18 mesi)
+        (aum_mln >= 10 AND aum_mln < 30
+         AND data_lancio >= CURRENT_DATE - INTERVAL '18 months')
+      )
     ORDER BY aum_mln DESC
     LIMIT 300
   `, [f.minAum, f.maxTer, f.maxVol, f.maxDrawdown, f.maxDd5y]);
@@ -997,6 +1008,7 @@ ${etfDisponibili.map(e => {
 - La volatilità media PONDERATA del portafoglio non deve superare ${regole.volatilita !== null ? regole.volatilita+'%' : 'nessun limite'} annuo
 - NON includere ETF con vol1y > 20% per profilo Bilanciato
 - L'oro (ETF fisico sull'oro) massimo 5% del portafoglio per profilo Bilanciato
+- ⚠️ VINCOLO ETF PICCOLI: ETF con AUM < 50M€ sono fondi giovani in crescita — includi al massimo ${{Prudente:1,Bilanciato:2,Aggressivo:3}[profilo]||2} ETF sotto 50M€ nel portafoglio finale. Preferisci sempre ETF con AUM > 100M€ a parità di altre caratteristiche.
 ${maxUSA && maxUSA !== 'No max' ? `- ⚠️ VINCOLO TASSATIVO MAX USA: la somma dei pesi degli ETF con esposizione prevalente agli USA (categoria "Azionario USA" o ETF S&P500/Nasdaq/Russell) NON deve superare ${maxUSA} del portafoglio totale. Questo è un hard limit — NON può essere ignorato per nessun motivo.` : '- Esposizione USA: nessun limite'}
 - Le performance passate NON sono garanzia di rendimenti futuri: usa perf1y/5y solo per confronto relativo, NON come stima di rendimento futuro
 ${escludiDistribuzione ? `- VINCOLO TASSATIVO: seleziona SOLO ETF ad Accumulazione (Acc). ESCLUDI ASSOLUTAMENTE qualsiasi ETF a Distribuzione (Dist/Distributing). Questo vale sia per i consigliati che per le alternative. Se un ETF ha "Distributing" o "Dist" nel nome o nel suo tipo di replica, NON includerlo.` : ''}
