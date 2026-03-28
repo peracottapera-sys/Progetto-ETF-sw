@@ -15,6 +15,7 @@ function CreaPortafoglioModal({ portfolioId, onClose, initialProfilo, initialDat
   });
   const [spiegazione, setSpiegazione] = useState(initialData?.spiegazione || '');
   const [scenarioMacro, setScenarioMacro] = useState(initialData?.scenarioMacro || '');
+  const [bucketInfo, setBucketInfo] = useState(null);
   const [selezione, setSelezione] = useState(initialData?.selezione || []);
   const [approvate, setApprovate] = useState(() => {
     if (!initialData?.selezione) return {};
@@ -55,6 +56,7 @@ function CreaPortafoglioModal({ portfolioId, onClose, initialProfilo, initialDat
       if (data.selezione) {
         setSpiegazione(data.spiegazione);
         setScenarioMacro(data.scenarioMacro || '');
+        setBucketInfo(data.bucketInfo || null);
         setSelezione(data.selezione);
         const initApp = {}, initPesi = {};
         data.selezione.forEach((s, i) => {
@@ -531,111 +533,96 @@ function CreaPortafoglioModal({ portfolioId, onClose, initialProfilo, initialDat
                 );
               })()}
 
-              {/* Consigliati */}
-              {selezione.map((s, i) => {
-                if (s.tipo !== 'consigliato' && s.tipo) return null;
-                const nome = s.name || s.isin;
-                const pesoVal = parseFloat(pesi[i]) || 0;
-                const valAllocato = capitale ? (capitale * pesoVal / 100) : null;
-                const qtCalcolata = valAllocato && s.quotazioneAcquisto ? Math.floor(valAllocato / s.quotazioneAcquisto) : s.quantita || null;
-                return (
-                  <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '12px 0', borderBottom: '1px solid var(--border)' }}>
-                    <input type="checkbox" checked={!!approvate[i]}
-                      onChange={() => setApprovate(a => ({ ...a, [i]: !a[i] }))}
-                      style={{ marginTop: 4, cursor: 'pointer', width: 16, height: 16 }} />
-                    <div style={{ flex: 1 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
-                        <span className="tag-consigliato">★ Top</span>
-                        <span style={{ fontSize: 13, fontWeight: 600 }}>{nome}</span>
-                        <a href={`https://www.justetf.com/it/etf-profile.html?isin=${s.isin}`} target="_blank" rel="noreferrer"
-                          style={{ fontSize: 11, color: 'var(--accent-blue)', fontFamily: 'monospace', textDecoration: 'none' }}
-                          onClick={e => e.stopPropagation()}>
-                          {s.isin} ↗
-                        </a>
-                      </div>
-                      <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>{s.motivo}</div>
-                      <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 8 }}>
-                        TER: {s.ter ?? '—'}% · Perf 1A: {s.perf1y > 0 ? '+' : ''}{s.perf1y ?? '—'}% · {s.categoria}
-                        {s.quotazioneAcquisto ? ` · €${s.quotazioneAcquisto}` : ''}
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Peso:</span>
-                          <input type="number" min="0" max="100" step="1"
-                            value={pesi[i] ?? s.peso}
-                            onChange={e => setPesi(p => ({ ...p, [i]: e.target.value }))}
-                            disabled={!approvate[i]}
-                            style={{ width: 60, padding: '3px 8px', fontSize: 13, fontWeight: 700, color: 'var(--accent-gold)', background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: 6, textAlign: 'center' }} />
-                          <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>%</span>
+                const renderEtf = (s, i) => {
+                  const nome = s.name || s.isin;
+                  const pesoVal = parseFloat(pesi[i]) || 0;
+                  const valAllocato = capitale ? (capitale * pesoVal / 100) : null;
+                  const qtCalcolata = valAllocato && s.quotazioneAcquisto ? Math.floor(valAllocato / s.quotazioneAcquisto) : s.quantita || null;
+                  const bucketColore = s.bucket === 'BREVE' ? 'var(--accent-blue)' : s.bucket === 'LUNGO' ? 'var(--accent-amber)' : null;
+                  return (
+                    <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '12px 0', borderBottom: '1px solid var(--border)' }}>
+                      <input type="checkbox" checked={!!approvate[i]}
+                        onChange={() => setApprovate(a => ({ ...a, [i]: !a[i] }))}
+                        style={{ marginTop: 4, cursor: 'pointer', width: 16, height: 16 }} />
+                      <div style={{ flex: 1 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
+                          <span className="tag-consigliato">★ Top</span>
+                          {bucketInfo?.attivo && s.bucket && (
+                            <span style={{ fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 10,
+                              background: s.bucket === 'BREVE' ? 'rgba(59,130,246,0.12)' : 'rgba(251,191,36,0.12)',
+                              color: bucketColore, border: `1px solid ${bucketColore}` }}>
+                              {s.bucket === 'BREVE' ? '🔵' : '🟡'} {s.bucket}
+                            </span>
+                          )}
+                          <span style={{ fontSize: 13, fontWeight: 600 }}>{nome}</span>
+                          <a href={`https://www.justetf.com/it/etf-profile.html?isin=${s.isin}`} target="_blank" rel="noreferrer"
+                            style={{ fontSize: 11, color: 'var(--accent-blue)', fontFamily: 'monospace', textDecoration: 'none' }}
+                            onClick={e => e.stopPropagation()}>
+                            {s.isin} ↗
+                          </a>
                         </div>
-                        {capitale && approvate[i] && valAllocato && (
-                          <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-                            → <strong style={{ color: 'var(--text-primary)' }}>€{valAllocato.toLocaleString('it-IT', { maximumFractionDigits: 0 })}</strong>
-                            {qtCalcolata > 0 && <span style={{ color: 'var(--accent-gold)', marginLeft: 6 }}>= {qtCalcolata} quote</span>}
-                            {!s.quotazioneAcquisto && <span style={{ color: 'var(--accent-amber)', marginLeft: 6 }}>(quotazione non disponibile)</span>}
+                        <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>{s.motivo}</div>
+                        <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 8 }}>
+                          TER: {s.ter ?? '—'}% · Perf 1A: {s.perf1y > 0 ? '+' : ''}{s.perf1y ?? '—'}% · {s.categoria}
+                          {s.quotazioneAcquisto ? ` · €${s.quotazioneAcquisto}` : ''}
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Peso:</span>
+                            <input type="number" min="0" max="100" step="1"
+                              value={pesi[i] ?? s.peso}
+                              onChange={e => setPesi(p => ({ ...p, [i]: e.target.value }))}
+                              disabled={!approvate[i]}
+                              style={{ width: 60, padding: '3px 8px', fontSize: 13, fontWeight: 700, color: 'var(--accent-gold)', background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: 6, textAlign: 'center' }} />
+                            <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>%</span>
                           </div>
-                        )}
+                          {capitale && approvate[i] && valAllocato && (
+                            <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                              → <strong style={{ color: 'var(--text-primary)' }}>€{valAllocato.toLocaleString('it-IT', { maximumFractionDigits: 0 })}</strong>
+                              {qtCalcolata > 0 && <span style={{ color: 'var(--accent-gold)', marginLeft: 6 }}>= {qtCalcolata} quote</span>}
+                              {!s.quotazioneAcquisto && <span style={{ color: 'var(--accent-amber)', marginLeft: 6 }}>(quotazione non disponibile)</span>}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                };
 
-              {/* Alternative — sezione collassata, informativa */}
-              {selezione.some(s => s.tipo === 'alternativa1' || s.tipo === 'alternativa2') && (
-                <div style={{ marginTop: 20 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8 }}>
-                    📋 Alternative disponibili (aggiunte al portafoglio come riferimento, non selezionate)
-                  </div>
-                  {selezione.map((s, i) => {
-                    if (s.tipo !== 'alternativa1' && s.tipo !== 'alternativa2') return null;
-                    return (
-                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 0', borderBottom: '1px solid var(--border)', opacity: 0.75 }}>
-                        <span style={{ fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 4, background: 'var(--bg-secondary)', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
-                          {s.tipo === 'alternativa1' ? 'Alt. 1' : 'Alt. 2'}
+                            {/* Consigliati — raggruppati per bucket se attivo */}
+              {(() => {
+                const consigliatiList = selezione.map((s, i) => ({ s, i }))
+                  .filter(({ s }) => s.tipo === 'consigliato' || !s.tipo);
+
+                if (bucketInfo?.attivo) {
+                  const breve = consigliatiList.filter(({ s }) => s.bucket === 'BREVE');
+                  const lungo = consigliatiList.filter(({ s }) => s.bucket === 'LUNGO' || !s.bucket);
+                  const renderGruppo = (lista, label, colore, pct, anni) => (
+                    <div style={{ marginBottom: 16 }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 12px',
+                        background: colore === 'blue' ? 'rgba(59,130,246,0.08)' : 'rgba(251,191,36,0.08)',
+                        borderRadius:'8px 8px 0 0', borderBottom:'2px solid ' + (colore === 'blue' ? 'var(--accent-blue)' : 'var(--accent-amber)') }}>
+                        <span style={{ fontSize:16 }}>{colore === 'blue' ? '🔵' : '🟡'}</span>
+                        <span style={{ fontWeight:700, fontSize:13, color: colore === 'blue' ? 'var(--accent-blue)' : 'var(--accent-amber)' }}>
+                          Bucket {label}
                         </span>
-                        <span style={{ fontSize: 12, flex: 1 }}>{s.name || s.isin}</span>
-                        <a href={`https://www.justetf.com/it/etf-profile.html?isin=${s.isin}`} target="_blank" rel="noreferrer"
-                          style={{ fontSize: 10, fontFamily: 'monospace', color: 'var(--accent-blue)', textDecoration: 'none' }}
-                          onClick={e => e.stopPropagation()}>
-                          {s.isin} ↗
-                        </a>
-                        <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{s.categoria}</span>
-                        <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>TER {s.ter ?? '—'}%</span>
+                        <span style={{ fontSize:11, color:'var(--text-muted)' }}>
+                          {pct}% del capitale · orizzonte {anni} {anni === 1 ? 'anno' : 'anni'}
+                        </span>
+                        <span style={{ marginLeft:'auto', fontSize:11, color:'var(--text-muted)' }}>
+                          {lista.length} ETF
+                        </span>
                       </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
+                      {lista.map(({ s, i }) => renderEtf(s, i))}
+                    </div>
+                  );
+                  return (
+                    <>
+                      {renderGruppo(breve, 'BREVE', 'blue', bucketInfo.breve.pct, bucketInfo.breve.anni)}
+                      {renderGruppo(lungo, 'LUNGO', 'amber', bucketInfo.lungo.pct, bucketInfo.lungo.anni)}
+                    </>
+                  );
+                }
+                return consigliatiList.map(({ s, i }) => renderEtf(s, i));
+              })()}
 
-        <div style={{ borderTop: '1px solid var(--border)', paddingTop: 16, marginTop: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
-          <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-            {step === 'risultato' && `${nApprovate} ETF selezionati`}
-          </div>
-          <div style={{ display: 'flex', gap: 10 }}>
-            <button className="btn btn-ghost" onClick={onClose}>Annulla</button>
-            {step === 'form' && (
-              <button className="btn btn-primary" onClick={handleCrea} disabled={loading}
-                style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}>
-                {loading ? '⏳ Elaborazione...' : '✨ Genera Portafoglio'}
-              </button>
-            )}
-            {step === 'risultato' && (
-              <button className="btn btn-primary" onClick={handleApplica}
-                disabled={nApprovate === 0 || (capitale && Math.abs(totPesi - 100) > 5)}
-                style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}>
-                ✓ Applica {nApprovate} ETF al Portafoglio
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-
-export default CreaPortafoglioModal;

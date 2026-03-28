@@ -1260,7 +1260,13 @@ REGOLE FORMATO:
       }
     }
     const isinConsigliati = new Set(selezione.map(s => s.isin));
-    selezione.forEach(s => { s.tipo = 'consigliato'; });
+    selezione.forEach(s => {
+      s.tipo = 'consigliato';
+      // Assegna bucket automatico se la pianificazione a due orizzonti è attiva
+      if (hasBuckets) {
+        s.bucket = assegnaBucketAutomatico(s);
+      }
+    });
 
     // Pool per alternative: filtri rilassati (vol<=25%, dd>=-35%) per avere sempre 2 alternative per TOP
     const etfPerAlternative = await getEtfPerProfilo(profilo, false, true);
@@ -1371,8 +1377,15 @@ REGOLE FORMATO:
       scenarioMacro = pt.scenario || 'NEUTRO';
     } catch (e) { /* fallback NEUTRO */ }
 
+    // Info bucket per il frontend (se pianificazione a due orizzonti attiva)
+    const bucketInfo = hasBuckets ? {
+      attivo: true,
+      breve: { pct: bucketBreve.pct, anni: bucketBreve.anni },
+      lungo: { pct: bucketLungo.pct, anni: bucketLungo.anni },
+    } : null;
+
     console.log(`  ✓ Portafoglio AI: ${selezione.length} ETF consigliati + ${selezioneConAlternative.length - selezione.length} alternative | scenario: ${scenarioMacro}`);
-    res.json({ spiegazione, selezione: selezioneConAlternative, capitaleUsato: conCapitale ? parseFloat(capitale) : null, avvisoMaxUSA, scenarioMacro });
+    res.json({ spiegazione, selezione: selezioneConAlternative, capitaleUsato: conCapitale ? parseFloat(capitale) : null, avvisoMaxUSA, scenarioMacro, bucketInfo });
   } catch (err) {
     res.status(500).json({ error: 'Errore creazione portafoglio AI: ' + err.message });
   }
