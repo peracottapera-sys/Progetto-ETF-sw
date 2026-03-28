@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import AcquistoModal from './modals/AcquistoModal';
 import VenditaModal from './modals/VenditaModal';
@@ -23,6 +23,7 @@ export default function Dashboard({ setActiveTab }) {
   const [showMacro, setShowMacro] = useState(false);
   const [showCatalog, setShowCatalog] = useState(false);
   const [pendingData, setPendingData] = useState(null);
+  const [hasBuckets, setHasBuckets] = useState(false);
 
   // Apri automaticamente il modal con il risultato AI proveniente dal PortfolioSelector
   React.useEffect(() => {
@@ -32,6 +33,30 @@ export default function Dashboard({ setActiveTab }) {
       setPendingAIResult(null);
     }
   }, [pendingAIResult, currentPortfolio]);
+
+  // Controlla se il portafoglio ha bucket configurati
+  useEffect(() => {
+    if (!portfolioId || !token) return;
+    fetch(`${API}/api/portfolios/${portfolioId}/buckets`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then(r => r.json())
+      .then(data => setHasBuckets(Array.isArray(data) && data.length >= 2))
+      .catch(() => setHasBuckets(false));
+  }, [portfolioId, token]);
+
+  // Cambia bucket di un ETF (BREVE ↔ LUNGO)
+  const toggleBucket = async (isin, bucketAttuale) => {
+    const nuovoBucket = bucketAttuale === 'BREVE' ? 'LUNGO' : 'BREVE';
+    try {
+      await fetch(`${API}/api/portfolios/${portfolioId}/etf-bucket`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ isin, bucket: nuovoBucket }),
+      });
+      await loadPortfoliosFromDB();
+    } catch {}
+  };
 
   if (!currentPortfolio) return null;
 
@@ -263,6 +288,17 @@ export default function Dashboard({ setActiveTab }) {
                       <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
                         {etf.categoria}{etf.smartBeta ? ` · ${etf.smartBeta}` : ''}
                       </span>
+                      {hasBuckets && etf.tipo !== 'venduto' && (
+                        <button
+                          title={`Bucket ${etf.bucket || 'LUNGO'} — clicca per cambiare`}
+                          onClick={() => toggleBucket(etf.isin, etf.bucket || 'LUNGO')}
+                          style={{ fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 8,
+                            border: 'none', cursor: 'pointer', lineHeight: 1.4,
+                            background: (etf.bucket || 'LUNGO') === 'BREVE' ? 'rgba(59,130,246,0.15)' : 'rgba(251,191,36,0.15)',
+                            color: (etf.bucket || 'LUNGO') === 'BREVE' ? 'var(--accent-blue)' : 'var(--accent-amber)' }}>
+                          {(etf.bucket || 'LUNGO') === 'BREVE' ? '🔵 B' : '🟡 L'}
+                        </button>
+                      )}
                     </div>
                   </td>
                   <td>

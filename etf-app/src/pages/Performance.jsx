@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 
+const API = process.env.REACT_APP_API_URL || (window.location.hostname === 'localhost' ? 'http://localhost:3001' : '');
+
 export default function Performance() {
-  const { currentPortfolio, getVendite, annullaVendita, getMinusvalenze, salvaMinusvalenzaManuale, eliminaMinusvalenzaManuale } = useApp();
+  const { currentPortfolio, getVendite, annullaVendita, getMinusvalenze, salvaMinusvalenzaManuale, eliminaMinusvalenzaManuale, token } = useApp();
   const [sortKey, setSortKey] = useState('nome');
   const [sortDir, setSortDir] = useState(1);
   const [vendite, setVendite] = useState([]);
@@ -11,6 +13,7 @@ export default function Performance() {
   const [showMinusPanel, setShowMinusPanel] = useState(false);
   const [minusForm, setMinusForm] = useState({ importo: '', data_scadenza: '', note: '', condivisa: true });
   const [savingMinus, setSavingMinus] = useState(false);
+  const [hasBuckets, setHasBuckets] = useState(false);
 
   const reloadMinus = () => currentPortfolio?.id && getMinusvalenze(currentPortfolio.id).then(setMinus);
 
@@ -20,6 +23,16 @@ export default function Performance() {
       getMinusvalenze(currentPortfolio.id).then(setMinus);
     }
   }, [currentPortfolio?.id]);
+
+  useEffect(() => {
+    if (!currentPortfolio?.id || !token) return;
+    fetch(`${API}/api/portfolios/${currentPortfolio.id}/buckets`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then(r => r.json())
+      .then(data => setHasBuckets(Array.isArray(data) && data.length >= 2))
+      .catch(() => setHasBuckets(false));
+  }, [currentPortfolio?.id, token]);
 
   const handleSalvaMinus = async () => {
     if (!minusForm.importo || parseFloat(minusForm.importo) <= 0) return;
@@ -135,7 +148,65 @@ export default function Performance() {
         </div>
       </div>
 
-      {vendite.length > 0 && (
+      {/* RIEPILOGO PER BUCKET — solo se pianificazione a due orizzonti attiva */}
+      {hasBuckets && rows.length > 0 && (() => {
+        const breve = rows.filter(r => (r.bucket || 'LUNGO') === 'BREVE');
+        const lungo = rows.filter(r => (r.bucket || 'LUNGO') === 'LUNGO');
+        const calcBucket = (lista) => {
+          const acq  = lista.reduce((s, r) => s + (r.valoreAcquisto ?? 0), 0);
+          const att  = lista.reduce((s, r) => s + (r.valoreAttuale  ?? 0), 0);
+          const perf = att - acq;
+          const pl   = lista.reduce((s, r) => s + (r.plFinale ?? 0), 0);
+          const pct  = acq > 0 ? ((perf / acq) * 100).toFixed(2) : null;
+          return { acq, att, perf, pl, pct, n: lista.length };
+        };
+        const bB = calcBucket(breve);
+        const bL = calcBucket(lungo);
+        const renderBox = (b, label, colore, emoji) => (
+          <div style={{ flex: 1, minWidth: 200, borderRadius: 10, padding: '10px 16px',
+            background: colore === 'blue' ? 'rgba(59,130,246,0.06)' : 'rgba(251,191,36,0.06)',
+            border: `1px solid ${colore === 'blue' ? 'rgba(59,130,246,0.3)' : 'rgba(251,191,36,0.3)'}` }}>
+            <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6,
+              color: colore === 'blue' ? 'var(--accent-blue)' : 'var(--accent-amber)', fontWeight: 700 }}>
+              {emoji} Bucket {label} · {b.n} ETF
+            </div>
+            <div style={{ display: 'flex', gap: 16 }}>
+              <div>
+                <div style={{ fontSize: 9, color: 'var(--text-muted)', marginBottom: 1 }}>INVESTITO</div>
+                <div style={{ fontSize: 13, fontWeight: 600 }}>{fmtEur(b.acq)}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: 9, color: 'var(--text-muted)', marginBottom: 1 }}>VALORE ATT.</div>
+                <div style={{ fontSize: 13, fontWeight: 600 }}>{fmtEur(b.att)}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: 9, color: 'var(--text-muted)', marginBottom: 1 }}>PERF. LORDA</div>
+                <div style={{ fontSize: 13, fontWeight: 600, ...perfColor(b.perf) }}>
+                  {sign(b.perf)}{fmtEur(b.perf)}
+                  {b.pct && <span style={{ fontSize: 10, marginLeft: 4 }}>({sign(b.perf)}{b.pct}%)</span>}
+                </div>
+              </div>
+              <div>
+                <div style={{ fontSize: 9, color: 'var(--text-muted)', marginBottom: 1 }}>P&L NETTO</div>
+                <div style={{ fontSize: 13, fontWeight: 700, ...perfColor(b.pl) }}>
+                  {sign(b.pl)}{fmtEur(b.pl)}
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+        return (
+          <div style={{ padding: '12px 28px 0' }}>
+            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 8, fontWeight: 600 }}>
+              📊 Riepilogo per bucket
+            </div>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              {breve.length > 0 && renderBox(bB, 'BREVE', 'blue', '🔵')}
+              {lungo.length > 0 && renderBox(bL, 'LUNGO', 'amber', '🟡')}
+            </div>
+          </div>
+        );
+      })()}
         <div style={{ padding: '12px 28px 0' }}>
           <div className="tabs" style={{ width: 'auto', display: 'inline-flex' }}>
             <button className={`tab ${tabPerf === 'aperte' ? 'active' : ''}`} style={{ padding: '5px 14px', fontSize: 12 }} onClick={() => setTabPerf('aperte')}>
@@ -277,7 +348,16 @@ export default function Performance() {
                 <tbody>
                   {rows.map(r => (
                     <tr key={r.isin}>
-                      <td><div style={{ fontWeight: 500, fontSize: 14, maxWidth: 180, whiteSpace: 'normal', lineHeight: 1.3 }}>{r.name}</div><div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{r.emittente}</div></td>
+                      <td><div style={{ fontWeight: 500, fontSize: 14, maxWidth: 180, whiteSpace: 'normal', lineHeight: 1.3 }}>{r.name}</div>
+                        <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{r.emittente}</div>
+                        {hasBuckets && (
+                          <span style={{ fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 8, marginTop: 3, display: 'inline-block',
+                            background: (r.bucket||'LUNGO') === 'BREVE' ? 'rgba(59,130,246,0.15)' : 'rgba(251,191,36,0.15)',
+                            color: (r.bucket||'LUNGO') === 'BREVE' ? 'var(--accent-blue)' : 'var(--accent-amber)' }}>
+                            {(r.bucket||'LUNGO') === 'BREVE' ? '🔵 BREVE' : '🟡 LUNGO'}
+                          </span>
+                        )}
+                      </td>
                       <td style={{ fontFamily: 'monospace', fontSize: 14 }}><a href={`https://www.justetf.com/it/etf-profile.html?isin=${r.isin}`} target='_blank' rel='noreferrer' style={{ color: 'var(--accent-blue, #60a5fa)', textDecoration: 'none' }} onMouseOver={e => e.target.style.textDecoration='underline'} onMouseOut={e => e.target.style.textDecoration='none'}>{r.isin}</a></td>
                       <td style={{ fontFamily: 'monospace', fontSize: 14 }}>{r.quantita}</td>
                       <td style={{ fontFamily: 'monospace', fontSize: 14 }}>{r.quotazioneAcquisto.toFixed(3)}</td>
