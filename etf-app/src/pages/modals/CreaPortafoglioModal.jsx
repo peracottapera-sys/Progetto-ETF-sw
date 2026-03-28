@@ -4,7 +4,7 @@ import { useApp } from '../../context/AppContext';
 const API = process.env.REACT_APP_API_URL || (window.location.hostname === 'localhost' ? 'http://localhost:3001' : '');
 
 function CreaPortafoglioModal({ portfolioId, onClose, initialProfilo, initialData }) {
-  const { applicaPortafoglioAI } = useApp();
+  const { applicaPortafoglioAI, token } = useApp();
   const [form, setForm] = useState({
     profilo: initialProfilo || 'Bilanciato',
     orizzonteAnni: 'MEDIO',
@@ -87,13 +87,29 @@ function CreaPortafoglioModal({ portfolioId, onClose, initialProfilo, initialDat
       const isApproved = isConsigliato && !!approvate[i];
       const pesoVal = isConsigliato ? (parseFloat(pesi[i]) || s.peso || 0) : 0;
       const valAllocato = (isApproved && capitale) ? capitale * pesoVal / 100 : null;
-      // Priorità quantita: 1) calcolata dal capitale nel form, 2) già calcolata dal server, 3) null
       const quantita = valAllocato && s.quotazioneAcquisto > 0
         ? Math.floor(valAllocato / s.quotazioneAcquisto)
         : (s.quantita || null);
       return { ...s, peso: pesoVal, quantita, _selected: isApproved };
     });
     await applicaPortafoglioAI(portfolioId, selezioneAggiornata, capitale || 0);
+
+    // Salva i bucket in portfolio_buckets se la pianificazione è attiva
+    if (bucketInfo?.attivo) {
+      try {
+        await fetch(`${API}/api/portfolios/${portfolioId}/buckets`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({
+            buckets: [
+              { tipo: 'BREVE', pct_allocazione: bucketInfo.breve.pct, orizzonte_anni: bucketInfo.breve.anni },
+              { tipo: 'LUNGO', pct_allocazione: bucketInfo.lungo.pct, orizzonte_anni: bucketInfo.lungo.anni },
+            ]
+          }),
+        });
+      } catch {}
+    }
+
     onClose();
   };
 
