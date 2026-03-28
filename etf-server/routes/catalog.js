@@ -129,10 +129,39 @@ module.exports = (pool, fetchETF) => {
   });
 
   router.get('/admin/last-update', authMiddleware, async (req, res) => {
-    const { rows } = await pool.query("SELECT value FROM system_config WHERE key = 'last_price_update'");
+    const { rows: cfgRows } = await pool.query("SELECT value FROM system_config WHERE key = 'last_price_update'");
     const oggi = new Date().toISOString().slice(0, 10);
-    const row = rows[0];
-    res.json({ lastUpdate: row?.value || null, oggi, needsUpdate: !row || row.value !== oggi });
+    const lastDate = cfgRows[0]?.value || null;
+
+    // Dettagli dell'ultimo aggiornamento dai log
+    const { rows: logRows } = await pool.query(`
+      SELECT ts, dati FROM app_logs
+      WHERE evento IN ('AGGIORNA_PREZZI_AUTO', 'AGGIORNA_PREZZI_SELETTIVO')
+      ORDER BY ts DESC LIMIT 1
+    `);
+    const lastLog = logRows[0] || null;
+    const dati = lastLog?.dati || {};
+
+    // Controlla se un aggiornamento è in corso (avviato negli ultimi 30 min senza completamento oggi)
+    const { rows: inCorsoRows } = await pool.query(`
+      SELECT ts FROM app_logs
+      WHERE evento = 'SERVER_START' OR evento IN ('AGGIORNA_PREZZI_AUTO','AGGIORNA_PREZZI_SELETTIVO')
+      ORDER BY ts DESC LIMIT 1
+    `);
+
+    res.json({
+      lastUpdate: lastDate,
+      oggi,
+      needsUpdate: !lastDate || lastDate !== oggi,
+      dettagli: lastLog ? {
+        ts: lastLog.ts,
+        ok: dati.ok ?? null,
+        err: dati.err ?? null,
+        totale: dati.totale ?? null,
+        motivo: dati.motivo ?? null,
+        data: dati.data ?? null,
+      } : null,
+    });
   });
 
   router.post('/admin/trigger-update', authMiddleware, async (req, res) => {

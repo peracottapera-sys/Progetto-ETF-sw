@@ -18,6 +18,20 @@ export default function Dashboard({ setActiveTab }) {
   const [venditaEtf, setVenditaEtf] = useState(null);
   const [aggiornando, setAggiornando] = useState(false);
   const [msgAggiornamento, setMsgAggiornamento] = useState('');
+  const [aggiorndandoGlobale, setAggiornandoGlobale] = useState(false);
+  const [lastUpdateInfo, setLastUpdateInfo] = useState(null);
+
+  // Carica info ultimo aggiornamento prezzi
+  const loadLastUpdate = async () => {
+    try {
+      const res = await fetch(`${API}/api/catalog/admin/last-update`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) setLastUpdateInfo(await res.json());
+    } catch {}
+  };
+
+  useEffect(() => { if (token) loadLastUpdate(); }, [token]);
   const [showAI, setShowAI] = useState(false);
   const [showCrea, setShowCrea] = useState(false);
   const [showMacro, setShowMacro] = useState(false);
@@ -66,6 +80,21 @@ export default function Dashboard({ setActiveTab }) {
     if (res.ok) setMsgAggiornamento(`✓ Aggiornati ${res.trovati}/${res.totale} ETF`);
     else setMsgAggiornamento(`⚠ ${res.error}`);
     setTimeout(() => setMsgAggiornamento(''), 5000);
+  };
+
+  const handleAggiornaGlobale = async () => {
+    if (aggiorndandoGlobale) return;
+    setAggiornandoGlobale(true);
+    try {
+      // Reset last_price_update per forzare l'aggiornamento
+      await fetch(`${API}/api/catalog/admin/trigger-update`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ motivo: 'manual-full' }),
+      });
+      // Ricarica info dopo 3 secondi (il job gira in background)
+      setTimeout(() => loadLastUpdate(), 3000);
+    } catch {}
   };
 
   // Ordine tipo: consigliato → alternativa1 → alternativa2
@@ -220,6 +249,40 @@ export default function Dashboard({ setActiveTab }) {
             </div>
           ))}
         </div>
+
+        {/* BANNER AGGIORNAMENTO PREZZI */}
+        {lastUpdateInfo && (() => {
+          const d = lastUpdateInfo.dettagli;
+          const isOggi = lastUpdateInfo.lastUpdate === lastUpdateInfo.oggi;
+          const tsFormatted = d?.ts ? new Date(d.ts).toLocaleString('it-IT', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' }) : null;
+          const motivoLabel = { 'manual-full': 'manuale', 'scheduled-18:00': 'schedulato', 'scheduled-recovery': 'recupero', 'manual': 'manuale' }[d?.motivo] || d?.motivo || '';
+          return (
+            <div style={{ display:'flex', alignItems:'center', gap:10, padding:'6px 12px', borderRadius:8, marginBottom:8,
+              background: isOggi ? 'rgba(34,197,94,0.08)' : 'rgba(239,68,68,0.08)',
+              border: `1px solid ${isOggi ? 'rgba(34,197,94,0.25)' : 'rgba(239,68,68,0.25)'}` }}>
+              <span style={{ fontSize:14 }}>{isOggi ? '🟢' : '🔴'}</span>
+              <span style={{ fontSize:11, color:'var(--text-secondary)', flex:1 }}>
+                {aggiorndandoGlobale
+                  ? '⏳ Aggiornamento prezzi in corso su tutti gli ETF...'
+                  : isOggi && d
+                    ? `Prezzi aggiornati ${tsFormatted}${motivoLabel ? ' · '+motivoLabel : ''} · ✓ ${d.ok ?? '—'} OK · ✗ ${d.err ?? '—'} errori su ${d.totale ?? '—'} ETF`
+                    : lastUpdateInfo.lastUpdate
+                      ? `Prezzi non aggiornati oggi — ultimo aggiornamento: ${lastUpdateInfo.lastUpdate}`
+                      : 'Nessun aggiornamento prezzi registrato'
+                }
+              </span>
+              <button
+                onClick={handleAggiornaGlobale}
+                disabled={aggiorndandoGlobale}
+                style={{ fontSize:10, padding:'3px 10px', borderRadius:6, border:'1px solid var(--border)',
+                  background: aggiorndandoGlobale ? 'var(--bg-secondary)' : 'var(--bg-card)',
+                  color: aggiorndandoGlobale ? 'var(--text-muted)' : 'var(--text-primary)',
+                  cursor: aggiorndandoGlobale ? 'not-allowed' : 'pointer', whiteSpace:'nowrap' }}>
+                {aggiorndandoGlobale ? '⏳ In corso...' : '🔄 Aggiorna tutto'}
+              </button>
+            </div>
+          );
+        })()}
 
         <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
           <div className="tabs" style={{ width: 'auto' }}>
