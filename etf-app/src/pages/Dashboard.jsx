@@ -24,7 +24,7 @@ export default function Dashboard({ setActiveTab }) {
   // Carica info ultimo aggiornamento prezzi
   const loadLastUpdate = async () => {
     try {
-      const res = await fetch(`${API}/api/catalog/admin/last-update`, {
+      const res = await fetch(`${API}/api/etf-catalog/admin/last-update`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) setLastUpdateInfo(await res.json());
@@ -87,7 +87,7 @@ export default function Dashboard({ setActiveTab }) {
     setAggiornandoGlobale(true);
     try {
       // Reset last_price_update per forzare l'aggiornamento
-      await fetch(`${API}/api/catalog/admin/trigger-update`, {
+      await fetch(`${API}/api/etf-catalog/admin/trigger-update`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ motivo: 'manual-full' }),
