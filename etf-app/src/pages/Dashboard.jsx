@@ -93,6 +93,12 @@ export default function Dashboard({ setActiveTab }) {
     .sort((a, b) => {
       const map = { nome: 'name', ter: 'ter', p1m: 'perf1m', p6m: 'perf6m', p1y: 'perf1y', p5y: 'perf5y', cap: 'capitalizzazione', quotazione: 'quotazione' };
       if (sortKey === 'tipo') {
+        // Se hasBuckets: BREVE sempre prima, poi stesso ordine tipo
+        if (hasBuckets) {
+          const bA = (a.bucket || 'LUNGO') === 'BREVE' ? 0 : 1;
+          const bB = (b.bucket || 'LUNGO') === 'BREVE' ? 0 : 1;
+          if (bA !== bB) return bA - bB;
+        }
         // tipo: consigliato → alt1 → alt2, poi selezionati prima dentro ogni gruppo
         const diffTipo = (tipoOrdine[a.tipo] ?? 9) - (tipoOrdine[b.tipo] ?? 9);
         if (diffTipo !== 0) return diffTipo * sortDir;

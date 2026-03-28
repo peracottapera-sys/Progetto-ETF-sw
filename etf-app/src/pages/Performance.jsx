@@ -72,6 +72,12 @@ export default function Performance() {
     const mesi = calcMesi(dataAcquisto);
     return { ...e, quantita, quotazioneAcquisto, quotazioneAttuale, prezzoAggiornato, dataAcquisto, valoreAcquisto, valoreAttuale, performance, tasse, plFinale, mesi };
   }).sort((a, b) => {
+    // BREVE sempre prima se hasBuckets e sort primario è nome
+    if (hasBuckets && sortKey === 'nome') {
+      const bA = (a.bucket || 'LUNGO') === 'BREVE' ? 0 : 1;
+      const bB = (b.bucket || 'LUNGO') === 'BREVE' ? 0 : 1;
+      if (bA !== bB) return bA - bB;
+    }
     const map = { nome: 'name', valoreAcquisto: 'valoreAcquisto', valoreAttuale: 'valoreAttuale', performance: 'performance', pl: 'plFinale', mesi: 'mesi' };
     const k = map[sortKey] || sortKey;
     if (typeof a[k] === 'string') return a[k].localeCompare(b[k]) * sortDir;
@@ -207,6 +213,8 @@ export default function Performance() {
           </div>
         );
       })()}
+
+      {vendite.length > 0 && (
         <div style={{ padding: '12px 28px 0' }}>
           <div className="tabs" style={{ width: 'auto', display: 'inline-flex' }}>
             <button className={`tab ${tabPerf === 'aperte' ? 'active' : ''}`} style={{ padding: '5px 14px', fontSize: 12 }} onClick={() => setTabPerf('aperte')}>
