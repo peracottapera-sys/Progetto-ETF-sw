@@ -67,7 +67,7 @@ module.exports = (pool) => {
     let catalogMap = {};
     try {
       const { rows: catRows } = await pool.query(
-        `SELECT isin, name, emittente, ter, categoria, valuta, aum_mln, vol1y, maxdd1y, perf1m, perf6m, perf1y, perf5y, smart_beta_factor FROM etf_catalog WHERE isin IN (${placeholders})`,
+        `SELECT isin, name, emittente, ter, categoria, valuta, aum_mln, vol1y, maxdd1y, perf1m, perf6m, perf1y, perf5y, smart_beta_factor, data_lancio FROM etf_catalog WHERE isin IN (${placeholders})`,
         isins
       );
       catRows.forEach(r => { catalogMap[r.isin] = r; });
@@ -85,6 +85,7 @@ module.exports = (pool) => {
         smartBeta: cat.smart_beta_factor || null,
         perf1m: cat.perf1m ?? null, perf6m: cat.perf6m ?? null,
         perf1y: cat.perf1y ?? null, perf5y: cat.perf5y ?? null,
+        annoNascita: cat.data_lancio ? new Date(cat.data_lancio).getFullYear() : null,
       };
     }));
   });
