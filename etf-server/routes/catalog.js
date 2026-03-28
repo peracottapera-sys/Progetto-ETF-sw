@@ -135,12 +135,12 @@ module.exports = (pool, fetchETF) => {
 
     // Dettagli dell'ultimo aggiornamento dai log
     const { rows: logRows } = await pool.query(`
-      SELECT ts, dati FROM app_logs
+      SELECT ts, dettagli FROM app_logs
       WHERE evento IN ('AGGIORNA_PREZZI_AUTO', 'AGGIORNA_PREZZI_SELETTIVO')
       ORDER BY ts DESC LIMIT 1
     `);
     const lastLog = logRows[0] || null;
-    const dati = lastLog?.dati || {};
+    const dati = lastLog?.dettagli || {};
 
     // Controlla se un aggiornamento è in corso (avviato negli ultimi 30 min senza completamento oggi)
     const { rows: inCorsoRows } = await pool.query(`
