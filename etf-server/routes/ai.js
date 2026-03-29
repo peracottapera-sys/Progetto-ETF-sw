@@ -864,7 +864,7 @@ async function getEtfPerProfilo(profilo, escludiDistribuzione = false, filtriRil
         ${escludiVolFilter}
         ${escludiDdFilter}
         AND (maxdd5y IS NULL OR maxdd5y >= $5)
-        AND (perf1y IS NOT NULL OR perf5y IS NOT NULL)
+        AND (perf1y IS NOT NULL OR perf5y IS NOT NULL OR perf6m IS NOT NULL)
         ${escludiObblAggressivo}
       ORDER BY aum_mln DESC
       LIMIT 270
@@ -884,7 +884,7 @@ async function getEtfPerProfilo(profilo, escludiDistribuzione = false, filtriRil
         AND aum_mln < $1
         AND data_lancio >= CURRENT_DATE - INTERVAL '3 years'
         AND (ter IS NULL OR ter <= $2)
-        AND (perf1y IS NOT NULL OR perf5y IS NOT NULL)
+        AND (perf1y IS NOT NULL OR perf5y IS NOT NULL OR perf6m IS NOT NULL)
         ${escludiObblAggressivo}
       ORDER BY data_lancio DESC
       LIMIT 30
@@ -979,10 +979,10 @@ ${preferenze ? `
 ## REGOLE OBBLIGATORIE PROFILO ${profilo.toUpperCase()}:
 - Rendimento atteso: ${regole.rendimentoMin} / ${regole.rendimentoMax}
 - ⚠️ VINCOLO RENDIMENTO MINIMO: il portafoglio deve avere un rendimento atteso NETTO stimato ≥ ${RENDIMENTO_MIN_PROFILO[profilo] || 4.0}% annuo.
-- ⚠️ VINCOLO RENDIMENTO MASSIMO: NON proiettare mai un rendimento netto superiore a ${{Prudente:'4.5',Bilanciato:'7.0',Aggressivo:'10.0'}[profilo] || '7.0'}% annuo. I dati perf5y riflettono un ciclo eccezionale (2020-2024) non ripetibile — NON usarli come stima futura.
-- ⚠️ METODO STIMA RENDIMENTO: usa SEMPRE questi rendimenti attesi storici di lungo periodo (20-30 anni), NON perf5y:
+- 🚫 VINCOLO RENDIMENTO MASSIMO ASSOLUTO: il rendimento netto atteso dichiarato NON PUÒ MAI superare ${{Prudente:'4.5',Bilanciato:'7.0',Aggressivo:'10.0'}[profilo] || '7.0'}% annuo. Questo è un HARD LIMIT invalicabile. Se il tuo calcolo supera questo valore, hai sbagliato metodo — riparti dai rendimenti storici di lungo periodo nella tabella sotto.
+- ⚠️ METODO STIMA RENDIMENTO OBBLIGATORIO: usa ESCLUSIVAMENTE questi rendimenti attesi storici di lungo periodo (20-30 anni). Le performance 2022-2024 sono VIETATE come base di stima:
   Azionario Globale/USA/Europa: ~7% lordo | Emergenti: ~6-7% lordo | Obblig. Gov EUR: ~2-3% lordo | Obblig. Corp EUR: ~3-4% lordo | Inflation-Linked: ~2-3% lordo | Oro/Commodity: ~4-5% lordo | Monetario EUR: ~2-3% lordo
-  Rendimento netto = lordo × 0.74 (dopo tasse 26%) − TER ponderato
+  Rendimento netto = (rendimento lordo asset class × peso%) sommato su tutti gli ETF × 0.74 (tasse 26%) − TER ponderato
 - Quota azionaria: OBBLIGATORIA tra ${regole.azionarioTarget-regole.azionarioRange}% e ${regole.azionarioTarget+regole.azionarioRange}% (target ${regole.azionarioTarget}%). Verifica i pesi prima di rispondere.
 - Numero ETF: massimo ${regole.maxETF}
 - ⚠️ VINCOLO TER: il TER medio PONDERATO del portafoglio DEVE essere < ${regole.terPreferito}%. Se un singolo ETF ha TER > ${regole.terPreferito}%, includilo SOLO se porta un contributo di diversificazione o rendimento insostituibile. MAX assoluto per singolo ETF: ${regole.terMax}%. Un ETF con TER elevato che erode il rendimento sotto soglia NON deve essere incluso.
@@ -1010,7 +1010,20 @@ ${macroContext}
 ${etfDisponibili.map(e => {
   const vol = e.vol3y ? `Vol1A:${e.variabilita}% Vol3A:${e.vol3y}%` : `Vol1A:${e.variabilita}%`;
   const dd = e.maxDrawdownMax ? `DD1A:${e.maxDrawdown}% DDMax:${e.maxDrawdownMax}%` : `DD1A:${e.maxDrawdown}%`;
-  const perf = e.perf2024 ? `Perf1A:${e.perf1y}% Perf2024:${e.perf2024}% Perf2023:${e.perf2023 || 'N/D'}%` : `Perf1A:${e.perf1y}% Perf5A:${e.perf5y}%`;
+  // Per Aggressivo: mostra anche perf1y/5y come segnale di selezione relativa
+  // Per Prudente/Bilanciato: solo annuali storiche per evitare proiezioni distorte
+  const perf = profilo === 'Aggressivo'
+    ? [
+        e.perf1y != null ? `Perf1A:${e.perf1y}%[solo confronto]` : null,
+        e.perf2024 != null ? `2024:${e.perf2024}%` : null,
+        e.perf2023 != null ? `2023:${e.perf2023}%` : null,
+        e.perf2022 != null ? `2022:${e.perf2022}%` : null,
+      ].filter(Boolean).join(' ')
+    : [
+        e.perf2024 != null ? `2024:${e.perf2024}%` : null,
+        e.perf2023 != null ? `2023:${e.perf2023}%` : null,
+        e.perf2022 != null ? `2022:${e.perf2022}%` : null,
+      ].filter(Boolean).join(' ') || (e.perf1y != null ? `Perf1A:${e.perf1y}%` : 'N/D');
   const extra = [
     e.dataLancio ? `Anno:${e.dataLancio}` : null,
     e.partecipazioni ? `Titoli:${e.partecipazioni}` : null,
