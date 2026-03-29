@@ -228,8 +228,8 @@ function AIModal({ portfolio, onClose }) {
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" onClick={e => e.stopPropagation()} style={{ minWidth:700, maxWidth:860, maxHeight:'90vh', display:'flex', flexDirection:'column' }}>
+    <div className="modal-overlay">
+      <div className="modal"  style={{ minWidth:700, maxWidth:860, maxHeight:'90vh', display:'flex', flexDirection:'column' }}>
 
         {/* Header */}
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:16, flexShrink:0 }}>

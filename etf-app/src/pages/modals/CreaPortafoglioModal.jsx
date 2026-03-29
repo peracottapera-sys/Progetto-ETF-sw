@@ -132,8 +132,8 @@ function CreaPortafoglioModal({ portfolioId, onClose, initialProfilo, initialDat
   const nApprovate = Object.values(approvate).filter(Boolean).length;
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" onClick={e => e.stopPropagation()} style={{ minWidth: 620, maxWidth: 780, maxHeight: '88vh', display: 'flex', flexDirection: 'column' }}>
+    <div className="modal-overlay">
+      <div className="modal" style={{ minWidth: 620, maxWidth: 780, maxHeight: '88vh', display: 'flex', flexDirection: 'column' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexShrink: 0 }}>
           <div>
             <div className="modal-title" style={{ marginBottom: 4 }}>✨ Crea Portafoglio con AI</div>
@@ -543,13 +543,12 @@ function CreaPortafoglioModal({ portfolioId, onClose, initialProfilo, initialDat
                             ))}
                           </div>
                         )}
-                        {/* Pills: ETF · TER · Corr · Exp.USA — tutti sulla stessa riga */}
+                        {/* Pills riga 1: ETF · TER · Corr · Exp.USA · Rend.lordo */}
                         <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
                           <Pill label="ETF" value={consigliati.length} color="var(--accent-gold)" />
                           <Pill label="TER tot." value={terTotale.toFixed(2)+'%'} color={terTotale > 1 ? 'var(--accent-amber)' : 'var(--accent-green)'} />
                           {corrMax && <Pill label="Corr.max" value={corrMax} color={parseFloat(corrMax) > 0.6 ? 'var(--accent-amber)' : 'var(--accent-green)'} />}
                           <Pill label="Exp.USA~" value={expUSA+'%'} color={expUSA > 60 ? 'var(--accent-red)' : expUSA > 30 ? 'var(--accent-amber)' : 'var(--accent-green)'} />
-                          {rendAtteso && <Pill label="Rend. lordo~" value={rendAtteso+'%'} color={parseFloat(rendAtteso) < 3 ? 'var(--accent-red)' : parseFloat(rendAtteso) > 10 ? 'var(--accent-amber)' : 'var(--accent-green)'} />}
                         </div>
 
                         {/* Riga 2: Vol pond. 5A, DD pond. 5A, Smart Beta, Scenario */}
@@ -601,6 +600,7 @@ function CreaPortafoglioModal({ portfolioId, onClose, initialProfilo, initialDat
                               <Pill label="DD pond."
                                 value={ddPond > 0 ? '-'+ddPond.toFixed(1)+'%' : 'N/D'}
                                 color={ddPond > 25 ? 'var(--accent-red)' : ddPond > 15 ? 'var(--accent-amber)' : 'var(--accent-green)'} />
+                              {rendAtteso && <Pill label="Rend. lordo~" value={rendAtteso+'%'} color={parseFloat(rendAtteso) < 3 ? 'var(--accent-red)' : parseFloat(rendAtteso) > 10 ? 'var(--accent-amber)' : 'var(--accent-green)'} />}
                               <div style={{ display:'flex', flexDirection:'column', alignItems:'center', background:'var(--bg-primary)', borderRadius:8, padding:'8px 12px', border:'1px solid var(--border)', minWidth:90 }}>
                                 <span style={{ fontSize:11, color:'var(--text-secondary)', marginBottom:2 }}>Smart Beta</span>
                                 <span style={{ fontSize:13, fontWeight:700, color:'#7030A0' }}>

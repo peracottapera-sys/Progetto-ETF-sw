@@ -984,7 +984,7 @@ ${preferenze ? `
   Azionario Globale/USA/Europa: ~7% lordo | Emergenti: ~6-7% lordo | Obblig. Gov EUR: ~2-3% lordo | Obblig. Corp EUR: ~3-4% lordo | Inflation-Linked: ~2-3% lordo | Oro/Commodity: ~4-5% lordo | Monetario EUR: ~2-3% lordo
   Rendimento netto = (rendimento lordo asset class × peso%) sommato su tutti gli ETF × 0.74 (tasse 26%) − TER ponderato
 - Quota azionaria: OBBLIGATORIA tra ${regole.azionarioTarget-regole.azionarioRange}% e ${regole.azionarioTarget+regole.azionarioRange}% (target ${regole.azionarioTarget}%). Verifica i pesi prima di rispondere.
-- Numero ETF: massimo ${regole.maxETF}
+- 🚫 Numero ETF: MINIMO ${regole.minETF}, MASSIMO ASSOLUTO ${regole.maxETF} — NON superare mai questo limite. Se hai più di ${regole.maxETF} candidati, elimina quelli con maggiore sovrapposizione o rendimento inferiore.
 - ⚠️ VINCOLO TER: il TER medio PONDERATO del portafoglio DEVE essere < ${regole.terPreferito}%. Se un singolo ETF ha TER > ${regole.terPreferito}%, includilo SOLO se porta un contributo di diversificazione o rendimento insostituibile. MAX assoluto per singolo ETF: ${regole.terMax}%. Un ETF con TER elevato che erode il rendimento sotto soglia NON deve essere incluso.
 - Capitalizzazione minima per ETF: ${regole.capMin}M€
 - ${regole.maxDrawdown ? `Max drawdown storico: ≤${Math.abs(regole.maxDrawdown)}% in valore assoluto` : 'Drawdown: nessun limite formale'}
