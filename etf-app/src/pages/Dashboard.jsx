@@ -176,8 +176,8 @@ export default function Dashboard({ setActiveTab }) {
       value: `${avgPerf1y > 0 ? '+' : ''}${avgPerf1y.toFixed(1)}%`,
       valueColor: avgPerf1y > 0 ? 'var(--accent-green)' : 'var(--accent-red)',
       sub: avgPerf5y !== 0
-        ? <span>ponderata · <span style={{ color: avgPerf5y > 0 ? 'var(--accent-green)' : 'var(--accent-red)' }}>{avgPerf5y > 0 ? '+' : ''}{avgPerf5y.toFixed(1)}%</span> 5A</span>
-        : 'ponderata per valore',
+        ? <span>ponderata · <span style={{ color: avgPerf5y > 0 ? 'var(--accent-green)' : 'var(--accent-red)' }}>{avgPerf5y > 0 ? '+' : ''}{avgPerf5y.toFixed(1)}%</span> 5A · <span style={{ color: 'var(--text-muted)' }}>lordo</span></span>
+        : <span>ponderata per valore · <span style={{ color: 'var(--text-muted)' }}>lordo</span></span>,
       nota: 'Rendimenti passati · non garanzia futura',
     },
     { label: 'Valore Acquistato', value: `€ ${valoreAcquistato.toLocaleString('it-IT', { maximumFractionDigits: 0 })}`, valueColor: 'var(--text-primary)', sub: 'valore di carico' },
