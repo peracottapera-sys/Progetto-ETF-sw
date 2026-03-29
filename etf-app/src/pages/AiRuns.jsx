@@ -28,10 +28,14 @@ export default function AiRuns() {
 
   const esportaExcel = () => {
     const righe = [
-      ['ID', 'Data', 'Profilo', 'Orizzonte', 'Capitale', 'Scenario', 'N.ETF', 'TER tot.', 'ETF selezionati'],
+      ['ID', 'Data', 'Profilo', 'Orizzonte', 'Capitale', 'Scenario', 'N.ETF', 'TER tot.', 'TER medio', 'Rend. lordo~', 'ETF selezionati', 'Dettaglio ETF (ISIN · peso · categoria · TER)'],
       ...runs.map(r => {
         const etfs = Array.isArray(r.etf_selezionati) ? r.etf_selezionati : [];
         const etfStr = etfs.map(e => `${e.isin}(${e.peso}%)`).join(', ');
+        const etfDettaglio = etfs.map(e => `${e.isin} · ${e.peso}% · ${e.categoria || '—'} · TER ${e.ter ?? '—'}%`).join(' | ');
+        const terMedio = etfs.length > 0
+          ? (etfs.reduce((s, e) => s + (e.ter || 0), 0) / etfs.length).toFixed(3)
+          : '—';
         return [
           r.id,
           new Date(r.created_at).toLocaleString('it-IT'),
@@ -40,8 +44,11 @@ export default function AiRuns() {
           r.capitale ? `€${r.capitale.toLocaleString('it-IT')}` : '—',
           r.scenario_macro || '—',
           r.metriche?.nEtf || etfs.length,
-          r.metriche?.terTotale ? r.metriche.terTotale.toFixed(2)+'%' : '—',
+          r.metriche?.terTotale != null ? r.metriche.terTotale.toFixed(2)+'%' : '—',
+          terMedio !== '—' ? terMedio+'%' : '—',
+          r.metriche?.rendAttesoLordo != null ? r.metriche.rendAttesoLordo+'%' : '—',
           etfStr,
+          etfDettaglio,
         ];
       })
     ];
