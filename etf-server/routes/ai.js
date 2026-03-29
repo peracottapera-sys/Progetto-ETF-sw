@@ -1074,7 +1074,8 @@ PORTAFOGLIO_JSON:
 
 REGOLE FORMATO:
 - Il JSON deve essere l'ULTIMA cosa che scrivi
-- Pesi devono sommare a 100. Max ${regole.maxETF} ETF. Solo ISIN dalla lista disponibile
+- Pesi devono sommare a 100. Max ${regole.maxETF} ETF.
+- 🚫 USA ESCLUSIVAMENTE gli ISIN dalla lista ETF DISPONIBILI qui sopra. NON inventare ISIN. NON usare ISIN che non compaiono nella lista. Se un ETF che conosci non è nella lista, scegli il più simile tra quelli disponibili per categoria, area geografica e fattore — NON trascrivere ISIN a memoria perché potresti sbagliare un carattere.
 - Se la quota azionaria non rientra nel range: correggi i pesi PRIMA di scrivere il JSON
 - NON aggiungere nulla dopo il JSON`;
 
@@ -1101,11 +1102,13 @@ REGOLE FORMATO:
     if (selezione.length === 0) {
       console.log(`  [crea-portafoglio] RISPOSTA AI COMPLETA:\n${testo}`);
     }
-    // Verifica quali ISIN non sono nel pool disponibile
+    // Verifica e FILTRA gli ISIN non nel pool disponibile — l'AI non può inventare ISIN
     const isinDisponibili = new Set(etfDisponibili.map(e => e.isin));
     const isinNonTrovati = selezione.filter(s => !isinDisponibili.has(s.isin));
     if (isinNonTrovati.length > 0) {
-      console.log(`  [crea-portafoglio] ⚠ ISIN non nel pool disponibile: ${isinNonTrovati.map(s => s.isin).join(', ')}`);
+      console.log(`  [crea-portafoglio] ⚠ ISIN non nel pool — RIMOSSI: ${isinNonTrovati.map(s => s.isin).join(', ')}`);
+      selezione = selezione.filter(s => isinDisponibili.has(s.isin));
+      console.log(`  [crea-portafoglio] ETF dopo filtro ISIN: ${selezione.length}`);
     }
 
 
