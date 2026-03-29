@@ -254,7 +254,10 @@ export default function Dashboard({ setActiveTab }) {
         {lastUpdateInfo && (() => {
           const d = lastUpdateInfo.dettagli;
           const isOggi = lastUpdateInfo.lastUpdate === lastUpdateInfo.oggi;
-          const tsFormatted = d?.ts ? new Date(d.ts).toLocaleString('it-IT', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' }) : null;
+          // Mostra sempre la data/ora del log (UTC esplicito)
+          const tsFormatted = d?.ts
+            ? new Date(d.ts).toLocaleString('it-IT', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' }) + ' UTC'
+            : null;
           const motivoLabel = { 'manual-full': 'manuale', 'scheduled-18:00': 'schedulato', 'scheduled-recovery': 'recupero', 'manual': 'manuale' }[d?.motivo] || d?.motivo || '';
           return (
             <div style={{ display:'flex', alignItems:'center', gap:10, padding:'6px 12px', borderRadius:8, marginBottom:8,
@@ -264,10 +267,10 @@ export default function Dashboard({ setActiveTab }) {
               <span style={{ fontSize:11, color:'var(--text-secondary)', flex:1 }}>
                 {aggiorndandoGlobale
                   ? '⏳ Aggiornamento prezzi in corso su tutti gli ETF...'
-                  : isOggi && d
-                    ? `Prezzi aggiornati ${tsFormatted}${motivoLabel ? ' · '+motivoLabel : ''} · ✓ ${d.ok ?? '—'} OK · ✗ ${d.err ?? '—'} errori su ${d.totale ?? '—'} ETF`
+                  : d
+                    ? `Ultimo aggiornamento: ${tsFormatted}${motivoLabel ? ' · '+motivoLabel : ''} · ✓ ${d.ok ?? '—'} OK · ✗ ${d.err ?? '—'} errori su ${d.totale ?? '—'} ETF`
                     : lastUpdateInfo.lastUpdate
-                      ? `Prezzi non aggiornati oggi — ultimo aggiornamento: ${lastUpdateInfo.lastUpdate}`
+                      ? `Ultimo aggiornamento: ${lastUpdateInfo.lastUpdate}`
                       : 'Nessun aggiornamento prezzi registrato'
                 }
               </span>
