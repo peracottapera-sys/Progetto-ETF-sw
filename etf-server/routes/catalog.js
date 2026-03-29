@@ -129,10 +129,31 @@ module.exports = (pool, fetchETF) => {
   });
 
   router.get('/admin/last-update', authMiddleware, async (req, res) => {
-    const { rows } = await pool.query("SELECT value FROM system_config WHERE key = 'last_price_update'");
+    const { rows: cfgRows } = await pool.query("SELECT value FROM system_config WHERE key = 'last_price_update'");
     const oggi = new Date().toISOString().slice(0, 10);
-    const row = rows[0];
-    res.json({ lastUpdate: row?.value || null, oggi, needsUpdate: !row || row.value !== oggi });
+    const lastDate = cfgRows[0]?.value || null;
+
+    // Dettagli dell ultimo aggiornamento completo dai log
+    const { rows: logRows } = await pool.query(`
+      SELECT ts, dettagli FROM app_logs
+      WHERE evento = 'AGGIORNA_PREZZI_AUTO'
+      ORDER BY ts DESC LIMIT 1
+    `);
+    const lastLog = logRows[0] || null;
+    const dati = lastLog?.dettagli || {};
+
+    res.json({
+      lastUpdate: lastDate,
+      oggi,
+      needsUpdate: !lastDate || lastDate !== oggi,
+      dettagli: lastLog ? {
+        ts: lastLog.ts,
+        ok: dati.ok ?? null,
+        err: dati.err ?? null,
+        totale: dati.totale ?? null,
+        motivo: dati.motivo ?? null,
+      } : null,
+    });
   });
 
   router.post('/admin/trigger-update', authMiddleware, async (req, res) => {
@@ -237,7 +258,14 @@ async function aggiornaPrezziSelettivo(pool, fetchETF, isins, motivo = 'manual')
             perf6m=EXCLUDED.perf6m, perf1y=EXCLUDED.perf1y, perf5y=EXCLUDED.perf5y
         `, [isin, oggi, dati.quotazione, dati.perf1m, dati.perf6m, dati.perf1y, dati.perf5y]);
         await pool.query(
-          `UPDATE etf_catalog SET quotazione=$1, perf1m=$2, perf6m=$3, perf1y=$4, perf5y=$5, updated_at=$6 WHERE isin=$7`,
+          `UPDATE etf_catalog SET 
+            quotazione=$1, 
+            perf1m=COALESCE($2, perf1m), 
+            perf6m=COALESCE($3, perf6m), 
+            perf1y=COALESCE($4, perf1y), 
+            perf5y=COALESCE($5, perf5y), 
+            updated_at=$6 
+          WHERE isin=$7`,
           [dati.quotazione, dati.perf1m, dati.perf6m, dati.perf1y, dati.perf5y, oggi, isin]
         );
         console.log(`[update-selettivo] ✓ ${isin} (${ticker || 'auto'}) → ${dati.quotazione}`);
@@ -312,7 +340,14 @@ async function aggiornaPrezziCompleto(pool, fetchETF, motivo = 'scheduled') {
             perf6m=EXCLUDED.perf6m, perf1y=EXCLUDED.perf1y, perf5y=EXCLUDED.perf5y
         `, [isin, oggi, dati.quotazione, dati.perf1m, dati.perf6m, dati.perf1y, dati.perf5y]);
         await pool.query(
-          `UPDATE etf_catalog SET quotazione=$1, perf1m=$2, perf6m=$3, perf1y=$4, perf5y=$5, updated_at=$6 WHERE isin=$7`,
+          `UPDATE etf_catalog SET 
+            quotazione=$1, 
+            perf1m=COALESCE($2, perf1m), 
+            perf6m=COALESCE($3, perf6m), 
+            perf1y=COALESCE($4, perf1y), 
+            perf5y=COALESCE($5, perf5y), 
+            updated_at=$6 
+          WHERE isin=$7`,
           [dati.quotazione, dati.perf1m, dati.perf6m, dati.perf1y, dati.perf5y, oggi, isin]
         );
         ok++;
