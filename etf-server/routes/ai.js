@@ -1063,7 +1063,7 @@ Esempi bassa correlazione: azionario globale + emergenti, azionario + obbligazio
 
 SPIEGAZIONE:
 [Max 2 frasi: logica del portafoglio. NON citare rendimenti specifici. NON tabelle.]
-[Una riga: METRICHE: azionaria:XX% | vol:XX% | TER:XX% | maxDD:-XX% | corr_max:0.XX]
+[Una riga: METRICHE: azionaria:XX% | vol:XX% | TER:XX% | maxDD:-XX% | corr_max:0.XX | rend_lordo:X.X%]
 
 VERIFICA:
 quota_azionaria: XX% (range ${regole.azionarioTarget-regole.azionarioRange}%-${regole.azionarioTarget+regole.azionarioRange}%)

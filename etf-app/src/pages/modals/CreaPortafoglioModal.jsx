@@ -319,6 +319,13 @@ function CreaPortafoglioModal({ portfolioId, onClose, initialProfilo, initialDat
                   || spiegazione.match(/METRICHE:[^\n]*corr_max:(0\.\d+)/i);
                 const corrMax = corrMatch ? corrMatch[1] : null;
 
+                // Rendimento atteso lordo: estratto dal testo AI (prima dal campo strutturato METRICHE, poi dal testo libero)
+                const rendMatch = spiegazione.match(/rend_lordo:(\d+[\.,]\d+)%/i)
+                  || spiegazione.match(/rendimento[^:]*lordo[^:]*:?\s*[~≈]?(\d+[\.,]\d+)\s*%/i)
+                  || spiegazione.match(/rendimento[^:]*atteso[^:]*:?\s*[~≈]?(\d+[\.,]\d+)\s*%\s*lordo/i)
+                  || spiegazione.match(/(\d+[\.,]\d+)\s*%\s*(?:lordo|annuo\s+lordo)/i);
+                const rendAtteso = rendMatch ? rendMatch[1].replace(',', '.') : null;
+
                 // Logica narrativa: prime 2-3 frasi prima di METRICHE/VERIFICA/**
                 let logica = spiegazione.split(/METRICHE:|VERIFICA:|(?:\*\*Coppie)/i)[0].replace(/\*\*/g,'').trim();
                 logica = (logica.match(/[^.!?]+[.!?]+/g) || []).slice(0, 3).join(' ').trim();
@@ -518,6 +525,7 @@ function CreaPortafoglioModal({ portfolioId, onClose, initialProfilo, initialDat
                           <Pill label="TER tot." value={terTotale.toFixed(2)+'%'} color={terTotale > 1 ? 'var(--accent-amber)' : 'var(--accent-green)'} />
                           {corrMax && <Pill label="Corr.max" value={corrMax} color={parseFloat(corrMax) > 0.6 ? 'var(--accent-amber)' : 'var(--accent-green)'} />}
                           <Pill label="Exp.USA~" value={expUSA+'%'} color={expUSA > 60 ? 'var(--accent-red)' : expUSA > 30 ? 'var(--accent-amber)' : 'var(--accent-green)'} />
+                          {rendAtteso && <Pill label="Rend. lordo~" value={rendAtteso+'%'} color={parseFloat(rendAtteso) < 3 ? 'var(--accent-red)' : parseFloat(rendAtteso) > 10 ? 'var(--accent-amber)' : 'var(--accent-green)'} />}
                         </div>
 
                         {/* Riga 2: Vol pond. 5A, DD pond. 5A, Smart Beta, Scenario */}
