@@ -105,6 +105,12 @@ function CreaPortafoglioModal({ portfolioId, onClose, initialProfilo, initialDat
 
     // Salva il run AI per lo storico
     const consigliati = selezioneAggiornata.filter(s => s.tipo === 'consigliato' || !s.tipo);
+    // Estrai rendimento atteso lordo dalla spiegazione
+    const rendMatch = spiegazione?.match(/rend_lordo:(\d+[\.,]\d+)%/i)
+      || spiegazione?.match(/rendimento[^:]*lordo[^:]*:?\s*[~≈]?(\d+[\.,]\d+)\s*%/i)
+      || spiegazione?.match(/(\d+[\.,]\d+)\s*%\s*(?:lordo|annuo\s+lordo)/i);
+    const rendAttesoLordo = rendMatch ? parseFloat(rendMatch[1].replace(',', '.')) : null;
+
     await saveAiRun({
       portfolioId,
       profilo: form?.profilo || '',
@@ -113,7 +119,8 @@ function CreaPortafoglioModal({ portfolioId, onClose, initialProfilo, initialDat
       scenarioMacro: scenarioMacro || null,
       metriche: {
         nEtf: consigliati.length,
-        terTotale: consigliati.reduce((t, s) => t + (s.ter || 0), 0),
+        terTotale: parseFloat(consigliati.reduce((t, s) => t + (s.ter || 0), 0).toFixed(2)),
+        rendAttesoLordo,
       },
       etfSelezionati: consigliati.map(s => ({
         isin: s.isin,

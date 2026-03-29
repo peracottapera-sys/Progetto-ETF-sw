@@ -150,6 +150,7 @@ export default function AiRuns() {
                 <div style={{ marginLeft:'auto', display:'flex', alignItems:'center', gap:10 }}>
                   <span style={{ fontSize:11, color:'var(--text-secondary)' }}>
                     {etfs.length} ETF{r.metriche?.terTotale ? ` · TER ${r.metriche.terTotale.toFixed(2)}%` : ''}
+                    {r.metriche?.rendAttesoLordo ? ` · Rend. ${r.metriche.rendAttesoLordo}% lordo` : ''}
                   </span>
                   <span style={{ fontSize:12, color:'var(--text-muted)' }}>{isExpanded ? '▲' : '▼'}</span>
                   <button className="btn btn-ghost" style={{ fontSize:10, padding:'2px 7px', color:'var(--accent-red)' }}
