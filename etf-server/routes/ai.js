@@ -45,7 +45,7 @@ const REGOLE_PROFILO = {
   },
 };
 
-// ── Rendimento minimo per profilo (% annuo netto stimato) ─────────────────
+// ── Rendimento minimo per profilo — aggiornato 2026-03-29 15:35 (% annuo netto stimato) ─────────────────
 const RENDIMENTO_MIN_PROFILO = {
   Prudente:   3.5,  // inflazione ~2% + 2% min = ~4%, netto ~3.5%
   Bilanciato: 4.5,  // inflazione ~2% + 2.5% min = ~4.5%
