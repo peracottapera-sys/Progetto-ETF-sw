@@ -965,7 +965,7 @@ Crea un portafoglio ETF ottimale rispettando RIGOROSAMENTE le regole del profilo
 ## PARAMETRI INVESTITORE:
 - Profilo: ${profilo}
 - Orizzonte temporale: ${parseInt(orizzonteAnni||5)<=3 ? 'BREVE (entro 5 anni)' : parseInt(orizzonteAnni||5)<=7 ? 'MEDIO (5-10 anni)' : 'LUNGO (oltre 10 anni)'}
-- Classe orizzonte: ${parseInt(orizzonteAnni||5)<=3?'BREVE (<=3 anni)':parseInt(orizzonteAnni||5)<=7?'MEDIO (3-7 anni)':'LUNGO (>7 anni)'}
+- ⚠️ Nella spiegazione usa SEMPRE "orizzonte LUNGO", "orizzonte MEDIO" o "orizzonte BREVE" — NON scrivere mai numeri di anni come "15 anni" o "7 anni".
 - ${regole.noteOrizzonte || ''}
 - POSIZIONAMENTO TATTICO: ${(() => { try { const pt = getPosizionetattica(profilo, orizzonteAnni||5, macroData); return `[${pt.scenario}] ${pt.testo}`; } catch(e) { return 'standard'; } })()}
 - Categorie obbligazionarie consigliate per orizzonte: ${regole.durataObbligaz || 'standard'}

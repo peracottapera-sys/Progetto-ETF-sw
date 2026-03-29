@@ -132,8 +132,8 @@ function CreaPortafoglioModal({ portfolioId, onClose, initialProfilo, initialDat
   const nApprovate = Object.values(approvate).filter(Boolean).length;
 
   return (
-    <div className="modal-overlay">
-      <div className="modal" style={{ minWidth: 620, maxWidth: 780, maxHeight: '88vh', display: 'flex', flexDirection: 'column' }}>
+    <div className="modal-overlay" onClick={e => e.stopPropagation()}>
+      <div className="modal" onClick={e => e.stopPropagation()} style={{ minWidth: 620, maxWidth: 780, maxHeight: '88vh', display: 'flex', flexDirection: 'column' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexShrink: 0 }}>
           <div>
             <div className="modal-title" style={{ marginBottom: 4 }}>✨ Crea Portafoglio con AI</div>
