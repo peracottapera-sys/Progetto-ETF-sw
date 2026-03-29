@@ -4,7 +4,7 @@ import { useApp } from '../../context/AppContext';
 const API = process.env.REACT_APP_API_URL || (window.location.hostname === 'localhost' ? 'http://localhost:3001' : '');
 
 function CreaPortafoglioModal({ portfolioId, onClose, initialProfilo, initialData }) {
-  const { applicaPortafoglioAI, token, saveBuckets } = useApp();
+  const { applicaPortafoglioAI, token, saveBuckets, saveAiRun } = useApp();
   const [form, setForm] = useState({
     profilo: initialProfilo || 'Bilanciato',
     orizzonteAnni: 'MEDIO',
@@ -101,6 +101,30 @@ function CreaPortafoglioModal({ portfolioId, onClose, initialProfilo, initialDat
         { tipo: 'LUNGO', pct_allocazione: bucketInfo.lungo.pct, orizzonte_anni: bucketInfo.lungo.anni },
       ]);
     }
+
+    // Salva il run AI per lo storico
+    const consigliati = selezioneAggiornata.filter(s => s.tipo === 'consigliato' || !s.tipo);
+    await saveAiRun({
+      portfolioId,
+      profilo: form?.profilo || '',
+      orizzonte: form?.orizzonteAnni || null,
+      capitale: capitale ? parseFloat(capitale) : null,
+      scenarioMacro: scenarioMacro || null,
+      metriche: {
+        nEtf: consigliati.length,
+        terTotale: consigliati.reduce((t, s) => t + (s.ter || 0), 0),
+      },
+      etfSelezionati: consigliati.map(s => ({
+        isin: s.isin,
+        name: s.name,
+        peso: s.peso,
+        bucket: s.bucket || 'LUNGO',
+        ter: s.ter,
+        categoria: s.categoria,
+        motivo: s.motivo,
+      })),
+      spiegazione,
+    });
 
     onClose();
   };

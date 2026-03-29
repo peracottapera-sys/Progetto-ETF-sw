@@ -631,6 +631,35 @@ export function AppProvider({ children }) {
       toggleEtfSelection, saveAcquisto, aggiornaPrezziBatch, applicaPortafoglioAI, loadPortfoliosFromDB,
       registraVendita, getVendite, annullaVendita,
       getMinusvalenze, salvaMinusvalenzaManuale, eliminaMinusvalenzaManuale,
+      saveAiRun: async (payload) => {
+        if (!token) return null;
+        try {
+          const res = await fetch(`${API}/api/portfolios/ai-runs`, {
+            method: 'POST',
+            headers: authHeaders(token),
+            body: JSON.stringify(payload),
+          });
+          return res.ok ? await res.json() : null;
+        } catch { return null; }
+      },
+      getAiRuns: async (filters = {}) => {
+        if (!token) return [];
+        try {
+          const params = new URLSearchParams(filters).toString();
+          const res = await fetch(`${API}/api/portfolios/ai-runs${params ? '?'+params : ''}`, {
+            headers: authHeaders(token),
+          });
+          return res.ok ? await res.json() : [];
+        } catch { return []; }
+      },
+      deleteAiRun: async (id) => {
+        if (!token) return;
+        try {
+          await fetch(`${API}/api/portfolios/ai-runs/${id}`, {
+            method: 'DELETE', headers: authHeaders(token),
+          });
+        } catch {}
+      },
       getHasBuckets: (portfolioId) => !!(portfolioBucketsMap[portfolioId]?.length >= 2),
       getBuckets: (portfolioId) => portfolioBucketsMap[portfolioId] || [],
       saveBuckets: async (portfolioId, bucketsPayload) => {

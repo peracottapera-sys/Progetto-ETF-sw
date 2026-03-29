@@ -8,6 +8,7 @@ import Performance from './pages/Performance';
 import { Settings, Report } from './pages/SettingsReport';
 import Reports from './pages/Reports';
 import AdminLogs from './pages/AdminLogs';
+import AiRuns from './pages/AiRuns';
 
 function AppInner() {
   const { currentUser, currentPortfolio } = useApp();
@@ -22,6 +23,7 @@ function AppInner() {
     report: <Report />,
     storico: <Reports />,
     settings: <Settings />,
+    'ai-runs': <AiRuns />,
     logs: <AdminLogs />,
   };
 

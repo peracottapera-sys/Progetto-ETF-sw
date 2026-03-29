@@ -282,5 +282,58 @@ module.exports = (pool) => {
     res.json(rows);
   });
 
+  // ── AI Runs — storico creazioni portafoglio AI ────────────────────────────
+
+  // Salva un run AI
+  router.post('/ai-runs', authMiddleware, async (req, res) => {
+    const { portfolioId, profilo, orizzonte, capitale, scenarioMacro, metriche, etfSelezionati, spiegazione } = req.body;
+    try {
+      const { rows } = await pool.query(
+        `INSERT INTO ai_runs (portfolio_id, utente, profilo, orizzonte, capitale, scenario_macro, metriche, etf_selezionati, spiegazione)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
+        [portfolioId || null, req.user?.username || null, profilo, orizzonte || null,
+         capitale || null, scenarioMacro || null,
+         metriche ? JSON.stringify(metriche) : null,
+         etfSelezionati ? JSON.stringify(etfSelezionati) : null,
+         spiegazione || null]
+      );
+      res.json({ ok: true, id: rows[0].id });
+    } catch (e) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // Lista run AI (con filtri opzionali)
+  router.get('/ai-runs', authMiddleware, async (req, res) => {
+    const { profilo, portfolioId, limit = 50 } = req.query;
+    let where = ['utente = $1'];
+    const params = [req.user?.username];
+    if (profilo) { where.push(`profilo = $${params.length + 1}`); params.push(profilo); }
+    if (portfolioId) { where.push(`portfolio_id = $${params.length + 1}`); params.push(portfolioId); }
+    const { rows } = await pool.query(
+      `SELECT id, portfolio_id, profilo, orizzonte, capitale, scenario_macro, metriche, etf_selezionati, created_at
+       FROM ai_runs WHERE ${where.join(' AND ')}
+       ORDER BY created_at DESC LIMIT $${params.length + 1}`,
+      [...params, parseInt(limit)]
+    );
+    res.json(rows);
+  });
+
+  // Singolo run AI con spiegazione completa
+  router.get('/ai-runs/:id', authMiddleware, async (req, res) => {
+    const { rows } = await pool.query(
+      'SELECT * FROM ai_runs WHERE id = $1 AND utente = $2',
+      [req.params.id, req.user?.username]
+    );
+    if (!rows[0]) return res.status(404).json({ error: 'Run non trovato' });
+    res.json(rows[0]);
+  });
+
+  // Elimina un run AI
+  router.delete('/ai-runs/:id', authMiddleware, async (req, res) => {
+    await pool.query('DELETE FROM ai_runs WHERE id = $1 AND utente = $2', [req.params.id, req.user?.username]);
+    res.json({ ok: true });
+  });
+
   return router;
 };
