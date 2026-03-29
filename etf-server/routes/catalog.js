@@ -129,39 +129,10 @@ module.exports = (pool, fetchETF) => {
   });
 
   router.get('/admin/last-update', authMiddleware, async (req, res) => {
-    const { rows: cfgRows } = await pool.query("SELECT value FROM system_config WHERE key = 'last_price_update'");
+    const { rows } = await pool.query("SELECT value FROM system_config WHERE key = 'last_price_update'");
     const oggi = new Date().toISOString().slice(0, 10);
-    const lastDate = cfgRows[0]?.value || null;
-
-    // Dettagli dell'ultimo aggiornamento dai log
-    const { rows: logRows } = await pool.query(`
-      SELECT ts, dettagli FROM app_logs
-      WHERE evento IN ('AGGIORNA_PREZZI_AUTO', 'AGGIORNA_PREZZI_SELETTIVO')
-      ORDER BY ts DESC LIMIT 1
-    `);
-    const lastLog = logRows[0] || null;
-    const dati = lastLog?.dettagli || {};
-
-    // Controlla se un aggiornamento è in corso (avviato negli ultimi 30 min senza completamento oggi)
-    const { rows: inCorsoRows } = await pool.query(`
-      SELECT ts FROM app_logs
-      WHERE evento = 'SERVER_START' OR evento IN ('AGGIORNA_PREZZI_AUTO','AGGIORNA_PREZZI_SELETTIVO')
-      ORDER BY ts DESC LIMIT 1
-    `);
-
-    res.json({
-      lastUpdate: lastDate,
-      oggi,
-      needsUpdate: !lastDate || lastDate !== oggi,
-      dettagli: lastLog ? {
-        ts: lastLog.ts,
-        ok: dati.ok ?? null,
-        err: dati.err ?? null,
-        totale: dati.totale ?? null,
-        motivo: dati.motivo ?? null,
-        data: dati.data ?? null,
-      } : null,
-    });
+    const row = rows[0];
+    res.json({ lastUpdate: row?.value || null, oggi, needsUpdate: !row || row.value !== oggi });
   });
 
   router.post('/admin/trigger-update', authMiddleware, async (req, res) => {
@@ -228,7 +199,7 @@ async function aggiornaPrezziSelettivo(pool, fetchETF, isins, motivo = 'manual')
         // Auto-fix: prova suffissi alternativi
         // ⚠ NON sovrascrivere ticker mnemonici reali (es. MVEU.MI) con ISIN.suffisso
         const isIsinTicker = !ticker || /^[A-Z]{2}[A-Z0-9]{10}\./.test(ticker);
-        for (const suf of ['.MI', '.AS', '.DE', '.PA', '.L', '.F', '.SW', '.IR', '.SG']) {
+        for (const suf of ['.MI', '.AS', '.DE', '.PA', '.L', '.F', '.SW', '.IR', '.SG', '.HM', '.MU', '.DU', '.HA', '.BE']) {
           const t = isin + suf;
           const r = await fetchQuoteDirect(t);
           if (r?.quotazione > 0) {
@@ -245,6 +216,19 @@ async function aggiornaPrezziSelettivo(pool, fetchETF, isins, motivo = 'manual')
           }
           await new Promise(r => setTimeout(r, 150));
         }
+      }
+      // Fallback finale: prova ISIN nudo (Yahoo a volte risponde direttamente)
+      if (!dati?.quotazione) {
+        try {
+          const axios = require('axios');
+          const url = `https://query1.finance.yahoo.com/v8/finance/chart/${isin}?interval=1d&range=1d`;
+          const { data } = await axios.get(url, { headers: { 'User-Agent': 'Mozilla/5.0' }, timeout: 8000 });
+          const prezzo = data?.chart?.result?.[0]?.meta?.regularMarketPrice;
+          if (prezzo > 0) {
+            dati = { quotazione: prezzo, perf1m: null, perf6m: null, perf1y: null, perf5y: null };
+            console.log(`[auto-update] 🔧 Prezzo via ISIN nudo: ${isin} @ €${prezzo}`);
+          }
+        } catch {}
       }
       if (dati?.quotazione > 0) {
         await pool.query(`
@@ -286,7 +270,7 @@ async function aggiornaPrezziCompleto(pool, fetchETF, motivo = 'scheduled') {
         const tickerDB = tr[0]?.ticker_yahoo;
         // ⚠ NON sovrascrivere ticker mnemonici reali (es. MVEU.MI) con ISIN.suffisso
         const isIsinTicker = !tickerDB || /^[A-Z]{2}[A-Z0-9]{10}\./.test(tickerDB);
-        for (const suf of ['.MI', '.AS', '.DE', '.PA', '.L', '.F', '.SW', '.IR', '.SG']) {
+        for (const suf of ['.MI', '.AS', '.DE', '.PA', '.L', '.F', '.SW', '.IR', '.SG', '.HM', '.MU', '.DU', '.HA', '.BE']) {
           const t = isin + suf;
           if (t === tickerDB + suf) continue; // evita riprova stesso ticker
           try {
@@ -307,6 +291,19 @@ async function aggiornaPrezziCompleto(pool, fetchETF, motivo = 'scheduled') {
           } catch {}
           await new Promise(r => setTimeout(r, 150));
         }
+      }
+      // Fallback finale: prova ISIN nudo (Yahoo a volte risponde direttamente)
+      if (!dati?.quotazione) {
+        try {
+          const axios = require('axios');
+          const url = `https://query1.finance.yahoo.com/v8/finance/chart/${isin}?interval=1d&range=1d`;
+          const { data } = await axios.get(url, { headers: { 'User-Agent': 'Mozilla/5.0' }, timeout: 8000 });
+          const prezzo = data?.chart?.result?.[0]?.meta?.regularMarketPrice;
+          if (prezzo > 0) {
+            dati = { quotazione: prezzo, perf1m: null, perf6m: null, perf1y: null, perf5y: null };
+            console.log(`[auto-update] 🔧 Prezzo via ISIN nudo: ${isin} @ €${prezzo}`);
+          }
+        } catch {}
       }
       if (dati?.quotazione > 0) {
         await pool.query(`
