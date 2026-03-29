@@ -10,7 +10,7 @@ import CatalogPanel from './CatalogPanel';
 const API = process.env.REACT_APP_API_URL || (window.location.hostname === 'localhost' ? 'http://localhost:3001' : '');
 
 export default function Dashboard({ setActiveTab }) {
-  const { currentPortfolio, toggleEtfSelection, aggiornaPrezziBatch, token, loadPortfoliosFromDB, currentUser, pendingAIResult, setPendingAIResult, updateEtfBucket, getHasBuckets, loadBuckets } = useApp();
+  const { currentPortfolio, toggleEtfSelection, aggiornaPrezziBatch, token, loadPortfoliosFromDB, currentUser, pendingAIResult, setPendingAIResult, updateEtfBucket, getHasBuckets, loadBuckets, getBuckets } = useApp();
   const [sortKey, setSortKey] = useState('tipo');
   const [sortDir, setSortDir] = useState(1);
   const [filter, setFilter] = useState('tutte');
@@ -40,6 +40,19 @@ export default function Dashboard({ setActiveTab }) {
 
   const portfolioId = currentPortfolio?.id;
   const hasBuckets = getHasBuckets(portfolioId);
+
+  // Ricava orizzonte dai bucket se disponibile
+  const buckets = getBuckets(portfolioId);
+  const bucketLungo = buckets.find(b => b.tipo === 'LUNGO');
+  const orizzonteAnni = bucketLungo?.orizzonte_anni ?? null;
+  const orizzonteLabel = orizzonteAnni == null ? null
+    : orizzonteAnni >= 10 ? 'LUNGO'
+    : orizzonteAnni >= 5  ? 'MEDIO'
+    : 'BREVE';
+  const orizzonteColore = orizzonteLabel === 'LUNGO' ? 'var(--accent-green)'
+    : orizzonteLabel === 'MEDIO' ? 'var(--accent-amber)'
+    : orizzonteLabel === 'BREVE' ? 'var(--accent-blue)'
+    : null;
 
   // Apri automaticamente il modal con il risultato AI proveniente dal PortfolioSelector
   React.useEffect(() => {
@@ -201,6 +214,13 @@ export default function Dashboard({ setActiveTab }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <h2 style={{ fontFamily: 'DM Serif Display, serif', fontSize: 22, color: 'var(--text-primary)', margin: 0 }}>{name}</h2>
             <span className={`badge badge-${riskProfile.toLowerCase()}`}>{riskProfile}</span>
+            {orizzonteLabel && (
+              <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 6,
+                background: `${orizzonteColore}18`, color: orizzonteColore,
+                border: `1px solid ${orizzonteColore}40` }}>
+                {orizzonteLabel}
+              </span>
+            )}
             <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Max USA: {maxUSA}</span>
           </div>
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>

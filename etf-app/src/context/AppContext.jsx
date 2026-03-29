@@ -631,7 +631,8 @@ export function AppProvider({ children }) {
       toggleEtfSelection, saveAcquisto, aggiornaPrezziBatch, applicaPortafoglioAI, loadPortfoliosFromDB,
       registraVendita, getVendite, annullaVendita,
       getMinusvalenze, salvaMinusvalenzaManuale, eliminaMinusvalenzaManuale,
-      getHasBuckets: (portfolioId) => !!portfolioBucketsMap[portfolioId],
+      getHasBuckets: (portfolioId) => !!(portfolioBucketsMap[portfolioId]?.length >= 2),
+      getBuckets: (portfolioId) => portfolioBucketsMap[portfolioId] || [],
       saveBuckets: async (portfolioId, bucketsPayload) => {
         if (!token || !portfolioId || !bucketsPayload?.length) return;
         try {
@@ -641,7 +642,9 @@ export function AppProvider({ children }) {
             body: JSON.stringify({ buckets: bucketsPayload }),
           });
           if (res.ok) {
-            setPortfolioBucketsMap(m => ({ ...m, [portfolioId]: true }));
+            setPortfolioBucketsMap(m => ({ ...m, [portfolioId]: bucketsPayload.map(b => ({
+              tipo: b.tipo, pct_allocazione: b.pct_allocazione, orizzonte_anni: b.orizzonte_anni
+            })) }));
           }
         } catch {}
       },
@@ -652,7 +655,8 @@ export function AppProvider({ children }) {
             headers: { Authorization: `Bearer ${token}` },
           });
           const data = await res.json();
-          setPortfolioBucketsMap(m => ({ ...m, [portfolioId]: Array.isArray(data) && data.length >= 2 }));
+          // Salva i dati completi (array di bucket) invece di true/false
+          setPortfolioBucketsMap(m => ({ ...m, [portfolioId]: Array.isArray(data) ? data : [] }));
         } catch {}
       },
       updateEtfBucket: (portfolioId, isin, bucket) => {
