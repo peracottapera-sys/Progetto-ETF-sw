@@ -984,6 +984,7 @@ ${preferenze ? `
   Azionario Globale/USA/Europa: ~7% lordo | Emergenti: ~6-7% lordo | Obblig. Gov EUR: ~2-3% lordo | Obblig. Corp EUR: ~3-4% lordo | Inflation-Linked: ~2-3% lordo | Oro/Commodity: ~4-5% lordo | Monetario EUR: ~2-3% lordo
   Rendimento netto = (rendimento lordo asset class × peso%) sommato su tutti gli ETF × 0.74 (tasse 26%) − TER ponderato
 - Quota azionaria: OBBLIGATORIA tra ${regole.azionarioTarget-regole.azionarioRange}% e ${regole.azionarioTarget+regole.azionarioRange}% (target ${regole.azionarioTarget}%). Verifica i pesi prima di rispondere.
+${profilo === 'Prudente' ? `- 🚫 AZIONARIO MAX 35% PRUDENTE: la somma dei pesi di TUTTI gli ETF azionari NON può superare 35%. Contano come azionari: Azionario Globale, USA, Europa, Emergenti, Tematici (ESG, Energia, Salute, Tech, ecc.), Smart Beta, Dividend, Low Volatility, Small Cap. Se la somma supera 35% devi sostituire un ETF azionario con uno obbligazionario.` : ''}
 - 🚫 Numero ETF: MINIMO ${regole.minETF}, MASSIMO ASSOLUTO ${regole.maxETF} — NON superare mai questo limite. Se hai più di ${regole.maxETF} candidati, elimina quelli con maggiore sovrapposizione o rendimento inferiore.
 - ⚠️ VINCOLO TER: il TER medio PONDERATO del portafoglio DEVE essere < ${regole.terPreferito}%. Se un singolo ETF ha TER > ${regole.terPreferito}%, includilo SOLO se porta un contributo di diversificazione o rendimento insostituibile. MAX assoluto per singolo ETF: ${regole.terMax}%. Un ETF con TER elevato che erode il rendimento sotto soglia NON deve essere incluso.
 - Capitalizzazione minima per ETF: ${regole.capMin}M€
@@ -1041,6 +1042,8 @@ ${maxUSA && maxUSA !== 'No max' ? `- ⚠️ VINCOLO TASSATIVO MAX USA: la somma 
 - Le performance passate NON sono garanzia di rendimenti futuri: usa perf1y/5y solo per confronto relativo, NON come stima di rendimento futuro
 ${escludiDistribuzione ? `- VINCOLO TASSATIVO: seleziona SOLO ETF ad Accumulazione (Acc). ESCLUDI ASSOLUTAMENTE qualsiasi ETF a Distribuzione (Dist/Distributing). Questo vale sia per i consigliati che per le alternative. Se un ETF ha "Distributing" o "Dist" nel nome o nel suo tipo di replica, NON includerlo.` : ''}
 ${profilo === 'Prudente' ? `- 🚫 RENDIMENTO LORDO MAX PRUDENTE: il rendimento lordo atteso dichiarato NON può superare 5.5% annuo (equivale a ~4.0% netto dopo TER e tasse). Se superi questo valore hai usato performance recenti eccezionali — usa i rendimenti storici 20-30 anni nella tabella sopra.` : ''}
+${profilo === 'Prudente' ? `- 🚫 AZIONARIO MAX PRUDENTE: la quota azionaria totale (inclusi ETF tematici, ESG, Dividend, Smart Beta) NON può superare 35% del portafoglio. Verifica sommando TUTTI gli ETF azionari prima di scrivere il JSON.` : ''}
+${profilo === 'Prudente' ? `- 🚫 MATERIE PRIME MAX PRUDENTE: oro + commodity + energia NON possono superare 15% totale. Oro max 10%, energia max 5%.` : ''}
 ${profilo === 'Bilanciato' ? `- 🚫 QUOTA OBBLIGAZIONARIA MINIMA BILANCIATO: la somma dei pesi di ETF obbligazionari (Gov, Corporate, Inflation-Linked, High Yield) DEVE essere almeno 25% del portafoglio totale. Verifica PRIMA di scrivere il JSON. Se sei sotto il 25%, sostituisci un ETF azionario con uno obbligazionario.` : ''}
 
 ## VINCOLO CORRELAZIONE (differenziato per profilo e asset class):
