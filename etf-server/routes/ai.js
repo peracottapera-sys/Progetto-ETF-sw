@@ -1040,6 +1040,8 @@ ${etfDisponibili.map(e => {
 ${maxUSA && maxUSA !== 'No max' ? `- ⚠️ VINCOLO TASSATIVO MAX USA: la somma dei pesi degli ETF con esposizione prevalente agli USA (categoria "Azionario USA" o ETF S&P500/Nasdaq/Russell) NON deve superare ${maxUSA} del portafoglio totale. Questo è un hard limit — NON può essere ignorato per nessun motivo.` : '- Esposizione USA: nessun limite'}
 - Le performance passate NON sono garanzia di rendimenti futuri: usa perf1y/5y solo per confronto relativo, NON come stima di rendimento futuro
 ${escludiDistribuzione ? `- VINCOLO TASSATIVO: seleziona SOLO ETF ad Accumulazione (Acc). ESCLUDI ASSOLUTAMENTE qualsiasi ETF a Distribuzione (Dist/Distributing). Questo vale sia per i consigliati che per le alternative. Se un ETF ha "Distributing" o "Dist" nel nome o nel suo tipo di replica, NON includerlo.` : ''}
+${profilo === 'Prudente' ? `- 🚫 RENDIMENTO LORDO MAX PRUDENTE: il rendimento lordo atteso dichiarato NON può superare 5.5% annuo (equivale a ~4.0% netto dopo TER e tasse). Se superi questo valore hai usato performance recenti eccezionali — usa i rendimenti storici 20-30 anni nella tabella sopra.` : ''}
+${profilo === 'Bilanciato' ? `- 🚫 QUOTA OBBLIGAZIONARIA MINIMA BILANCIATO: la somma dei pesi di ETF obbligazionari (Gov, Corporate, Inflation-Linked, High Yield) DEVE essere almeno 25% del portafoglio totale. Verifica PRIMA di scrivere il JSON. Se sei sotto il 25%, sostituisci un ETF azionario con uno obbligazionario.` : ''}
 
 ## VINCOLO CORRELAZIONE (differenziato per profilo e asset class):
 Stima la correlazione tra ogni coppia di ETF in base a categoria, area geografica e fattori.
@@ -1063,7 +1065,7 @@ Esempi bassa correlazione: azionario globale + emergenti, azionario + obbligazio
 
 SPIEGAZIONE:
 [Max 2 frasi: logica del portafoglio. NON citare rendimenti specifici. NON tabelle.]
-[Una riga: METRICHE: azionaria:XX% | vol:XX% | TER:XX% | maxDD:-XX% | corr_max:0.XX | rend_lordo:X.X%]
+[Una riga: METRICHE: azionaria:XX% | obbligaz:XX% | vol:XX% | TER:XX% | maxDD:-XX% | corr_max:0.XX | rend_lordo:X.X%]
 
 VERIFICA:
 quota_azionaria: XX% (range ${regole.azionarioTarget-regole.azionarioRange}%-${regole.azionarioTarget+regole.azionarioRange}%)
@@ -1110,6 +1112,14 @@ REGOLE FORMATO:
       selezione = selezione.filter(s => isinDisponibili.has(s.isin));
       console.log(`  [crea-portafoglio] ETF dopo filtro ISIN: ${selezione.length}`);
     }
+
+    // Filtro aggiuntivo: rimuovi ETF senza prezzo reale disponibile
+    // (potrebbero essere nel pool per ticker ma senza prezzi_storici aggiornati)
+    selezione = selezione.filter(s => {
+      const haPrezzo = isinConPrezzoInDB.has(s.isin);
+      if (!haPrezzo) console.log(`  [crea-portafoglio] ⚠ ETF senza prezzo rimosso: ${s.isin}`);
+      return haPrezzo;
+    });
 
 
 
