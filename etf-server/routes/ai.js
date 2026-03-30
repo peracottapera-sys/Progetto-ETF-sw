@@ -1114,9 +1114,10 @@ REGOLE FORMATO:
     }
 
     // Filtro aggiuntivo: rimuovi ETF senza prezzo reale disponibile
-    // (potrebbero essere nel pool per ticker ma senza prezzi_storici aggiornati)
+    // Ricostruisce il Set localmente dagli ETF disponibili (che sono già filtrati per prezzo)
+    const isinConPrezzoLocale = new Set(etfDisponibili.map(e => e.isin));
     selezione = selezione.filter(s => {
-      const haPrezzo = isinConPrezzoInDB.has(s.isin);
+      const haPrezzo = isinConPrezzoLocale.has(s.isin);
       if (!haPrezzo) console.log(`  [crea-portafoglio] ⚠ ETF senza prezzo rimosso: ${s.isin}`);
       return haPrezzo;
     });
