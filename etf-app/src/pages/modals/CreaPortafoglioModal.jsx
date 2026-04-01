@@ -105,8 +105,9 @@ function CreaPortafoglioModal({ portfolioId, onClose, initialProfilo, initialDat
 
     // Salva il run AI per lo storico
     const consigliati = selezioneAggiornata.filter(s => s.tipo === 'consigliato' || !s.tipo);
-    // Estrai rendimento atteso lordo dalla spiegazione
-    const rendMatch = spiegazione?.match(/rend_lordo:(\d+[\.,]\d+)%/i)
+    // Estrai rendimento atteso lordo dalla spiegazione — cerca prima nel blocco METRICHE strutturato
+    const rendMatch = spiegazione?.match(/METRICHE:.*?rend_lordo:([\d.]+)%/i)
+      || spiegazione?.match(/rend_lordo:([\d.]+)%/i)
       || spiegazione?.match(/rendimento[^:]*lordo[^:]*:?\s*[~≈]?(\d+[\.,]\d+)\s*%/i)
       || spiegazione?.match(/(\d+[\.,]\d+)\s*%\s*(?:lordo|annuo\s+lordo)/i);
     const rendAttesoLordo = rendMatch ? parseFloat(rendMatch[1].replace(',', '.')) : null;

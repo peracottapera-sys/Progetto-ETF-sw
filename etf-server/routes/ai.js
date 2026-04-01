@@ -1065,10 +1065,11 @@ Esempi bassa correlazione: azionario globale + emergenti, azionario + obbligazio
 
 ## FORMATO RISPOSTA — SEGUI ESATTAMENTE, NON DEVIARE:
 ⚠️ CRITICO: NON usare tabelle markdown (|col|col|), NON fare calcoli intermedi lunghi, NON ribilanciare più volte. Fai i calcoli mentalmente e scrivi SOLO il risultato finale.
+⚠️ NON scrivere verifiche correlazioni, check pesi, ragionamenti intermedi — solo il risultato.
 
 SPIEGAZIONE:
-[Max 2 frasi: logica del portafoglio. NON citare rendimenti specifici. NON tabelle.]
-[Una riga: METRICHE: azionaria:XX% | obbligaz:XX% | vol:XX% | TER:XX% | maxDD:-XX% | corr_max:0.XX | rend_lordo:X.X%]
+[Max 2 frasi: logica del portafoglio. NON citare rendimenti specifici. NON tabelle. NON verifiche.]
+METRICHE: azionaria:XX% | obbligaz:XX% | vol:XX% | TER:XX% | maxDD:-XX% | corr_max:0.XX | rend_lordo:X.X%
 
 VERIFICA:
 quota_azionaria: XX% (range ${regole.azionarioTarget-regole.azionarioRange}%-${regole.azionarioTarget+regole.azionarioRange}%)
@@ -1080,6 +1081,7 @@ PORTAFOGLIO_JSON:
 REGOLE FORMATO:
 - Il JSON deve essere l'ULTIMA cosa che scrivi
 - Pesi devono sommare a 100. Max ${regole.maxETF} ETF.
+- La riga METRICHE è OBBLIGATORIA — deve apparire esattamente come indicato sopra con tutti i valori compilati
 - 🚫 USA ESCLUSIVAMENTE gli ISIN dalla lista ETF DISPONIBILI qui sopra. NON inventare ISIN. NON usare ISIN che non compaiono nella lista. Se un ETF che conosci non è nella lista, scegli il più simile tra quelli disponibili per categoria, area geografica e fattore — NON trascrivere ISIN a memoria perché potresti sbagliare un carattere.
 - Se la quota azionaria non rientra nel range: correggi i pesi PRIMA di scrivere il JSON
 - NON aggiungere nulla dopo il JSON`;
