@@ -28,7 +28,7 @@ export default function AiRuns() {
 
   const esportaExcel = () => {
     const righe = [
-      ['ID', 'Data', 'Profilo', 'Orizzonte', 'Capitale', 'Scenario', 'N.ETF', 'TER tot.', 'TER medio', 'Rend. lordo~', 'ETF selezionati', 'Dettaglio ETF (ISIN · peso · categoria · TER)'],
+      ['ID', 'Data', 'Profilo', 'Orizzonte', 'Capitale', 'Scenario', 'Max USA', 'Preferenze', 'Solo Acc.', 'Bucket', 'Bucket Breve%', 'N.ETF', 'TER tot.', 'TER medio', 'Rend. lordo~', 'ETF selezionati', 'Dettaglio ETF (ISIN · peso · categoria · TER)'],
       ...runs.map(r => {
         const etfs = Array.isArray(r.etf_selezionati) ? r.etf_selezionati : [];
         const etfStr = etfs.map(e => `${e.isin}(${e.peso}%)`).join(', ');
@@ -43,6 +43,11 @@ export default function AiRuns() {
           r.orizzonte || '—',
           r.capitale ? `€${r.capitale.toLocaleString('it-IT')}` : '—',
           r.scenario_macro || '—',
+          r.max_usa || 'No max',
+          r.preferenze || '—',
+          r.escludi_distribuzione ? 'Sì' : 'No',
+          r.bucket_attivo ? 'Sì' : 'No',
+          r.bucket_pct_breve != null ? r.bucket_pct_breve+'%' : '—',
           r.metriche?.nEtf || etfs.length,
           r.metriche?.terTotale != null ? r.metriche.terTotale.toFixed(2)+'%' : '—',
           terMedio !== '—' ? terMedio+'%' : '—',

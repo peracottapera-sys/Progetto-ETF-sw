@@ -117,6 +117,12 @@ function CreaPortafoglioModal({ portfolioId, onClose, initialProfilo, initialDat
       orizzonte: form?.orizzonteAnni || null,
       capitale: capitale ? parseFloat(capitale) : null,
       scenarioMacro: scenarioMacro || null,
+      // Campi input utente
+      maxUsa: form?.maxUSA || null,
+      preferenze: form?.preferenze || null,
+      escludiDistribuzione: form?.escludiDistribuzione ?? true,
+      bucketAttivo: bucketInfo?.attivo ?? false,
+      bucketPctBreve: bucketInfo?.attivo ? bucketInfo.breve.pct : null,
       metriche: {
         nEtf: consigliati.length,
         terTotale: parseFloat(consigliati.reduce((t, s) => t + (s.ter || 0), 0).toFixed(2)),

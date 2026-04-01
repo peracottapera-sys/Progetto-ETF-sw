@@ -286,16 +286,21 @@ module.exports = (pool) => {
 
   // Salva un run AI
   router.post('/ai-runs', authMiddleware, async (req, res) => {
-    const { portfolioId, profilo, orizzonte, capitale, scenarioMacro, metriche, etfSelezionati, spiegazione } = req.body;
+    const { portfolioId, profilo, orizzonte, capitale, scenarioMacro, metriche, etfSelezionati, spiegazione,
+            maxUsa, preferenze, escludiDistribuzione, bucketAttivo, bucketPctBreve } = req.body;
     try {
       const { rows } = await pool.query(
-        `INSERT INTO ai_runs (portfolio_id, utente, profilo, orizzonte, capitale, scenario_macro, metriche, etf_selezionati, spiegazione)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
+        `INSERT INTO ai_runs (portfolio_id, utente, profilo, orizzonte, capitale, scenario_macro, metriche, etf_selezionati, spiegazione,
+           max_usa, preferenze, escludi_distribuzione, bucket_attivo, bucket_pct_breve)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING id`,
         [portfolioId || null, req.user?.username || null, profilo, orizzonte || null,
          capitale || null, scenarioMacro || null,
          metriche ? JSON.stringify(metriche) : null,
          etfSelezionati ? JSON.stringify(etfSelezionati) : null,
-         spiegazione || null]
+         spiegazione || null,
+         maxUsa || null, preferenze || null,
+         escludiDistribuzione ?? false, bucketAttivo ?? false,
+         bucketPctBreve ?? null]
       );
       res.json({ ok: true, id: rows[0].id });
     } catch (e) {
@@ -311,7 +316,8 @@ module.exports = (pool) => {
     if (profilo) { where.push(`profilo = $${params.length + 1}`); params.push(profilo); }
     if (portfolioId) { where.push(`portfolio_id = $${params.length + 1}`); params.push(portfolioId); }
     const { rows } = await pool.query(
-      `SELECT id, portfolio_id, profilo, orizzonte, capitale, scenario_macro, metriche, etf_selezionati, created_at
+      `SELECT id, portfolio_id, profilo, orizzonte, capitale, scenario_macro, metriche, etf_selezionati, created_at,
+              max_usa, preferenze, escludi_distribuzione, bucket_attivo, bucket_pct_breve
        FROM ai_runs WHERE ${where.join(' AND ')}
        ORDER BY created_at DESC LIMIT $${params.length + 1}`,
       [...params, parseInt(limit)]
