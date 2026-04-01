@@ -1035,7 +1035,6 @@ ${filosofiaBucket === 'difensiva' && etfBucketDifensivo.length > 0 ? `
 ${etfBucketDifensivo.map(e => `- ${e.isin} | ${e.name} | TER ${e.ter}% | ${e.categoria}`).join('\n')}
 🚫 VIETATO per bucket DIFENSIVO: IE00BD9MMF62 e qualsiasi ETF con "Ultra-Short", "Overnight", "0-1Y", "Fed Funds" nel nome.` : ''}
 ` : ''}
-
 ${macroContext}
 ## ETF DISPONIBILI:
 ${etfDisponibili.map(e => {
@@ -1156,6 +1155,35 @@ REGOLE FORMATO:
       if (!haPrezzo) console.log(`  [crea-portafoglio] ⚠ ETF senza prezzo rimosso: ${s.isin}`);
       return haPrezzo;
     });
+
+    // Filtro bucket DIFENSIVO: rimuovi ETF monetari/ultra-short se la filosofia è difensiva
+    // L'AI li sceglie comunque nonostante il divieto nel prompt — blocchiamo lato codice
+    if (hasBuckets && filosofiaBucket === 'difensiva') {
+      const ISIN_VIETATI_DIFENSIVO = new Set([
+        'IE00BD9MMF62', // JPMorgan Ultra-Short
+        'LU0290358497', // Xtrackers EUR Overnight
+        'LU1190417599', // Lyxor Smart Overnight
+        'IE00BGYWT403', // Amundi Ultra Short
+      ]);
+      const KEYWORDS_VIETATE = ['ultra-short', 'ultrashort', 'overnight', 'fed funds', '0-1y', '0-3m'];
+      const rimossiDifensivo = selezione.filter(s => {
+        const nome = (s.name || '').toLowerCase();
+        return ISIN_VIETATI_DIFENSIVO.has(s.isin) || KEYWORDS_VIETATE.some(k => nome.includes(k));
+      });
+      if (rimossiDifensivo.length > 0) {
+        console.log(`  [bucket difensivo] ⚠ ETF monetari rimossi: ${rimossiDifensivo.map(s => s.isin).join(', ')}`);
+        // Sostituisci con il miglior ETF obbligazionario breve dal pool difensivo
+        const sostituti = etfBucketDifensivo.filter(e => !selezione.find(s => s.isin === e.isin));
+        selezione = selezione.filter(s => !rimossiDifensivo.find(r => r.isin === s.isin));
+        if (sostituti.length > 0 && rimossiDifensivo.length > 0) {
+          const sostituto = sostituti[0];
+          const pesoTotaleRimosso = rimossiDifensivo.reduce((t, s) => t + (s.peso || 0), 0);
+          selezione.push({ isin: sostituto.isin, name: sostituto.name, peso: pesoTotaleRimosso,
+            motivo: `ETF obbligazionario breve termine per bucket difensivo (TER ${sostituto.ter}%)`, bucket: 'BREVE' });
+          console.log(`  [bucket difensivo] ✓ Sostituito con ${sostituto.isin} (${sostituto.name})`);
+        }
+      }
+    }
 
 
 
