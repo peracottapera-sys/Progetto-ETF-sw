@@ -122,14 +122,14 @@ function descrizioneBucket(bucket, profilo, macroData, filosofia = 'difensiva') 
   const regoleBucket = {
     BREVE: {
       difensiva: {
-        Prudente:   'BUCKET DIFENSIVO: Protezione capitale. Solo obblig. breve duration (1-3Y), monetario EUR, Low Volatility. Max azionario 10%. DEVI includere almeno 1 ETF monetario o obbligazionario breve.',
-        Bilanciato: 'BUCKET DIFENSIVO: Stabilita. Obblig. breve-medio, Dividend, Low Vol. Max azionario 25%. DEVI includere almeno 1 ETF difensivo (monetario, obblig. breve o Low Volatility).',
-        Aggressivo: 'BUCKET DIFENSIVO: Riserva stabile. Obblig. breve termine, monetario EUR. Max azionario 20%. DEVI includere almeno 1 ETF monetario o obbligazionario breve per la protezione del capitale a breve.',
+        Prudente:   'BUCKET DIFENSIVO 🛡️: Protezione capitale con rendimento cedolare. DEVI scegliere ETF obbligazionari a breve-media duration (1-5Y): Gov EUR 1-3Y, Corporate IG EUR 1-3Y, Inflation-Linked breve. NON usare monetario puro (overnight/ultra-short) — quello è per il bucket opportunistico. Max azionario 0%.',
+        Bilanciato: 'BUCKET DIFENSIVO 🛡️: Stabilità con cedola. DEVI scegliere ETF obbligazionari breve-medio termine (1-5Y): Gov EUR, Corporate IG, Inflation-Linked. Opzionalmente Low Volatility equity max 25%. NON usare monetario puro overnight.',
+        Aggressivo: 'BUCKET DIFENSIVO 🛡️: Riserva stabile con rendimento. DEVI scegliere ETF obbligazionari breve termine (1-3Y): Gov EUR, Corporate IG EUR breve. Questo bucket genera cedola mentre aspetta opportunità di mercato. NON usare monetario puro overnight — quello è per il bucket opportunistico.',
       },
       opportunistica: {
-        Prudente:   'BUCKET OPPORTUNISTICO: Liquidita tattica. Monetario EUR ad alto rendimento, obblig. breve. Pronto per acquisti opportunistici. DEVI includere almeno 1 ETF monetario.',
-        Bilanciato: 'BUCKET OPPORTUNISTICO: Liquidita tattica da impiegare su cali di mercato (VIX elevato). Monetario EUR, obblig. breve, eventualmente ETF con bassa correlazione al mercato. DEVI includere almeno 1 ETF monetario o quasi-monetario.',
-        Aggressivo: 'BUCKET OPPORTUNISTICO: Polvere da sparo per acquisti a sconto durante crisi. Monetario EUR o obblig. breve a breve duration. Con VIX >25 questo bucket e pronto per entrare su azionario a prezzi scontati. DEVI includere almeno 1 ETF monetario o obbligazionario breve.',
+        Prudente:   'BUCKET OPPORTUNISTICO ⚡: Liquidità tattica massima. DEVI scegliere SOLO ETF monetari EUR (overnight, ultra-short, 0-3 mesi): JPMorgan Ultra-Short, Amundi Overnight, Xtrackers Overnight. NON usare obbligazionario a duration > 1Y. Pronto per acquisti rapidi su cali.',
+        Bilanciato: 'BUCKET OPPORTUNISTICO ⚡: Polvere da sparo tattica. DEVI scegliere SOLO ETF monetari EUR puri (overnight/ultra-short 0-3 mesi). Con VIX >25 entra su azionario. NON usare obbligazionario a duration > 1Y.',
+        Aggressivo: 'BUCKET OPPORTUNISTICO ⚡: Polvere da sparo per acquisti a sconto su crisi (VIX >25). DEVI scegliere SOLO ETF monetari EUR puri (overnight, ultra-short): JPMorgan Ultra-Short EUR, Amundi EUR Overnight. NON usare obbligazionario a duration > 1Y — la liquidità immediata è essenziale.',
       },
     },
     LUNGO: {
@@ -1004,7 +1004,12 @@ ${descrizioneBucket({tipo:'BREVE', pct_allocazione: bucketBreve.pct, orizzonte_a
 
 ${descrizioneBucket({tipo:'LUNGO', pct_allocazione: bucketLungo.pct, orizzonte_anni: bucketLungo.anni}, profilo, macroData, filosofiaBucket)}
 
-⚠️ REGOLA CRITICA BUCKET: DEVI selezionare ETF per ENTRAMBI i bucket. Il bucket BREVE deve avere almeno 1 ETF (preferibilmente monetario o obbligazionario breve). Il bucket LUNGO riceve il resto. Se le preferenze utente non sono compatibili con il bucket breve, includi comunque 1 ETF difensivo/monetario nel breve e concentra le preferenze nel lungo.
+🚫 VINCOLO BUCKET ASSOLUTO — VERIFICA OBBLIGATORIA PRIMA DEL JSON:
+1. La somma dei pesi degli ETF assegnati a bucket BREVE DEVE essere ESATTAMENTE ${bucketBreve.pct}% (±3% tolleranza). NON meno.
+2. La somma dei pesi degli ETF assegnati a bucket LUNGO DEVE essere ESATTAMENTE ${bucketLungo.pct}% (±3% tolleranza).
+3. Se la somma del bucket BREVE è < ${bucketBreve.pct - 3}%, DEVI aumentare il peso dell'ETF monetario nel breve sottraendo dal bucket lungo.
+4. Il bucket BREVE deve contenere ETF monetari o obbligazionari breve termine — NON azionario.
+5. VERIFICA FINALE: scrivi esplicitamente "Bucket BREVE: XX% — Bucket LUNGO: YY%" prima del JSON.
 ` : ''}
 
 ${macroContext}
