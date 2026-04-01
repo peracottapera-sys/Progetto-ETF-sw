@@ -220,7 +220,9 @@ export default function Dashboard({ setActiveTab }) {
       {acquistoEtf && <AcquistoModal etf={acquistoEtf} portfolioId={portfolioId} onClose={() => setAcquistoEtf(null)} />}
       {venditaEtf && <VenditaModal etf={venditaEtf} portfolioId={portfolioId} onClose={() => setVenditaEtf(null)} />}
       {showAI && <AIModal portfolio={currentPortfolio} onClose={() => setShowAI(false)} />}
-      {showCrea && <CreaPortafoglioModal portfolioId={portfolioId} initialProfilo={riskProfile} initialData={pendingData} onClose={() => { setShowCrea(false); setPendingData(null); }} />}
+      {showCrea && <CreaPortafoglioModal portfolioId={portfolioId} initialProfilo={riskProfile} initialData={pendingData}
+        onApplied={(rend) => { if (rend != null) setRendAtteso(rend); }}
+        onClose={() => { setShowCrea(false); setPendingData(null); }} />}
 
       {/* HEADER FISSO */}
       <div style={{

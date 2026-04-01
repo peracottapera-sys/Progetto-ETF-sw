@@ -4,7 +4,7 @@ import { useApp } from '../../context/AppContext';
 const API = process.env.REACT_APP_API_URL || (window.location.hostname === 'localhost' ? 'http://localhost:3001' : '');
 
 // aggiornato 2026-03-29 15:35
-function CreaPortafoglioModal({ portfolioId, onClose, initialProfilo, initialData }) {
+function CreaPortafoglioModal({ portfolioId, onClose, onApplied, initialProfilo, initialData }) {
   const { applicaPortafoglioAI, token, saveBuckets, saveAiRun } = useApp();
   const [form, setForm] = useState({
     profilo: initialProfilo || 'Bilanciato',
@@ -168,6 +168,7 @@ function CreaPortafoglioModal({ portfolioId, onClose, initialProfilo, initialDat
       spiegazione,
     });
 
+    if (onApplied && rendAttesoLordo != null) onApplied(rendAttesoLordo);
     onClose();
   };
 
