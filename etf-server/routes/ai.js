@@ -972,7 +972,41 @@ router.post('/crea-portafoglio', async (req, res) => {
          {tipo:'LUNGO', pct_allocazione: bucketLungo.pct, orizzonte_anni: bucketLungo.anni, rendimento_target_annuo: bucketLungo.targetRend}],
         profilo)
     : null;
-  console.log(`[${new Date().toLocaleTimeString()}] Crea portafoglio AI: ${profilo}, ETF disponibili dal DB: ${etfDisponibili.length}, capitale: €${capitale || 'N/D'}`);
+  // Per bucket difensivo: forza aggiunta degli ETF obbligazionari breve nel pool
+  // (vengono esclusi dal filtro Aggressivo ma servono per il bucket BREVE difensivo)
+  if (hasBuckets && filosofiaBucket === 'difensiva' && etfBucketDifensivo.length > 0) {
+    const isinGiaPresenti = new Set(etfDisponibili.map(e => e.isin));
+    for (const etf of etfBucketDifensivo) {
+      if (!isinGiaPresenti.has(etf.isin)) {
+        // Recupera dati completi dal DB
+        try {
+          const { rows: dettagli } = await db.query(
+            `SELECT isin, name, valuta, aum_mln, ter, perf1m, perf6m, perf1y, perf5y,
+                    perf2024, perf2023, perf2022, vol1y, vol3y, maxdd1y, maxdd5y, maxdd_max,
+                    distribuzione, data_lancio, partecipazioni, sostenibile, categoria
+             FROM etf_catalog WHERE isin = $1`, [etf.isin]
+          );
+          if (dettagli[0]) {
+            const e = dettagli[0];
+            etfDisponibili.push({
+              isin: e.isin, name: e.name, categoria: e.categoria || 'Obbligazionario Governativo',
+              emittente: e.name.split(' ')[0], ter: e.ter ?? 0, tassazione: 26,
+              capitalizzazione: e.aum_mln ?? 0, variabilita: e.vol1y ?? 0,
+              vol3y: e.vol3y ?? null, vol5y: null, maxDrawdown: e.maxdd1y ?? 0,
+              maxDrawdown5y: e.maxdd5y ?? 0, maxDrawdownMax: e.maxdd_max ?? null,
+              valuta: e.valuta || 'EUR', quotazione: 0,
+              perf1m: e.perf1m ?? 0, perf6m: e.perf6m ?? 0,
+              perf1y: e.perf1y ?? 0, perf5y: e.perf5y ?? 0,
+              perf2024: e.perf2024 ?? null, perf2023: e.perf2023 ?? null, perf2022: e.perf2022 ?? null,
+              distribuzione: e.distribuzione || 'N/D', dataLancio: e.data_lancio ? new Date(e.data_lancio).getFullYear() : null,
+              partecipazioni: e.partecipazioni ?? null, sostenibile: e.sostenibile ?? null,
+            });
+            console.log(`  [bucket difensivo] ✓ Aggiunto al pool: ${etf.isin} (${etf.name})`);
+          }
+        } catch (err) { console.log(`  [bucket difensivo] errore aggiunta ${etf.isin}:`, err.message); }
+      }
+    }
+  }
   log(EVENTI.AI_CREA_PORTAFOGLIO, { profilo, capitale: capitale || null, maxUSA, nEtfDisponibili: etfDisponibili.length }, req.user?.username).catch(() => {});
 
   const regoleBase = REGOLE_PROFILO[profilo] || REGOLE_PROFILO.Bilanciato;
@@ -1156,34 +1190,7 @@ REGOLE FORMATO:
       return haPrezzo;
     });
 
-    // Filtro bucket DIFENSIVO: rimuovi ETF monetari/ultra-short se la filosofia è difensiva
-    // L'AI li sceglie comunque nonostante il divieto nel prompt — blocchiamo lato codice
-    if (hasBuckets && filosofiaBucket === 'difensiva') {
-      const ISIN_VIETATI_DIFENSIVO = new Set([
-        'IE00BD9MMF62', // JPMorgan Ultra-Short
-        'LU0290358497', // Xtrackers EUR Overnight
-        'LU1190417599', // Lyxor Smart Overnight
-        'IE00BGYWT403', // Amundi Ultra Short
-      ]);
-      const KEYWORDS_VIETATE = ['ultra-short', 'ultrashort', 'overnight', 'fed funds', '0-1y', '0-3m'];
-      const rimossiDifensivo = selezione.filter(s => {
-        const nome = (s.name || '').toLowerCase();
-        return ISIN_VIETATI_DIFENSIVO.has(s.isin) || KEYWORDS_VIETATE.some(k => nome.includes(k));
-      });
-      if (rimossiDifensivo.length > 0) {
-        console.log(`  [bucket difensivo] ⚠ ETF monetari rimossi: ${rimossiDifensivo.map(s => s.isin).join(', ')}`);
-        // Sostituisci con il miglior ETF obbligazionario breve dal pool difensivo
-        const sostituti = etfBucketDifensivo.filter(e => !selezione.find(s => s.isin === e.isin));
-        selezione = selezione.filter(s => !rimossiDifensivo.find(r => r.isin === s.isin));
-        if (sostituti.length > 0 && rimossiDifensivo.length > 0) {
-          const sostituto = sostituti[0];
-          const pesoTotaleRimosso = rimossiDifensivo.reduce((t, s) => t + (s.peso || 0), 0);
-          selezione.push({ isin: sostituto.isin, name: sostituto.name, peso: pesoTotaleRimosso,
-            motivo: `ETF obbligazionario breve termine per bucket difensivo (TER ${sostituto.ter}%)`, bucket: 'BREVE' });
-          console.log(`  [bucket difensivo] ✓ Sostituito con ${sostituto.isin} (${sostituto.name})`);
-        }
-      }
-    }
+    // Nota: il filtro bucket difensivo è gestito solo via prompt — nessuna rimozione forzata post-risposta
 
 
 
