@@ -1067,7 +1067,8 @@ ${descrizioneBucket({tipo:'LUNGO', pct_allocazione: bucketLungo.pct, orizzonte_a
 2. La somma dei pesi degli ETF assegnati a bucket LUNGO DEVE essere ESATTAMENTE ${bucketLungo.pct}% (±3% tolleranza).
 3. Se la somma del bucket BREVE è < ${bucketBreve.pct - 3}%, DEVI aumentare il peso dell'ETF nel breve sottraendo dal bucket lungo.
 4. Il bucket BREVE deve contenere ETF monetari o obbligazionari breve termine — NON azionario.
-5. VERIFICA FINALE: scrivi esplicitamente "Bucket BREVE: XX% — Bucket LUNGO: YY%" prima del JSON.
+5. 🚫 MASSIMO 1 ETF nel bucket BREVE — concentra tutto il peso su un singolo ETF (es. 30% su un solo Gov 1-3Y). Non distribuire su più ETF simili.
+6. VERIFICA FINALE: scrivi esplicitamente "Bucket BREVE: XX% — Bucket LUNGO: YY%" prima del JSON.
 ${filosofiaBucket === 'difensiva' && etfBucketDifensivo.length > 0 ? `
 ✅ ETF OBBLIGAZIONARI BREVE TERMINE per bucket DIFENSIVO (scegli da questa lista):
 ${etfBucketDifensivo.map(e => `- ${e.isin} | ${e.name} | TER ${e.ter}% | ${e.categoria}`).join('\n')}
