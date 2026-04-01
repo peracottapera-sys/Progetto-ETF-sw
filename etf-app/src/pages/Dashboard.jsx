@@ -10,7 +10,7 @@ import CatalogPanel from './CatalogPanel';
 const API = process.env.REACT_APP_API_URL || (window.location.hostname === 'localhost' ? 'http://localhost:3001' : '');
 
 export default function Dashboard({ setActiveTab }) {
-  const { currentPortfolio, toggleEtfSelection, aggiornaPrezziBatch, token, loadPortfoliosFromDB, currentUser, pendingAIResult, setPendingAIResult, updateEtfBucket, getHasBuckets, loadBuckets, getBuckets } = useApp();
+  const { currentPortfolio, toggleEtfSelection, aggiornaPrezziBatch, token, loadPortfoliosFromDB, currentUser, pendingAIResult, setPendingAIResult, updateEtfBucket, getHasBuckets, loadBuckets, getBuckets, getAiRuns } = useApp();
   const [sortKey, setSortKey] = useState('tipo');
   const [sortDir, setSortDir] = useState(1);
   const [filter, setFilter] = useState('tutte');
@@ -36,6 +36,16 @@ export default function Dashboard({ setActiveTab }) {
   const [showCrea, setShowCrea] = useState(false);
   const [showMacro, setShowMacro] = useState(false);
   const [showCatalog, setShowCatalog] = useState(false);
+  const [rendAtteso, setRendAtteso] = useState(null); // rendimento atteso lordo dall'ultimo run AI
+
+  useEffect(() => {
+    if (!portfolioId || !getAiRuns) return;
+    getAiRuns({ portfolioId, limit: 1 }).then(runs => {
+      if (runs?.[0]?.metriche?.rendAttesoLordo) {
+        setRendAtteso(runs[0].metriche.rendAttesoLordo);
+      }
+    }).catch(() => {});
+  }, [portfolioId]);
   const [pendingData, setPendingData] = useState(null);
 
   const portfolioId = currentPortfolio?.id;
@@ -193,6 +203,13 @@ export default function Dashboard({ setActiveTab }) {
         : <span>ponderata per valore · <span style={{ color: 'var(--text-muted)' }}>lordo</span></span>,
       nota: 'Rendimenti passati · non garanzia futura',
     },
+    ...(rendAtteso != null ? [{
+      label: 'Rend. Atteso AI~',
+      value: `${rendAtteso}%`,
+      valueColor: rendAtteso < 3 ? 'var(--accent-red)' : rendAtteso > 10 ? 'var(--accent-amber)' : 'var(--accent-green)',
+      sub: <span style={{ color: 'var(--text-muted)' }}>lordo annuo · stima AI</span>,
+      nota: 'Proiezione su stor. 20-30A · non garantito',
+    }] : []),
     { label: 'Valore Acquistato', value: `€ ${valoreAcquistato.toLocaleString('it-IT', { maximumFractionDigits: 0 })}`, valueColor: 'var(--text-primary)', sub: 'valore di carico' },
   ];
 
