@@ -90,9 +90,13 @@ function assegnaBucketAutomatico(etf) {
   if (name.includes('ultra-short') || name.includes('ultra short') || name.includes('overnight')
       || name.includes('eonia') || name.includes('estr') || name.includes('money market')) return 'BREVE';
 
-  // BREVE: obbligazionario breve duration
-  if (cat.includes('obblig') && (cat.includes('1-3') || cat.includes('breve') || cat.includes('short')
-      || cat.includes('0-1') || cat.includes('1-5') || cat.includes('0-3'))) return 'BREVE';
+  // BREVE: obbligazionario breve duration — controlla categoria E nome
+  if (cat.includes('obblig') || cat.includes('government') || cat.includes('corporate')) {
+    const isBreve = cat.includes('1-3') || cat.includes('breve') || cat.includes('0-3') || cat.includes('1-5') || cat.includes('0-1')
+      || name.includes('1-3') || name.includes('1-5') || name.includes('0-3') || name.includes('short') || name.includes('breve')
+      || name.includes('1-3y') || name.includes('1-5y') || name.includes('0-3y');
+    if (isBreve) return 'BREVE';
+  }
 
   // BREVE: categoria "Altro" con vol bassa → probabilmente monetario/breve non classificato
   if (cat === 'altro' && etf.variabilita !== undefined && parseFloat(etf.variabilita) < 2) return 'BREVE';
