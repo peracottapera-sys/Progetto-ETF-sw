@@ -32,24 +32,26 @@ export default function Dashboard({ setActiveTab }) {
   };
 
   useEffect(() => { if (token) loadLastUpdate(); }, [token]);
+
+  // ── Tutti gli useState devono stare prima dei useEffect ──
   const [showAI, setShowAI] = useState(false);
   const [showCrea, setShowCrea] = useState(false);
   const [showMacro, setShowMacro] = useState(false);
   const [showCatalog, setShowCatalog] = useState(false);
-  const [rendAtteso, setRendAtteso] = useState(null); // rendimento atteso lordo dall'ultimo run AI
-
-  useEffect(() => {
-    if (!portfolioId || !getAiRuns) return;
-    getAiRuns({ portfolioId, limit: 1 }).then(runs => {
-      if (runs?.[0]?.metriche?.rendAttesoLordo) {
-        setRendAtteso(runs[0].metriche.rendAttesoLordo);
-      }
-    }).catch(() => {});
-  }, [portfolioId]);
+  const [rendAtteso, setRendAtteso] = useState(null);
   const [pendingData, setPendingData] = useState(null);
 
   const portfolioId = currentPortfolio?.id;
   const hasBuckets = getHasBuckets(portfolioId);
+
+  useEffect(() => {
+    const pid = currentPortfolio?.id;
+    if (!pid || typeof getAiRuns !== 'function') return;
+    getAiRuns({ portfolioId: pid, limit: 1 }).then(runs => {
+      const rend = runs?.[0]?.metriche?.rendAttesoLordo;
+      if (rend != null) setRendAtteso(parseFloat(rend));
+    }).catch(() => {});
+  }, [currentPortfolio?.id]);
 
   // Ricava orizzonte dai bucket se disponibile
   const buckets = getBuckets(portfolioId);
