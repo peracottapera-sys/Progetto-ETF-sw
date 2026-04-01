@@ -122,9 +122,9 @@ function descrizioneBucket(bucket, profilo, macroData, filosofia = 'difensiva') 
   const regoleBucket = {
     BREVE: {
       difensiva: {
-        Prudente:   'BUCKET DIFENSIVO 🛡️: Protezione capitale con rendimento cedolare. DEVI scegliere ETF obbligazionari a breve-media duration (1-5Y): Gov EUR 1-3Y, Corporate IG EUR 1-3Y, Inflation-Linked breve. NON usare monetario puro (overnight/ultra-short) — quello è per il bucket opportunistico. Max azionario 0%.',
-        Bilanciato: 'BUCKET DIFENSIVO 🛡️: Stabilità con cedola. DEVI scegliere ETF obbligazionari breve-medio termine (1-5Y): Gov EUR, Corporate IG, Inflation-Linked. Opzionalmente Low Volatility equity max 25%. NON usare monetario puro overnight.',
-        Aggressivo: 'BUCKET DIFENSIVO 🛡️: Riserva stabile con rendimento. DEVI scegliere ETF obbligazionari breve termine (1-3Y): Gov EUR, Corporate IG EUR breve. Questo bucket genera cedola mentre aspetta opportunità di mercato. NON usare monetario puro overnight — quello è per il bucket opportunistico.',
+        Prudente:   'BUCKET DIFENSIVO 🛡️: Protezione capitale con rendimento cedolare. DEVI scegliere ETF obbligazionari con duration 1-5 anni: Gov EUR 1-3Y, Corporate IG EUR 1-3Y, Inflation-Linked breve. 🚫 VIETATO: monetario overnight, ultra-short (duration < 1 anno), JPMorgan Ultra-Short, Amundi Overnight — quelli sono per il bucket opportunistico. Max azionario 0%.',
+        Bilanciato: 'BUCKET DIFENSIVO 🛡️: Stabilità con cedola. DEVI scegliere ETF obbligazionari con duration 1-5 anni: Gov EUR 1-3Y, Corporate IG EUR 1-5Y, Inflation-Linked. 🚫 VIETATO: monetario overnight, ultra-short (duration < 1 anno), JPMorgan Ultra-Short. Opzionalmente Low Volatility equity max 25%.',
+        Aggressivo: 'BUCKET DIFENSIVO 🛡️: Riserva stabile con rendimento cedolare. DEVI scegliere ETF obbligazionari con duration 1-3 anni: Gov EUR 1-3Y (es. Xtrackers EUR Govt 1-3Y, iShares EUR Govt 1-3Y), Corporate IG EUR breve. 🚫 VIETATO: monetario overnight, ultra-short (duration < 1 anno), JPMorgan Ultra-Short, qualsiasi ETF con "Ultra-Short", "Overnight", "0-3M" nel nome.',
       },
       opportunistica: {
         Prudente:   'BUCKET OPPORTUNISTICO ⚡: Liquidità tattica massima. DEVI scegliere SOLO ETF monetari EUR (overnight, ultra-short, 0-3 mesi): JPMorgan Ultra-Short, Amundi Overnight, Xtrackers Overnight. NON usare obbligazionario a duration > 1Y. Pronto per acquisti rapidi su cali.',
@@ -945,7 +945,27 @@ router.post('/crea-portafoglio', async (req, res) => {
   } catch (e) { console.log('[AI] macro non disponibile:', e.message); }
   const { bucketBreve, bucketLungo } = req.body;
   const hasBuckets = bucketBreve && bucketLungo;
-  const filosofiaBucket = bucketBreve?.filosofia || 'difensiva'; // 'difensiva' | 'opportunistica'
+  const filosofiaBucket = bucketBreve?.filosofia || 'difensiva';
+
+  // Per bucket difensivo: carica ETF obbligazionari breve termine da suggerire esplicitamente
+  let etfBucketDifensivo = [];
+  if (hasBuckets && filosofiaBucket === 'difensiva') {
+    try {
+      const { rows: obBreve } = await db.query(`
+        SELECT isin, name, ter, categoria FROM etf_catalog
+        WHERE quotazione > 0
+        AND categoria IN ('Obbligazionario Governativo', 'Obbligazionario Corporate')
+        AND (name ILIKE '%1-3%' OR name ILIKE '%1-5%' OR name ILIKE '%0-3%' OR name ILIKE '%breve%' OR name ILIKE '%short%')
+        AND (name NOT ILIKE '%ultra-short%' AND name NOT ILIKE '%overnight%' AND name NOT ILIKE '%0-1%' AND name NOT ILIKE '%fed funds%')
+        AND ter <= 0.25
+        AND aum_mln >= 200
+        ORDER BY aum_mln DESC
+        LIMIT 8
+      `);
+      etfBucketDifensivo = obBreve;
+      console.log(`  [bucket difensivo] ETF obblig breve disponibili: ${obBreve.map(e => e.isin).join(', ')}`);
+    } catch (e) { console.log('  [bucket difensivo] errore query:', e.message); }
+  }
   const checkRend = hasBuckets
     ? verificaRendimentoComplessivo(
         [{tipo:'BREVE', pct_allocazione: bucketBreve.pct, orizzonte_anni: bucketBreve.anni, rendimento_target_annuo: bucketBreve.targetRend},
@@ -1007,9 +1027,13 @@ ${descrizioneBucket({tipo:'LUNGO', pct_allocazione: bucketLungo.pct, orizzonte_a
 🚫 VINCOLO BUCKET ASSOLUTO — VERIFICA OBBLIGATORIA PRIMA DEL JSON:
 1. La somma dei pesi degli ETF assegnati a bucket BREVE DEVE essere ESATTAMENTE ${bucketBreve.pct}% (±3% tolleranza). NON meno.
 2. La somma dei pesi degli ETF assegnati a bucket LUNGO DEVE essere ESATTAMENTE ${bucketLungo.pct}% (±3% tolleranza).
-3. Se la somma del bucket BREVE è < ${bucketBreve.pct - 3}%, DEVI aumentare il peso dell'ETF monetario nel breve sottraendo dal bucket lungo.
+3. Se la somma del bucket BREVE è < ${bucketBreve.pct - 3}%, DEVI aumentare il peso dell'ETF nel breve sottraendo dal bucket lungo.
 4. Il bucket BREVE deve contenere ETF monetari o obbligazionari breve termine — NON azionario.
 5. VERIFICA FINALE: scrivi esplicitamente "Bucket BREVE: XX% — Bucket LUNGO: YY%" prima del JSON.
+${filosofiaBucket === 'difensiva' && etfBucketDifensivo.length > 0 ? `
+✅ ETF OBBLIGAZIONARI BREVE TERMINE per bucket DIFENSIVO (scegli da questa lista):
+${etfBucketDifensivo.map(e => `- ${e.isin} | ${e.name} | TER ${e.ter}% | ${e.categoria}`).join('\n')}
+🚫 VIETATO per bucket DIFENSIVO: IE00BD9MMF62 e qualsiasi ETF con "Ultra-Short", "Overnight", "0-1Y", "Fed Funds" nel nome.` : ''}
 ` : ''}
 
 ${macroContext}
