@@ -1037,7 +1037,11 @@ ${preferenze ? `
 ## REGOLE OBBLIGATORIE PROFILO ${profilo.toUpperCase()}:
 - Rendimento atteso: ${regole.rendimentoMin} / ${regole.rendimentoMax}
 - ⚠️ VINCOLO RENDIMENTO MINIMO: il portafoglio deve avere un rendimento atteso NETTO stimato ≥ ${RENDIMENTO_MIN_PROFILO[profilo] || 4.0}% annuo.
-- 🚫 VINCOLO RENDIMENTO MASSIMO ASSOLUTO: il rendimento netto atteso dichiarato NON PUÒ MAI superare ${{Prudente:'4.5',Bilanciato:'7.0',Aggressivo:'10.0'}[profilo] || '7.0'}% annuo. Questo è un HARD LIMIT invalicabile. Se il tuo calcolo supera questo valore, hai sbagliato metodo — riparti dai rendimenti storici di lungo periodo nella tabella sotto.
+- 🚫 VINCOLO RENDIMENTO MASSIMO ASSOLUTO: il rendimento lordo atteso dichiarato NON PUÒ MAI superare ${
+  rendimentoTarget
+    ? (rendimentoTarget + 1.0).toFixed(1)  // cap = target + 1% di tolleranza
+    : {Prudente:'5.5',Bilanciato:'8.0',Aggressivo:'11.0'}[profilo] || '8.0'
+}% lordo annuo. Questo è un HARD LIMIT invalicabile.
 ${rendimentoTarget ? `- 🎯 OBIETTIVO RENDIMENTO SCELTO DALL'UTENTE: ${rendimentoTarget}% lordo annuo complessivo. Costruisci il portafoglio per avvicinarti a questo target.${hasBuckets && rendimentoTargetLungo ? ` Con bucket BREVE al ${bucketBreve.pct}% (rendimento atteso ~${filosofiaBucket==='difensiva'?'2.5':'3.0'}%), il bucket LUNGO (${bucketLungo.pct}%) deve puntare a ~${rendimentoTargetLungo}% lordo — privilegia asset class con rendimento storico più alto: azionario growth, emergenti, small cap, tematici.` : ''}` : ''}
 - ⚠️ METODO STIMA RENDIMENTO OBBLIGATORIO: usa ESCLUSIVAMENTE questi rendimenti attesi storici di lungo periodo (20-30 anni). Le performance 2022-2024 sono VIETATE come base di stima:
   Azionario Globale/USA/Europa: ~7% lordo | Emergenti: ~6-7% lordo | Obblig. Gov EUR: ~2-3% lordo | Obblig. Corp EUR: ~3-4% lordo | Inflation-Linked: ~2-3% lordo | Oro/Commodity: ~4-5% lordo | Monetario EUR: ~2-3% lordo
