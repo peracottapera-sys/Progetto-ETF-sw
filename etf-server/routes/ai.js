@@ -45,7 +45,7 @@ const REGOLE_PROFILO = {
   },
 };
 
-// ── Rendimento minimo per profilo — aggiornato 2026-03-29 15:35 (% annuo netto stimato) ─────────────────
+// ── Rendimento minimo per profilo (% annuo netto stimato) ─────────────────
 const RENDIMENTO_MIN_PROFILO = {
   Prudente:   3.5,  // inflazione ~2% + 2% min = ~4%, netto ~3.5%
   Bilanciato: 4.5,  // inflazione ~2% + 2.5% min = ~4.5%
@@ -81,81 +81,41 @@ function verificaRendimentoComplessivo(buckets, profilo) {
 
 // ── Assegnazione automatica ETF ai bucket ────────────────────────────────
 function assegnaBucketAutomatico(etf) {
-  const cat  = (etf.categoria || '').toLowerCase();
-  const sb   = (etf.smartBeta || '').toLowerCase();
-  const name = (etf.name || '').toLowerCase();
+  // Regole: categoria → bucket
+  const cat = (etf.categoria || '').toLowerCase();
+  const sb  = (etf.smartBeta || '').toLowerCase();
 
-  // BREVE: monetario, liquidità, ultra-short, overnight
+  // BREVE: obbligazionario breve, monetario, low volatility, dividend
   if (cat.includes('monetar') || cat.includes('liquidit')) return 'BREVE';
-  if (name.includes('ultra-short') || name.includes('ultra short') || name.includes('overnight')
-      || name.includes('eonia') || name.includes('estr') || name.includes('money market')) return 'BREVE';
-
-  // BREVE: obbligazionario breve duration — controlla categoria E nome
-  if (cat.includes('obblig') || cat.includes('government') || cat.includes('corporate')) {
-    const isBreve = cat.includes('1-3') || cat.includes('breve') || cat.includes('0-3') || cat.includes('1-5') || cat.includes('0-1')
-      || name.includes('1-3') || name.includes('1-5') || name.includes('0-3') || name.includes('short') || name.includes('breve')
-      || name.includes('1-3y') || name.includes('1-5y') || name.includes('0-3y');
-    if (isBreve) return 'BREVE';
-  }
-
-  // BREVE: categoria "Altro" con vol bassa → probabilmente monetario/breve non classificato
-  if (cat === 'altro' && etf.variabilita !== undefined && parseFloat(etf.variabilita) < 2) return 'BREVE';
-
-  // BREVE: Smart Beta difensivi
+  if (cat.includes('obblig') && (cat.includes('1-3') || cat.includes('breve') || cat.includes('short') || cat.includes('0-1') || cat.includes('1-5'))) return 'BREVE';
   if (sb === 'low volatility' || sb === 'dividend') return 'BREVE';
 
-  // LUNGO: azionario, tematico, emergenti, commodity
+  // LUNGO: azionario, tematico, emergenti, commodity, oro
   if (cat.includes('azionario') || cat.includes('equity') || cat.includes('tematico') || cat.includes('emergenti')) return 'LUNGO';
-  if (cat.includes('commodity') || cat.includes('real asset')) return 'LUNGO';
-
-  // ORO: bucket dipende dalla filosofia — di default LUNGO ma può essere hedge nel breve
-  // L'AI decide in base al contesto, qui lo mettiamo LUNGO come default
-  if (cat.includes('oro') || cat.includes('metalli') || cat.includes('gold') || name.includes('gold') || name.includes(' oro')) return 'LUNGO';
-
-  // Smart Beta growth
+  if (cat.includes('oro') || cat.includes('commodity') || cat.includes('real asset')) return 'LUNGO';
   if (sb === 'momentum' || sb === 'small cap' || sb === 'value') return 'LUNGO';
 
-  // Default: LUNGO
+  // Default: LUNGO per tutto il resto (obbligaz. medio-lungo, corporate, ecc.)
   return 'LUNGO';
 }
 
 // ── Descrizione testuale bucket per prompt ─────────────────────────────────
-function descrizioneBucket(bucket, profilo, macroData, filosofia = 'difensiva') {
+function descrizioneBucket(bucket, profilo, macroData) {
   const orizzLabel = bucket.orizzonte_anni <= 4 ? 'BREVE' : bucket.orizzonte_anni >= 10 ? 'LUNGO' : 'MEDIO';
-
   const regoleBucket = {
     BREVE: {
-      difensiva: {
-        Prudente:   'BUCKET DIFENSIVO 🛡️: Protezione capitale con rendimento cedolare. DEVI scegliere ETF obbligazionari con duration 1-5 anni: Gov EUR 1-3Y, Corporate IG EUR 1-3Y, Inflation-Linked breve. 🚫 VIETATO: monetario overnight, ultra-short (duration < 1 anno), JPMorgan Ultra-Short, Amundi Overnight — quelli sono per il bucket opportunistico. Max azionario 0%.',
-        Bilanciato: 'BUCKET DIFENSIVO 🛡️: Stabilità con cedola. DEVI scegliere ETF obbligazionari con duration 1-5 anni: Gov EUR 1-3Y, Corporate IG EUR 1-5Y, Inflation-Linked. 🚫 VIETATO: monetario overnight, ultra-short (duration < 1 anno), JPMorgan Ultra-Short. Opzionalmente Low Volatility equity max 25%.',
-        Aggressivo: 'BUCKET DIFENSIVO 🛡️: Riserva stabile con rendimento cedolare. DEVI scegliere ETF obbligazionari con duration 1-3 anni: Gov EUR 1-3Y (es. Xtrackers EUR Govt 1-3Y, iShares EUR Govt 1-3Y), Corporate IG EUR breve. 🚫 VIETATO: monetario overnight, ultra-short (duration < 1 anno), JPMorgan Ultra-Short, qualsiasi ETF con "Ultra-Short", "Overnight", "0-3M" nel nome.',
-      },
-      opportunistica: {
-        Prudente:   'BUCKET OPPORTUNISTICO ⚡: Liquidità tattica massima. DEVI scegliere SOLO ETF monetari EUR (overnight, ultra-short, 0-3 mesi): JPMorgan Ultra-Short, Amundi Overnight, Xtrackers Overnight. NON usare obbligazionario a duration > 1Y. Pronto per acquisti rapidi su cali.',
-        Bilanciato: 'BUCKET OPPORTUNISTICO ⚡: Polvere da sparo tattica. DEVI scegliere SOLO ETF monetari EUR puri (overnight/ultra-short 0-3 mesi). Con VIX >25 entra su azionario. NON usare obbligazionario a duration > 1Y.',
-        Aggressivo: 'BUCKET OPPORTUNISTICO ⚡: Polvere da sparo per acquisti a sconto su crisi (VIX >25). DEVI scegliere SOLO ETF monetari EUR puri (overnight, ultra-short): JPMorgan Ultra-Short EUR, Amundi EUR Overnight. NON usare obbligazionario a duration > 1Y — la liquidità immediata è essenziale.',
-      },
+      Prudente:   'Protezione capitale. Solo obblig. breve duration (1-3Y), monetario EUR, Low Volatility. Max azionario 10%.',
+      Bilanciato: 'Stabilita. Obblig. breve-medio, Dividend, Low Vol. Max azionario 25%.',
+      Aggressivo: 'Liquidita tattica. Obblig. breve, monetario, Value ciclici selettivi. Max azionario 35%.',
     },
     LUNGO: {
-      difensiva: {
-        Prudente:   'BUCKET CRESCITA: Crescita prudente. Azionario difensivo (Quality, Dividend), obblig. medio-lungo. Max azionario 35%.',
-        Bilanciato: 'BUCKET CRESCITA: Crescita bilanciata. Mix azionario globale e obblig. Fattori Value/Quality. Azionario 50-70%.',
-        Aggressivo: 'BUCKET CRESCITA: Massimizzazione. Azionario globale, emergenti, tematici, Small Cap, Momentum. Azionario 80%+.',
-      },
-      opportunistica: {
-        Prudente:   'BUCKET CRESCITA: Crescita prudente con tilt difensivo. Azionario Quality e Dividend, obblig. medio termine.',
-        Bilanciato: 'BUCKET CRESCITA: Mix azionario e obbligazionario. Mantieni esposizione per il rialzo di lungo periodo mentre il bucket breve aspetta opportunita.',
-        Aggressivo: 'BUCKET CRESCITA: Azionario aggressivo globale, emergenti, tematici. Questo e il motore di rendimento mentre il bucket breve aspetta opportunita di acquisto.',
-      },
+      Prudente:   'Crescita prudente. Azionario difensivo (Quality, Dividend), obblig. medio-lungo. Max azionario 35%.',
+      Bilanciato: 'Crescita bilanciata. Mix azionario globale e obblig. Fattori Value/Quality. Azionario 50-70%.',
+      Aggressivo: 'Massimizzazione. Azionario globale, emergenti, tematici, Small Cap, Momentum. Azionario 80%+.',
     },
   };
-
-  const regola = regoleBucket[orizzLabel]?.[filosofia]?.[profilo]
-    || regoleBucket[orizzLabel]?.difensiva?.[profilo]
-    || 'Parametri standard del profilo.';
-
-  const orizzonteLabel = bucket.orizzonte_anni >= 10 ? "oltre 10 anni" : bucket.orizzonte_anni + " anni";
-  return `Bucket ${bucket.tipo} (${bucket.pct_allocazione}% capitale | Orizzonte: ${orizzonteLabel} | Filosofia: ${filosofia.toUpperCase()})
+  const regola = regoleBucket[orizzLabel]?.[profilo] || 'Parametri standard del profilo.';
+  return `Bucket ${bucket.tipo} (${bucket.pct_allocazione}% capitale | Orizzonte: ${bucket.orizzonte_anni} anni | ${orizzLabel})
 Regole: ${regola}
 Target rendimento: ${bucket.rendimento_target_annuo ? bucket.rendimento_target_annuo + '% annuo' : 'non specificato (usa minimo profilo)'}`;
 }
@@ -852,50 +812,24 @@ async function getEtfPerProfilo(profilo, escludiDistribuzione = false, filtriRil
   } catch {}
 
   const { rows: _rawRows } = await db.query(`
-    WITH pool_grande AS (
-      -- Top 270 ETF per AUM (i "grandi" — sempre eligibili)
-      SELECT isin, name, valuta, aum_mln, ter,
-             perf1m, perf6m, perf1y, perf5y,
-             perf2024, perf2023, perf2022,
-             vol1y, vol3y, vol5y,
-             maxdd1y, maxdd5y, maxdd_max,
-             distribuzione, categoria, smart_beta_factor,
-             data_lancio, partecipazioni, sostenibile
-      FROM etf_catalog
-      WHERE active = 1
-        AND aum_mln >= $1
-        AND (ter IS NULL OR ter <= $2)
-        ${escludiVolFilter}
-        ${escludiDdFilter}
-        AND (maxdd5y IS NULL OR maxdd5y >= $5)
-        AND (perf1y IS NOT NULL OR perf5y IS NOT NULL OR perf6m IS NOT NULL)
-        ${escludiObblAggressivo}
-      ORDER BY aum_mln DESC
-      LIMIT 270
-    ),
-    pool_giovani AS (
-      -- Top 30 ETF giovani sotto soglia AUM (promettenti)
-      SELECT isin, name, valuta, aum_mln, ter,
-             perf1m, perf6m, perf1y, perf5y,
-             perf2024, perf2023, perf2022,
-             vol1y, vol3y, vol5y,
-             maxdd1y, maxdd5y, maxdd_max,
-             distribuzione, categoria, smart_beta_factor,
-             data_lancio, partecipazioni, sostenibile
-      FROM etf_catalog
-      WHERE active = 1
-        AND aum_mln >= 10
-        AND aum_mln < $1
-        AND data_lancio >= CURRENT_DATE - INTERVAL '3 years'
-        AND (ter IS NULL OR ter <= $2)
-        AND (perf1y IS NOT NULL OR perf5y IS NOT NULL OR perf6m IS NOT NULL)
-        ${escludiObblAggressivo}
-      ORDER BY data_lancio DESC
-      LIMIT 30
-    )
-    SELECT * FROM pool_grande
-    UNION
-    SELECT * FROM pool_giovani
+    SELECT isin, name, valuta, aum_mln, ter,
+           perf1m, perf6m, perf1y, perf5y,
+           perf2024, perf2023, perf2022,
+           vol1y, vol3y, vol5y,
+           maxdd1y, maxdd5y, maxdd_max,
+           distribuzione, categoria, smart_beta_factor,
+           data_lancio, partecipazioni, sostenibile
+    FROM etf_catalog
+    WHERE active = 1
+      AND aum_mln >= $1
+      AND (ter IS NULL OR ter <= $2)
+      ${escludiVolFilter}
+      ${escludiDdFilter}
+      AND (maxdd5y IS NULL OR maxdd5y >= $5)
+      AND (perf1y IS NOT NULL OR perf5y IS NOT NULL)
+      ${escludiObblAggressivo}
+    ORDER BY aum_mln DESC
+    LIMIT 300
   `, [f.minAum, f.maxTer, f.maxVol, f.maxDrawdown, f.maxDd5y]);
   const rows = _rawRows
     .filter(e => isinConPrezzoInDB.has(e.isin))
@@ -934,7 +868,7 @@ async function getEtfPerProfilo(profilo, escludiDistribuzione = false, filtriRil
 
 // POST /api/ai/crea-portafoglio
 router.post('/crea-portafoglio', async (req, res) => {
-  const { profilo, orizzonteAnni, capitale, preferenze, escludiDistribuzione, maxUSA, rendimentoTarget, rendimentoTargetLungo } = req.body;
+  const { profilo, orizzonteAnni, capitale, preferenze, escludiDistribuzione, maxUSA } = req.body;
   if (!profilo) return res.status(400).json({ error: 'Dati mancanti' });
 
   // Carica ETF dal DB filtrati per profilo + notizie macro in parallelo
@@ -947,70 +881,15 @@ router.post('/crea-portafoglio', async (req, res) => {
     macroContext = testo || '';
     macroData = dati || {};
   } catch (e) { console.log('[AI] macro non disponibile:', e.message); }
-  const { bucketBreve, bucketLungo } = req.body;
+  const { bucketBreve, bucketLungo } = req.body; // opzionali: { pct, anni, targetRend }
   const hasBuckets = bucketBreve && bucketLungo;
-  const filosofiaBucket = bucketBreve?.filosofia || 'difensiva';
-
-  // Per bucket difensivo: carica ETF obbligazionari breve termine da suggerire esplicitamente
-  let etfBucketDifensivo = [];
-  if (hasBuckets && filosofiaBucket === 'difensiva') {
-    try {
-      const { rows: obBreve } = await db.query(`
-        SELECT isin, name, ter, categoria FROM etf_catalog
-        WHERE quotazione > 0
-        AND categoria IN ('Obbligazionario Governativo', 'Obbligazionario Corporate')
-        AND (name ILIKE '%1-3%' OR name ILIKE '%1-5%' OR name ILIKE '%0-3%' OR name ILIKE '%breve%' OR name ILIKE '%short%')
-        AND (name NOT ILIKE '%ultra-short%' AND name NOT ILIKE '%overnight%' AND name NOT ILIKE '%0-1%' AND name NOT ILIKE '%fed funds%')
-        AND ter <= 0.25
-        AND aum_mln >= 200
-        ORDER BY aum_mln DESC
-        LIMIT 8
-      `);
-      etfBucketDifensivo = obBreve;
-      console.log(`  [bucket difensivo] ETF obblig breve disponibili: ${obBreve.map(e => e.isin).join(', ')}`);
-    } catch (e) { console.log('  [bucket difensivo] errore query:', e.message); }
-  }
   const checkRend = hasBuckets
     ? verificaRendimentoComplessivo(
         [{tipo:'BREVE', pct_allocazione: bucketBreve.pct, orizzonte_anni: bucketBreve.anni, rendimento_target_annuo: bucketBreve.targetRend},
          {tipo:'LUNGO', pct_allocazione: bucketLungo.pct, orizzonte_anni: bucketLungo.anni, rendimento_target_annuo: bucketLungo.targetRend}],
         profilo)
     : null;
-  // Per bucket difensivo: forza aggiunta degli ETF obbligazionari breve nel pool
-  // (vengono esclusi dal filtro Aggressivo ma servono per il bucket BREVE difensivo)
-  if (hasBuckets && filosofiaBucket === 'difensiva' && etfBucketDifensivo.length > 0) {
-    const isinGiaPresenti = new Set(etfDisponibili.map(e => e.isin));
-    for (const etf of etfBucketDifensivo) {
-      if (!isinGiaPresenti.has(etf.isin)) {
-        // Recupera dati completi dal DB
-        try {
-          const { rows: dettagli } = await db.query(
-            `SELECT isin, name, valuta, aum_mln, ter, perf1m, perf6m, perf1y, perf5y,
-                    perf2024, perf2023, perf2022, vol1y, vol3y, maxdd1y, maxdd5y, maxdd_max,
-                    distribuzione, data_lancio, partecipazioni, sostenibile, categoria
-             FROM etf_catalog WHERE isin = $1`, [etf.isin]
-          );
-          if (dettagli[0]) {
-            const e = dettagli[0];
-            etfDisponibili.push({
-              isin: e.isin, name: e.name, categoria: e.categoria || 'Obbligazionario Governativo',
-              emittente: e.name.split(' ')[0], ter: e.ter ?? 0, tassazione: 26,
-              capitalizzazione: e.aum_mln ?? 0, variabilita: e.vol1y ?? 0,
-              vol3y: e.vol3y ?? null, vol5y: null, maxDrawdown: e.maxdd1y ?? 0,
-              maxDrawdown5y: e.maxdd5y ?? 0, maxDrawdownMax: e.maxdd_max ?? null,
-              valuta: e.valuta || 'EUR', quotazione: 0,
-              perf1m: e.perf1m ?? 0, perf6m: e.perf6m ?? 0,
-              perf1y: e.perf1y ?? 0, perf5y: e.perf5y ?? 0,
-              perf2024: e.perf2024 ?? null, perf2023: e.perf2023 ?? null, perf2022: e.perf2022 ?? null,
-              distribuzione: e.distribuzione || 'N/D', dataLancio: e.data_lancio ? new Date(e.data_lancio).getFullYear() : null,
-              partecipazioni: e.partecipazioni ?? null, sostenibile: e.sostenibile ?? null,
-            });
-            console.log(`  [bucket difensivo] ✓ Aggiunto al pool: ${etf.isin} (${etf.name})`);
-          }
-        } catch (err) { console.log(`  [bucket difensivo] errore aggiunta ${etf.isin}:`, err.message); }
-      }
-    }
-  }
+  console.log(`[${new Date().toLocaleTimeString()}] Crea portafoglio AI: ${profilo}, ETF disponibili dal DB: ${etfDisponibili.length}, capitale: €${capitale || 'N/D'}`);
   log(EVENTI.AI_CREA_PORTAFOGLIO, { profilo, capitale: capitale || null, maxUSA, nEtfDisponibili: etfDisponibili.length }, req.user?.username).catch(() => {});
 
   const regoleBase = REGOLE_PROFILO[profilo] || REGOLE_PROFILO.Bilanciato;
@@ -1023,7 +902,7 @@ Crea un portafoglio ETF ottimale rispettando RIGOROSAMENTE le regole del profilo
 ## PARAMETRI INVESTITORE:
 - Profilo: ${profilo}
 - Orizzonte temporale: ${parseInt(orizzonteAnni||5)<=3 ? 'BREVE (entro 5 anni)' : parseInt(orizzonteAnni||5)<=7 ? 'MEDIO (5-10 anni)' : 'LUNGO (oltre 10 anni)'}
-- ⚠️ Nella spiegazione usa SEMPRE "orizzonte LUNGO", "orizzonte MEDIO" o "orizzonte BREVE" — NON scrivere mai numeri di anni come "15 anni" o "7 anni".
+- Classe orizzonte: ${parseInt(orizzonteAnni||5)<=3?'BREVE (<=3 anni)':parseInt(orizzonteAnni||5)<=7?'MEDIO (3-7 anni)':'LUNGO (>7 anni)'}
 - ${regole.noteOrizzonte || ''}
 - POSIZIONAMENTO TATTICO: ${(() => { try { const pt = getPosizionetattica(profilo, orizzonteAnni||5, macroData); return `[${pt.scenario}] ${pt.testo}`; } catch(e) { return 'standard'; } })()}
 - Categorie obbligazionarie consigliate per orizzonte: ${regole.durataObbligaz || 'standard'}
@@ -1037,19 +916,15 @@ ${preferenze ? `
 ## REGOLE OBBLIGATORIE PROFILO ${profilo.toUpperCase()}:
 - Rendimento atteso: ${regole.rendimentoMin} / ${regole.rendimentoMax}
 - ⚠️ VINCOLO RENDIMENTO MINIMO: il portafoglio deve avere un rendimento atteso NETTO stimato ≥ ${RENDIMENTO_MIN_PROFILO[profilo] || 4.0}% annuo.
-- 🚫 VINCOLO RENDIMENTO MASSIMO ASSOLUTO: il rendimento lordo atteso dichiarato NON PUÒ MAI superare ${
-  rendimentoTarget
-    ? (rendimentoTarget + 1.0).toFixed(1)  // cap = target + 1% di tolleranza
-    : {Prudente:'5.5',Bilanciato:'8.0',Aggressivo:'11.0'}[profilo] || '8.0'
-}% lordo annuo. Questo è un HARD LIMIT invalicabile.
-${rendimentoTarget ? `- 🎯 OBIETTIVO RENDIMENTO SCELTO DALL'UTENTE: ${rendimentoTarget}% lordo annuo complessivo. Costruisci il portafoglio per avvicinarti a questo target.${hasBuckets && rendimentoTargetLungo ? ` Con bucket BREVE al ${bucketBreve.pct}% (rendimento atteso ~${filosofiaBucket==='difensiva'?'2.5':'3.0'}%), il bucket LUNGO (${bucketLungo.pct}%) deve puntare a ~${rendimentoTargetLungo}% lordo — privilegia asset class con rendimento storico più alto: azionario growth, emergenti, small cap, tematici.` : ''}` : ''}
-- ⚠️ METODO STIMA RENDIMENTO OBBLIGATORIO: usa ESCLUSIVAMENTE questi rendimenti attesi storici di lungo periodo (20-30 anni). Le performance 2022-2024 sono VIETATE come base di stima:
+- ⚠️ VINCOLO RENDIMENTO MASSIMO: NON proiettare mai un rendimento netto superiore a ${{Prudente:'4.5',Bilanciato:'7.0',Aggressivo:'10.0'}[profilo] || '7.0'}% annuo. I dati perf5y riflettono un ciclo eccezionale (2020-2024) non ripetibile — NON usarli come stima futura.
+- ⚠️ METODO STIMA RENDIMENTO: usa SEMPRE questi rendimenti attesi storici di lungo periodo (20-30 anni), NON perf5y:
   Azionario Globale/USA/Europa: ~7% lordo | Emergenti: ~6-7% lordo | Obblig. Gov EUR: ~2-3% lordo | Obblig. Corp EUR: ~3-4% lordo | Inflation-Linked: ~2-3% lordo | Oro/Commodity: ~4-5% lordo | Monetario EUR: ~2-3% lordo
-  Rendimento netto = (rendimento lordo asset class × peso%) sommato su tutti gli ETF × 0.74 (tasse 26%) − TER ponderato
+  Rendimento netto = lordo × 0.74 (dopo tasse 26%) − TER ponderato
+- 🚫 RANGE AZIONARIO FISSO: il range azionario ${regole.azionarioTarget-regole.azionarioRange}%-${regole.azionarioTarget+regole.azionarioRange}% è FISSO e NON si espande con obiettivi di rendimento più alti. Per raggiungere rendimenti più alti usa asset class più performanti DENTRO il range (es. più emergenti, small cap, tematici growth) — NON aumentare la quota azionaria oltre il limite.
 - Quota azionaria: OBBLIGATORIA tra ${regole.azionarioTarget-regole.azionarioRange}% e ${regole.azionarioTarget+regole.azionarioRange}% (target ${regole.azionarioTarget}%). Verifica i pesi prima di rispondere.
-${hasBuckets ? `- ⚠️ QUOTA AZIONARIA CON BUCKET: il bucket BREVE (${bucketBreve.pct}%) è prevalentemente monetario/difensivo — NON conta come azionario. Il target azionario ${regole.azionarioTarget-regole.azionarioRange}%-${regole.azionarioTarget+regole.azionarioRange}% si applica al TOTALE del portafoglio. Quindi il bucket LUNGO (${bucketLungo.pct}%) deve contenere quasi interamente azionario per rispettare il target globale. Esempio: con bucket breve 30%, il bucket lungo da ${bucketLungo.pct}% deve avere ~${Math.round((regole.azionarioTarget/bucketLungo.pct)*100)}% di azionario al suo interno per raggiungere il target globale del ${regole.azionarioTarget}%.` : ''}
-${profilo === 'Prudente' ? `- 🚫 AZIONARIO MAX 35% PRUDENTE: la somma dei pesi di TUTTI gli ETF azionari NON può superare 35%. Contano come azionari: Azionario Globale, USA, Europa, Emergenti, Tematici (ESG, Energia, Salute, Tech, ecc.), Smart Beta, Dividend, Low Volatility, Small Cap. Se la somma supera 35% devi sostituire un ETF azionario con uno obbligazionario.` : ''}
-- 🚫 Numero ETF: MINIMO ${regole.minETF}, MASSIMO ASSOLUTO ${regole.maxETF} — NON superare mai questo limite. Se hai più di ${regole.maxETF} candidati, elimina quelli con maggiore sovrapposizione o rendimento inferiore.
+${hasBuckets ? `- 🚫 VINCOLO AZ CON BUCKET: il bucket BREVE (${bucketBreve.pct}%) contiene ETF non azionari. La quota azionaria TOTALE non può superare ${regole.azionarioTarget+regole.azionarioRange}% anche con il bucket attivo. Il bucket LUNGO (${bucketLungo.pct}%) può avere al massimo il ${Math.min(100, Math.round((regole.azionarioTarget+regole.azionarioRange)*100/bucketLungo.pct))}% di azionario al suo interno per rispettare il limite totale.` : ''}
+${profilo === 'Prudente' ? `- 🚫 AZIONARIO MAX 35% PRUDENTE: la somma di TUTTI gli ETF azionari (inclusi Tematici, ESG, Smart Beta) NON può superare 35%.` : ''}
+- Numero ETF: massimo ${regole.maxETF}
 - ⚠️ VINCOLO TER: il TER medio PONDERATO del portafoglio DEVE essere < ${regole.terPreferito}%. Se un singolo ETF ha TER > ${regole.terPreferito}%, includilo SOLO se porta un contributo di diversificazione o rendimento insostituibile. MAX assoluto per singolo ETF: ${regole.terMax}%. Un ETF con TER elevato che erode il rendimento sotto soglia NON deve essere incluso.
 - Capitalizzazione minima per ETF: ${regole.capMin}M€
 - ${regole.maxDrawdown ? `Max drawdown storico: ≤${Math.abs(regole.maxDrawdown)}% in valore assoluto` : 'Drawdown: nessun limite formale'}
@@ -1060,44 +935,12 @@ ${regole.note ? `- NOTA IMPORTANTE: ${regole.note}` : ''}
 ## CATEGORIE AZIONARIE (usale per calcolare la quota azionaria):
 Azionario Globale, Azionario USA, Azionario Europa, Azionario Emergenti, Azionario Tematico, Azionario Pacifico
 
-${hasBuckets ? `## PIANIFICAZIONE A DUE ORIZZONTI — VINCOLO OBBLIGATORIO:
-Filosofia scelta dall'utente: ${filosofiaBucket.toUpperCase()}
-
-${descrizioneBucket({tipo:'BREVE', pct_allocazione: bucketBreve.pct, orizzonte_anni: bucketBreve.anni}, profilo, macroData, filosofiaBucket)}
-
-${descrizioneBucket({tipo:'LUNGO', pct_allocazione: bucketLungo.pct, orizzonte_anni: bucketLungo.anni}, profilo, macroData, filosofiaBucket)}
-
-🚫 VINCOLO BUCKET ASSOLUTO — VERIFICA OBBLIGATORIA PRIMA DEL JSON:
-1. La somma dei pesi degli ETF assegnati a bucket BREVE DEVE essere ESATTAMENTE ${bucketBreve.pct}% (±3% tolleranza). NON meno.
-2. La somma dei pesi degli ETF assegnati a bucket LUNGO DEVE essere ESATTAMENTE ${bucketLungo.pct}% (±3% tolleranza).
-3. Se la somma del bucket BREVE è < ${bucketBreve.pct - 3}%, DEVI aumentare il peso dell'ETF nel breve sottraendo dal bucket lungo.
-4. Il bucket BREVE deve contenere ETF monetari o obbligazionari breve termine — NON azionario.
-5. 🚫 MASSIMO 1 ETF nel bucket BREVE — concentra tutto il peso su un singolo ETF (es. 30% su un solo Gov 1-3Y). Non distribuire su più ETF simili.
-6. VERIFICA FINALE: scrivi esplicitamente "Bucket BREVE: XX% — Bucket LUNGO: YY%" prima del JSON.
-${filosofiaBucket === 'difensiva' && etfBucketDifensivo.length > 0 ? `
-✅ ETF OBBLIGAZIONARI BREVE TERMINE per bucket DIFENSIVO (scegli da questa lista):
-${etfBucketDifensivo.map(e => `- ${e.isin} | ${e.name} | TER ${e.ter}% | ${e.categoria}`).join('\n')}
-🚫 VIETATO per bucket DIFENSIVO: IE00BD9MMF62 e qualsiasi ETF con "Ultra-Short", "Overnight", "0-1Y", "Fed Funds" nel nome.` : ''}
-` : ''}
 ${macroContext}
 ## ETF DISPONIBILI:
 ${etfDisponibili.map(e => {
   const vol = e.vol3y ? `Vol1A:${e.variabilita}% Vol3A:${e.vol3y}%` : `Vol1A:${e.variabilita}%`;
   const dd = e.maxDrawdownMax ? `DD1A:${e.maxDrawdown}% DDMax:${e.maxDrawdownMax}%` : `DD1A:${e.maxDrawdown}%`;
-  // Per Aggressivo: mostra anche perf1y/5y come segnale di selezione relativa
-  // Per Prudente/Bilanciato: solo annuali storiche per evitare proiezioni distorte
-  const perf = profilo === 'Aggressivo'
-    ? [
-        e.perf1y != null ? `Perf1A:${e.perf1y}%[solo confronto]` : null,
-        e.perf2024 != null ? `2024:${e.perf2024}%` : null,
-        e.perf2023 != null ? `2023:${e.perf2023}%` : null,
-        e.perf2022 != null ? `2022:${e.perf2022}%` : null,
-      ].filter(Boolean).join(' ')
-    : [
-        e.perf2024 != null ? `2024:${e.perf2024}%` : null,
-        e.perf2023 != null ? `2023:${e.perf2023}%` : null,
-        e.perf2022 != null ? `2022:${e.perf2022}%` : null,
-      ].filter(Boolean).join(' ') || (e.perf1y != null ? `Perf1A:${e.perf1y}%` : 'N/D');
+  const perf = e.perf2024 ? `Perf1A:${e.perf1y}% Perf2024:${e.perf2024}% Perf2023:${e.perf2023 || 'N/D'}%` : `Perf1A:${e.perf1y}% Perf5A:${e.perf5y}%`;
   const extra = [
     e.dataLancio ? `Anno:${e.dataLancio}` : null,
     e.partecipazioni ? `Titoli:${e.partecipazioni}` : null,
@@ -1110,14 +953,12 @@ ${etfDisponibili.map(e => {
 - La volatilità media PONDERATA del portafoglio non deve superare ${regole.volatilita !== null ? regole.volatilita+'%' : 'nessun limite'} annuo
 - NON includere ETF con vol1y > 20% per profilo Bilanciato
 - L'oro (ETF fisico sull'oro) massimo 5% del portafoglio per profilo Bilanciato
-- ⚠️ VINCOLO ETF PICCOLI: ETF con AUM < 50M€ sono fondi giovani in crescita — includi al massimo ${{Prudente:1,Bilanciato:2,Aggressivo:3}[profilo]||2} ETF sotto 50M€ nel portafoglio finale. Preferisci sempre ETF con AUM > 100M€ a parità di altre caratteristiche.
+${profilo === 'Aggressivo' ? `- ⚠️ DIVERSIFICAZIONE AGGRESSIVO: NON costruire un portafoglio 100% azionario. Includi SEMPRE almeno 1 ETF non azionario (oro, commodity, o monetario se bucket attivo) con peso ≥ 5%. Un portafoglio 100% azionario non è diversificato e viola i principi di gestione del rischio.` : ''}
+${profilo === 'Bilanciato' ? `- ⚠️ VINCOLO OB BILANCIATO: la quota obbligazionaria totale deve essere tra il 25% e il 45%. Se superi il 45% sposta peso verso azionario. Se sei sotto il 25% aggiungi un ETF obbligazionario.
+- ⚠️ STABILITÀ BILANCIATO: per il nucleo del portafoglio privilegia ETF con AUM > 1B€ e storia > 5 anni. Usa ETF più piccoli o specializzati solo come satellite con peso max 15% ciascuno.` : ''}
 ${maxUSA && maxUSA !== 'No max' ? `- ⚠️ VINCOLO TASSATIVO MAX USA: la somma dei pesi degli ETF con esposizione prevalente agli USA (categoria "Azionario USA" o ETF S&P500/Nasdaq/Russell) NON deve superare ${maxUSA} del portafoglio totale. Questo è un hard limit — NON può essere ignorato per nessun motivo.` : '- Esposizione USA: nessun limite'}
 - Le performance passate NON sono garanzia di rendimenti futuri: usa perf1y/5y solo per confronto relativo, NON come stima di rendimento futuro
 ${escludiDistribuzione ? `- VINCOLO TASSATIVO: seleziona SOLO ETF ad Accumulazione (Acc). ESCLUDI ASSOLUTAMENTE qualsiasi ETF a Distribuzione (Dist/Distributing). Questo vale sia per i consigliati che per le alternative. Se un ETF ha "Distributing" o "Dist" nel nome o nel suo tipo di replica, NON includerlo.` : ''}
-${profilo === 'Prudente' ? `- 🚫 RENDIMENTO LORDO MAX PRUDENTE: il rendimento lordo atteso dichiarato NON può superare 5.5% annuo (equivale a ~4.0% netto dopo TER e tasse). Se superi questo valore hai usato performance recenti eccezionali — usa i rendimenti storici 20-30 anni nella tabella sopra.` : ''}
-${profilo === 'Prudente' ? `- 🚫 AZIONARIO MAX PRUDENTE: la quota azionaria totale (inclusi ETF tematici, ESG, Dividend, Smart Beta) NON può superare 35% del portafoglio. Verifica sommando TUTTI gli ETF azionari prima di scrivere il JSON.` : ''}
-${profilo === 'Prudente' ? `- 🚫 MATERIE PRIME MAX PRUDENTE: oro + commodity + energia NON possono superare 15% totale. Oro max 10%, energia max 5%.` : ''}
-${profilo === 'Bilanciato' ? `- 🚫 QUOTA OBBLIGAZIONARIA MINIMA BILANCIATO: la somma dei pesi di ETF obbligazionari (Gov, Corporate, Inflation-Linked, High Yield) DEVE essere almeno 25% del portafoglio totale. Verifica PRIMA di scrivere il JSON. Se sei sotto il 25%, sostituisci un ETF azionario con uno obbligazionario.` : ''}
 
 ## VINCOLO CORRELAZIONE (differenziato per profilo e asset class):
 Stima la correlazione tra ogni coppia di ETF in base a categoria, area geografica e fattori.
@@ -1138,11 +979,10 @@ Esempi bassa correlazione: azionario globale + emergenti, azionario + obbligazio
 
 ## FORMATO RISPOSTA — SEGUI ESATTAMENTE, NON DEVIARE:
 ⚠️ CRITICO: NON usare tabelle markdown (|col|col|), NON fare calcoli intermedi lunghi, NON ribilanciare più volte. Fai i calcoli mentalmente e scrivi SOLO il risultato finale.
-⚠️ NON scrivere verifiche correlazioni, check pesi, ragionamenti intermedi — solo il risultato.
 
 SPIEGAZIONE:
-[Max 2 frasi: logica del portafoglio. NON citare rendimenti specifici. NON tabelle. NON verifiche.]
-METRICHE: azionaria:XX% | obbligaz:XX% | vol:XX% | TER:XX% | maxDD:-XX% | corr_max:0.XX | rend_lordo:X.X%
+[Max 2 frasi: logica del portafoglio. NON citare rendimenti specifici. NON tabelle.]
+[Una riga: METRICHE: azionaria:XX% | vol:XX% | TER:XX% | maxDD:-XX% | corr_max:0.XX]
 
 VERIFICA:
 quota_azionaria: XX% (range ${regole.azionarioTarget-regole.azionarioRange}%-${regole.azionarioTarget+regole.azionarioRange}%)
@@ -1153,9 +993,7 @@ PORTAFOGLIO_JSON:
 
 REGOLE FORMATO:
 - Il JSON deve essere l'ULTIMA cosa che scrivi
-- Pesi devono sommare a 100. Max ${regole.maxETF} ETF.
-- La riga METRICHE è OBBLIGATORIA — deve apparire esattamente come indicato sopra con tutti i valori compilati
-- 🚫 USA ESCLUSIVAMENTE gli ISIN dalla lista ETF DISPONIBILI qui sopra. NON inventare ISIN. NON usare ISIN che non compaiono nella lista. Se un ETF che conosci non è nella lista, scegli il più simile tra quelli disponibili per categoria, area geografica e fattore — NON trascrivere ISIN a memoria perché potresti sbagliare un carattere.
+- Pesi devono sommare a 100. Max ${regole.maxETF} ETF. Solo ISIN dalla lista disponibile
 - Se la quota azionaria non rientra nel range: correggi i pesi PRIMA di scrivere il JSON
 - NON aggiungere nulla dopo il JSON`;
 
@@ -1182,25 +1020,12 @@ REGOLE FORMATO:
     if (selezione.length === 0) {
       console.log(`  [crea-portafoglio] RISPOSTA AI COMPLETA:\n${testo}`);
     }
-    // Verifica e FILTRA gli ISIN non nel pool disponibile — l'AI non può inventare ISIN
+    // Verifica quali ISIN non sono nel pool disponibile
     const isinDisponibili = new Set(etfDisponibili.map(e => e.isin));
     const isinNonTrovati = selezione.filter(s => !isinDisponibili.has(s.isin));
     if (isinNonTrovati.length > 0) {
-      console.log(`  [crea-portafoglio] ⚠ ISIN non nel pool — RIMOSSI: ${isinNonTrovati.map(s => s.isin).join(', ')}`);
-      selezione = selezione.filter(s => isinDisponibili.has(s.isin));
-      console.log(`  [crea-portafoglio] ETF dopo filtro ISIN: ${selezione.length}`);
+      console.log(`  [crea-portafoglio] ⚠ ISIN non nel pool disponibile: ${isinNonTrovati.map(s => s.isin).join(', ')}`);
     }
-
-    // Filtro aggiuntivo: rimuovi ETF senza prezzo reale disponibile
-    // Ricostruisce il Set localmente dagli ETF disponibili (che sono già filtrati per prezzo)
-    const isinConPrezzoLocale = new Set(etfDisponibili.map(e => e.isin));
-    selezione = selezione.filter(s => {
-      const haPrezzo = isinConPrezzoLocale.has(s.isin);
-      if (!haPrezzo) console.log(`  [crea-portafoglio] ⚠ ETF senza prezzo rimosso: ${s.isin}`);
-      return haPrezzo;
-    });
-
-    // Nota: il filtro bucket difensivo è gestito solo via prompt — nessuna rimozione forzata post-risposta
 
 
 
@@ -1441,13 +1266,7 @@ REGOLE FORMATO:
       }
     }
     const isinConsigliati = new Set(selezione.map(s => s.isin));
-    selezione.forEach(s => {
-      s.tipo = 'consigliato';
-      // Assegna bucket automatico se la pianificazione a due orizzonti è attiva
-      if (hasBuckets) {
-        s.bucket = assegnaBucketAutomatico(s);
-      }
-    });
+    selezione.forEach(s => { s.tipo = 'consigliato'; });
 
     // Pool per alternative: filtri rilassati (vol<=25%, dd>=-35%) per avere sempre 2 alternative per TOP
     const etfPerAlternative = await getEtfPerProfilo(profilo, false, true);
@@ -1558,15 +1377,8 @@ REGOLE FORMATO:
       scenarioMacro = pt.scenario || 'NEUTRO';
     } catch (e) { /* fallback NEUTRO */ }
 
-    // Info bucket per il frontend (se pianificazione a due orizzonti attiva)
-    const bucketInfo = hasBuckets ? {
-      attivo: true,
-      breve: { pct: bucketBreve.pct, anni: bucketBreve.anni },
-      lungo: { pct: bucketLungo.pct, anni: bucketLungo.anni },
-    } : null;
-
     console.log(`  ✓ Portafoglio AI: ${selezione.length} ETF consigliati + ${selezioneConAlternative.length - selezione.length} alternative | scenario: ${scenarioMacro}`);
-    res.json({ spiegazione, selezione: selezioneConAlternative, capitaleUsato: conCapitale ? parseFloat(capitale) : null, avvisoMaxUSA, scenarioMacro, bucketInfo });
+    res.json({ spiegazione, selezione: selezioneConAlternative, capitaleUsato: conCapitale ? parseFloat(capitale) : null, avvisoMaxUSA, scenarioMacro });
   } catch (err) {
     res.status(500).json({ error: 'Errore creazione portafoglio AI: ' + err.message });
   }
