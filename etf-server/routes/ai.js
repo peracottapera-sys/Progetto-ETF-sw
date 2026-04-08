@@ -883,6 +883,7 @@ router.post('/crea-portafoglio', async (req, res) => {
   } catch (e) { console.log('[AI] macro non disponibile:', e.message); }
   const { bucketBreve, bucketLungo } = req.body; // opzionali: { pct, anni, targetRend }
   const hasBuckets = bucketBreve && bucketLungo;
+  console.log(`  [bucket] hasBuckets=${hasBuckets} bucketBreve=${JSON.stringify(bucketBreve)} bucketLungo=${JSON.stringify(bucketLungo)}`);
   const checkRend = hasBuckets
     ? verificaRendimentoComplessivo(
         [{tipo:'BREVE', pct_allocazione: bucketBreve.pct, orizzonte_anni: bucketBreve.anni, rendimento_target_annuo: bucketBreve.targetRend},
