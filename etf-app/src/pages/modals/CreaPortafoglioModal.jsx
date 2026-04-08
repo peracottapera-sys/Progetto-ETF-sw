@@ -3,7 +3,6 @@ import { useApp } from '../../context/AppContext';
 
 const API = process.env.REACT_APP_API_URL || (window.location.hostname === 'localhost' ? 'http://localhost:3001' : '');
 
-// aggiornato 2026-03-29 15:35
 function CreaPortafoglioModal({ portfolioId, onClose, onApplied, initialProfilo, initialData }) {
   const { applicaPortafoglioAI, token, saveBuckets, saveAiRun } = useApp();
   const [form, setForm] = useState({
@@ -13,7 +12,6 @@ function CreaPortafoglioModal({ portfolioId, onClose, onApplied, initialProfilo,
     preferenze: '',
     escludiDistribuzione: true,
     maxUSA: 'No max',
-    rendimentoTarget: 'standard', // 'standard' | 'elevato' | 'max'
   });
   const [spiegazione, setSpiegazione] = useState(initialData?.spiegazione || '');
   const [scenarioMacro, setScenarioMacro] = useState(initialData?.scenarioMacro || '');
@@ -36,30 +34,6 @@ function CreaPortafoglioModal({ portfolioId, onClose, onApplied, initialProfilo,
   const [bucket, setBucket] = useState({ attivo: false, pctBreve: 20, anniBreve: 3, filosofia: 'difensiva' });
   const [step, setStep] = useState(initialData?.selezione?.length > 0 ? 'risultato' : 'form');
 
-  // Target rendimento lordo per profilo e livello
-  const REND_TARGET = {
-    Prudente:   { standard: 4.5, elevato: 5.5, max: 6.5 },
-    Bilanciato: { standard: 6.0, elevato: 7.5, max: 8.5 },
-    Aggressivo: { standard: 7.0, elevato: 8.5, max: 10.0 },
-  };
-  const REND_BREVE_STIMATO = { difensiva: 2.5, opportunistica: 3.0 }; // rendimento atteso bucket breve
-
-  const getTargetComplessivo = () => {
-    const t = REND_TARGET[form.profilo] || REND_TARGET.Bilanciato;
-    return t[form.rendimentoTarget] || t.standard;
-  };
-
-  const getTargetLungo = () => {
-    if (!bucket.attivo) return getTargetComplessivo();
-    const pctBreve = Math.min(bucket.pctBreve, 40) / 100;
-    const pctLungo = 1 - pctBreve;
-    const rendBreve = REND_BREVE_STIMATO[bucket.filosofia || 'difensiva'];
-    const targetLungo = (getTargetComplessivo() - pctBreve * rendBreve) / pctLungo;
-    // Cap al max assoluto del profilo
-    const maxAssoluto = REND_TARGET[form.profilo]?.max || 10;
-    return Math.min(targetLungo, maxAssoluto + 1).toFixed(1);
-  };
-
   const handleCrea = async () => {
     setLoading(true);
     setErrore('');
@@ -76,8 +50,6 @@ function CreaPortafoglioModal({ portfolioId, onClose, onApplied, initialProfilo,
           preferenze: form.preferenze,
           escludiDistribuzione: form.escludiDistribuzione,
           maxUSA: form.maxUSA,
-          rendimentoTarget: getTargetComplessivo(),
-          rendimentoTargetLungo: parseFloat(getTargetLungo()),
         })
       });
       const data = await res.json();
@@ -130,43 +102,40 @@ function CreaPortafoglioModal({ portfolioId, onClose, onApplied, initialProfilo,
       ]);
     }
 
-    // Salva il run AI per lo storico
-    const consigliati = selezioneAggiornata.filter(s => s.tipo === 'consigliato' || !s.tipo);
-    // Estrai rendimento atteso lordo dalla spiegazione — cerca prima nel blocco METRICHE strutturato
-    const rendMatch = spiegazione?.match(/METRICHE:.*?rend_lordo:([\d.]+)%/i)
-      || spiegazione?.match(/rend_lordo:([\d.]+)%/i)
+    // Estrai rendimento atteso lordo dalla spiegazione
+    const rendMatch = spiegazione?.match(/rend_lordo:([\d.]+)%/i)
+      || spiegazione?.match(/METRICHE:.*?rend_lordo:([\d.]+)%/i)
       || spiegazione?.match(/rendimento[^:]*lordo[^:]*:?\s*[~≈]?(\d+[\.,]\d+)\s*%/i)
       || spiegazione?.match(/(\d+[\.,]\d+)\s*%\s*(?:lordo|annuo\s+lordo)/i);
     const rendAttesoLordo = rendMatch ? parseFloat(rendMatch[1].replace(',', '.')) : null;
 
-    await saveAiRun({
-      portfolioId,
-      profilo: form?.profilo || '',
-      orizzonte: form?.orizzonteAnni || null,
-      capitale: capitale ? parseFloat(capitale) : null,
-      scenarioMacro: scenarioMacro || null,
-      // Campi input utente
-      maxUsa: form?.maxUSA || null,
-      preferenze: form?.preferenze || null,
-      escludiDistribuzione: form?.escludiDistribuzione ?? true,
-      bucketAttivo: bucketInfo?.attivo ?? false,
-      bucketPctBreve: bucketInfo?.attivo ? bucketInfo.breve.pct : null,
-      metriche: {
-        nEtf: consigliati.length,
-        terTotale: parseFloat(consigliati.reduce((t, s) => t + (s.ter || 0), 0).toFixed(2)),
-        rendAttesoLordo,
-      },
-      etfSelezionati: consigliati.map(s => ({
-        isin: s.isin,
-        name: s.name,
-        peso: s.peso,
-        bucket: s.bucket || 'LUNGO',
-        ter: s.ter,
-        categoria: s.categoria,
-        motivo: s.motivo,
-      })),
-      spiegazione,
-    });
+    // Salva il run AI per lo storico
+    if (typeof saveAiRun === 'function') {
+      const consigliati = selezioneAggiornata.filter(s => s.tipo === 'consigliato' || !s.tipo);
+      await saveAiRun({
+        portfolioId,
+        profilo: form?.profilo || '',
+        orizzonte: form?.orizzonteAnni || null,
+        capitale: capitale ? parseFloat(capitale) : null,
+        scenarioMacro: scenarioMacro || null,
+        maxUsa: form?.maxUSA || null,
+        preferenze: form?.preferenze || null,
+        escludiDistribuzione: form?.escludiDistribuzione ?? true,
+        bucketAttivo: bucket?.attivo ?? false,
+        bucketPctBreve: bucket?.attivo ? bucket.pctBreve : null,
+        metriche: {
+          nEtf: consigliati.length,
+          terTotale: parseFloat(consigliati.reduce((t, s) => t + (s.ter || 0), 0).toFixed(2)),
+          rendAttesoLordo,
+        },
+        etfSelezionati: consigliati.map(s => ({
+          isin: s.isin, name: s.name, peso: s.peso,
+          bucket: s.bucket || 'LUNGO', ter: s.ter,
+          categoria: s.categoria, motivo: s.motivo,
+        })),
+        spiegazione,
+      });
+    }
 
     if (onApplied && rendAttesoLordo != null) onApplied(rendAttesoLordo);
     onClose();
@@ -175,7 +144,7 @@ function CreaPortafoglioModal({ portfolioId, onClose, onApplied, initialProfilo,
   const nApprovate = Object.values(approvate).filter(Boolean).length;
 
   return (
-    <div className="modal-overlay" onClick={e => e.stopPropagation()}>
+    <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={e => e.stopPropagation()} style={{ minWidth: 620, maxWidth: 780, maxHeight: '88vh', display: 'flex', flexDirection: 'column' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexShrink: 0 }}>
           <div>
@@ -241,35 +210,6 @@ function CreaPortafoglioModal({ portfolioId, onClose, onApplied, initialProfilo,
                   <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:3 }}>Esposizione stimata agli ETF USA</div>
                 </div>
               </div>
-              {/* Obiettivo Rendimento */}
-              <div style={{ marginBottom:12 }}>
-                <label className="form-label">Obiettivo Rendimento Lordo Annuo</label>
-                <div style={{ display:'flex', gap:6 }}>
-                  {[
-                    { val:'standard', label:'Standard', desc: `~${(REND_TARGET[form.profilo]||REND_TARGET.Bilanciato).standard}%` },
-                    { val:'elevato',  label:'Elevato',  desc: `~${(REND_TARGET[form.profilo]||REND_TARGET.Bilanciato).elevato}%` },
-                    { val:'max',      label:'Max',      desc: `~${(REND_TARGET[form.profilo]||REND_TARGET.Bilanciato).max}%` },
-                  ].map(({ val, label, desc }) => {
-                    const isSelected = form.rendimentoTarget === val;
-                    const targetLungoStr = bucket.attivo ? ` → LUNGO ~${getTargetLungo()}%` : '';
-                    return (
-                      <div key={val} onClick={() => setForm(f => ({...f, rendimentoTarget: val}))}
-                        style={{ flex:1, padding:'6px 8px', borderRadius:8, cursor:'pointer',
-                          border:`1px solid ${isSelected ? 'var(--accent-gold)' : 'var(--border)'}`,
-                          background: isSelected ? 'rgba(212,175,55,0.08)' : 'var(--bg-primary)' }}>
-                        <div style={{ fontSize:11, fontWeight:700, color: isSelected ? 'var(--accent-gold)' : 'var(--text-primary)' }}>{label}</div>
-                        <div style={{ fontSize:10, color:'var(--accent-green)', fontWeight:600 }}>{desc}{isSelected && bucket.attivo ? targetLungoStr : ''}</div>
-                      </div>
-                    );
-                  })}
-                </div>
-                {bucket.attivo && (
-                  <div style={{ fontSize:10, color:'var(--text-muted)', marginTop:4 }}>
-                    Con bucket BREVE {bucket.pctBreve}% ({bucket.filosofia==='difensiva'?'~2.5%':'~3.0%'} atteso) → bucket LUNGO deve puntare a ~{getTargetLungo()}% lordo
-                  </div>
-                )}
-              </div>
-
               {/* Riga 3: Preferenze (campo largo) */}
               <div style={{ marginBottom:12 }}>
                 <label className="form-label">Preferenze o note — opzionale</label>
@@ -414,13 +354,6 @@ function CreaPortafoglioModal({ portfolioId, onClose, onApplied, initialProfilo,
                 const corrMatch = spiegazione.match(/correlazione[^:]*:?\s*[~≈]?(0\.\d+)/i)
                   || spiegazione.match(/METRICHE:[^\n]*corr_max:(0\.\d+)/i);
                 const corrMax = corrMatch ? corrMatch[1] : null;
-
-                // Rendimento atteso lordo: estratto dal testo AI (prima dal campo strutturato METRICHE, poi dal testo libero)
-                const rendMatch = spiegazione.match(/rend_lordo:(\d+[\.,]\d+)%/i)
-                  || spiegazione.match(/rendimento[^:]*lordo[^:]*:?\s*[~≈]?(\d+[\.,]\d+)\s*%/i)
-                  || spiegazione.match(/rendimento[^:]*atteso[^:]*:?\s*[~≈]?(\d+[\.,]\d+)\s*%\s*lordo/i)
-                  || spiegazione.match(/(\d+[\.,]\d+)\s*%\s*(?:lordo|annuo\s+lordo)/i);
-                const rendAtteso = rendMatch ? rendMatch[1].replace(',', '.') : null;
 
                 // Logica narrativa: prime 2-3 frasi prima di METRICHE/VERIFICA/**
                 let logica = spiegazione.split(/METRICHE:|VERIFICA:|(?:\*\*Coppie)/i)[0].replace(/\*\*/g,'').trim();
@@ -615,7 +548,7 @@ function CreaPortafoglioModal({ portfolioId, onClose, onApplied, initialProfilo,
                             ))}
                           </div>
                         )}
-                        {/* Pills riga 1: ETF · TER · Corr · Exp.USA · Rend.lordo */}
+                        {/* Pills: ETF · TER · Corr · Exp.USA — tutti sulla stessa riga */}
                         <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
                           <Pill label="ETF" value={consigliati.length} color="var(--accent-gold)" />
                           <Pill label="TER tot." value={terTotale.toFixed(2)+'%'} color={terTotale > 1 ? 'var(--accent-amber)' : 'var(--accent-green)'} />
@@ -672,7 +605,6 @@ function CreaPortafoglioModal({ portfolioId, onClose, onApplied, initialProfilo,
                               <Pill label="DD pond."
                                 value={ddPond > 0 ? '-'+ddPond.toFixed(1)+'%' : 'N/D'}
                                 color={ddPond > 25 ? 'var(--accent-red)' : ddPond > 15 ? 'var(--accent-amber)' : 'var(--accent-green)'} />
-                              {rendAtteso && <Pill label="Rend. lordo~" value={rendAtteso+'%'} color={parseFloat(rendAtteso) < 3 ? 'var(--accent-red)' : parseFloat(rendAtteso) > 10 ? 'var(--accent-amber)' : 'var(--accent-green)'} />}
                               <div style={{ display:'flex', flexDirection:'column', alignItems:'center', background:'var(--bg-primary)', borderRadius:8, padding:'8px 12px', border:'1px solid var(--border)', minWidth:90 }}>
                                 <span style={{ fontSize:11, color:'var(--text-secondary)', marginBottom:2 }}>Smart Beta</span>
                                 <span style={{ fontSize:13, fontWeight:700, color:'#7030A0' }}>
