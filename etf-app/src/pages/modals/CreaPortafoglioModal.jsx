@@ -12,6 +12,7 @@ function CreaPortafoglioModal({ portfolioId, onClose, onApplied, initialProfilo,
     preferenze: '',
     escludiDistribuzione: true,
     maxUSA: 'No max',
+    rendimentoTarget: 'standard',
   });
   const [spiegazione, setSpiegazione] = useState(initialData?.spiegazione || '');
   const [scenarioMacro, setScenarioMacro] = useState(initialData?.scenarioMacro || '');
@@ -34,6 +35,28 @@ function CreaPortafoglioModal({ portfolioId, onClose, onApplied, initialProfilo,
   const [bucket, setBucket] = useState({ attivo: false, pctBreve: 20, anniBreve: 3, filosofia: 'difensiva' });
   const [step, setStep] = useState(initialData?.selezione?.length > 0 ? 'risultato' : 'form');
 
+  const REND_TARGET = {
+    Prudente:   { standard: 4.5, elevato: 5.5, max: 6.5 },
+    Bilanciato: { standard: 6.0, elevato: 7.5, max: 8.5 },
+    Aggressivo: { standard: 7.0, elevato: 8.5, max: 10.0 },
+  };
+  const REND_BREVE_STIMATO = { difensiva: 2.5, opportunistica: 3.0 };
+
+  const getTargetComplessivo = () => {
+    const t = REND_TARGET[form.profilo] || REND_TARGET.Bilanciato;
+    return t[form.rendimentoTarget] || t.standard;
+  };
+
+  const getTargetLungo = () => {
+    if (!bucket.attivo) return getTargetComplessivo();
+    const pctBreve = Math.min(bucket.pctBreve, 40) / 100;
+    const pctLungo = 1 - pctBreve;
+    const rendBreve = REND_BREVE_STIMATO[bucket.filosofia || 'difensiva'];
+    const targetLungo = (getTargetComplessivo() - pctBreve * rendBreve) / pctLungo;
+    const maxAssoluto = REND_TARGET[form.profilo]?.max || 10;
+    return Math.min(targetLungo, maxAssoluto + 1).toFixed(1);
+  };
+
   const handleCrea = async () => {
     setLoading(true);
     setErrore('');
@@ -50,6 +73,8 @@ function CreaPortafoglioModal({ portfolioId, onClose, onApplied, initialProfilo,
           preferenze: form.preferenze,
           escludiDistribuzione: form.escludiDistribuzione,
           maxUSA: form.maxUSA,
+          rendimentoTarget: getTargetComplessivo(),
+          rendimentoTargetLungo: parseFloat(getTargetLungo()),
         })
       });
       const data = await res.json();
@@ -209,6 +234,35 @@ function CreaPortafoglioModal({ portfolioId, onClose, onApplied, initialProfilo,
                   </select>
                   <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:3 }}>Esposizione stimata agli ETF USA</div>
                 </div>
+              </div>
+              {/* Obiettivo Rendimento */}
+              <div style={{ marginBottom:12 }}>
+                <label className="form-label">Obiettivo Rendimento Lordo Annuo</label>
+                <div style={{ display:'flex', gap:6 }}>
+                  {[
+                    { val:'standard', label:'Standard', pct: (REND_TARGET[form.profilo]||REND_TARGET.Bilanciato).standard },
+                    { val:'elevato',  label:'Elevato',  pct: (REND_TARGET[form.profilo]||REND_TARGET.Bilanciato).elevato },
+                    { val:'max',      label:'Max',      pct: (REND_TARGET[form.profilo]||REND_TARGET.Bilanciato).max },
+                  ].map(({ val, label, pct }) => {
+                    const isSel = form.rendimentoTarget === val;
+                    return (
+                      <div key={val} onClick={() => setForm(f => ({...f, rendimentoTarget: val}))}
+                        style={{ flex:1, padding:'6px 8px', borderRadius:8, cursor:'pointer',
+                          border:`1px solid ${isSel ? 'var(--accent-gold)' : 'var(--border)'}`,
+                          background: isSel ? 'rgba(212,175,55,0.08)' : 'var(--bg-primary)' }}>
+                        <div style={{ fontSize:11, fontWeight:700, color: isSel ? 'var(--accent-gold)' : 'var(--text-primary)' }}>{label}</div>
+                        <div style={{ fontSize:10, color:'var(--accent-green)', fontWeight:600 }}>
+                          ~{pct}%{isSel && bucket.attivo ? ` → L ~${getTargetLungo()}%` : ''}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                {bucket.attivo && (
+                  <div style={{ fontSize:10, color:'var(--text-muted)', marginTop:4 }}>
+                    Con bucket BREVE {bucket.pctBreve}% (~{REND_BREVE_STIMATO[bucket.filosofia||'difensiva']}%) → LUNGO deve puntare a ~{getTargetLungo()}% lordo
+                  </div>
+                )}
               </div>
               {/* Riga 3: Preferenze (campo largo) */}
               <div style={{ marginBottom:12 }}>
