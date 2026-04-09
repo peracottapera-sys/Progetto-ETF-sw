@@ -17,6 +17,7 @@ function CreaPortafoglioModal({ portfolioId, onClose, onApplied, initialProfilo,
   const [spiegazione, setSpiegazione] = useState(initialData?.spiegazione || '');
   const [scenarioMacro, setScenarioMacro] = useState(initialData?.scenarioMacro || '');
   const [bucketInfo, setBucketInfo] = useState(null);
+  const [rendAttesoLordoAI, setRendAttesoLordoAI] = useState(null);
   const [selezione, setSelezione] = useState(initialData?.selezione || []);
   const [approvate, setApprovate] = useState(() => {
     if (!initialData?.selezione) return {};
@@ -82,6 +83,7 @@ function CreaPortafoglioModal({ portfolioId, onClose, onApplied, initialProfilo,
         setSpiegazione(data.spiegazione);
         setScenarioMacro(data.scenarioMacro || '');
         setBucketInfo(data.bucketInfo || null);
+        setRendAttesoLordoAI(data.rendAttesoLordo || null);
         setSelezione(data.selezione);
         const initApp = {}, initPesi = {};
         data.selezione.forEach((s, i) => {
@@ -127,12 +129,8 @@ function CreaPortafoglioModal({ portfolioId, onClose, onApplied, initialProfilo,
       ]);
     }
 
-    // Estrai rendimento atteso lordo dalla spiegazione
-    const rendMatch = spiegazione?.match(/rend_lordo:([\d.]+)%/i)
-      || spiegazione?.match(/METRICHE:.*?rend_lordo:([\d.]+)%/i)
-      || spiegazione?.match(/rendimento[^:]*lordo[^:]*:?\s*[~≈]?(\d+[\.,]\d+)\s*%/i)
-      || spiegazione?.match(/(\d+[\.,]\d+)\s*%\s*(?:lordo|annuo\s+lordo)/i);
-    const rendAttesoLordo = rendMatch ? parseFloat(rendMatch[1].replace(',', '.')) : null;
+    // Rendimento atteso lordo — già estratto dal backend
+    const rendAttesoLordo = rendAttesoLordoAI;
 
     // Salva il run AI per lo storico
     if (typeof saveAiRun === 'function') {
@@ -651,6 +649,9 @@ function CreaPortafoglioModal({ portfolioId, onClose, onApplied, initialProfilo,
                             : scenarioLabel.includes('ESPANSIONE') || scenarioLabel.includes('EASING') ? 'var(--accent-green)'
                             : 'var(--text-muted)';
 
+                          // Rendimento atteso lordo — dal backend direttamente
+                          const rendLordo = rendAttesoLordoAI;
+
                           return (
                             <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginTop:2 }}>
                               <Pill label="Vol. pond."
@@ -659,6 +660,11 @@ function CreaPortafoglioModal({ portfolioId, onClose, onApplied, initialProfilo,
                               <Pill label="DD pond."
                                 value={ddPond > 0 ? '-'+ddPond.toFixed(1)+'%' : 'N/D'}
                                 color={ddPond > 25 ? 'var(--accent-red)' : ddPond > 15 ? 'var(--accent-amber)' : 'var(--accent-green)'} />
+                              {rendLordo != null && (
+                                <Pill label="Rend. lordo~"
+                                  value={rendLordo.toFixed(1)+'%'}
+                                  color={rendLordo < 4 ? 'var(--accent-red)' : rendLordo > 10 ? 'var(--accent-amber)' : 'var(--accent-green)'} />
+                              )}
                               <div style={{ display:'flex', flexDirection:'column', alignItems:'center', background:'var(--bg-primary)', borderRadius:8, padding:'8px 12px', border:'1px solid var(--border)', minWidth:90 }}>
                                 <span style={{ fontSize:11, color:'var(--text-secondary)', marginBottom:2 }}>Smart Beta</span>
                                 <span style={{ fontSize:13, fontWeight:700, color:'#7030A0' }}>

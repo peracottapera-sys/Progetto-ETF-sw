@@ -1086,7 +1086,7 @@ ${etfBucketDifensivo.map(e => `- ${e.isin} | ${e.name} | TER ${e.ter}% | ${e.cat
 ` : ''}
 SPIEGAZIONE:
 [Max 2 frasi: logica del portafoglio. NON citare rendimenti specifici. NON tabelle.]
-[Una riga: METRICHE: azionaria:XX% | vol:XX% | TER:XX% | maxDD:-XX% | corr_max:0.XX]
+[Una riga: METRICHE: azionaria:XX% | vol:XX% | TER:XX% | maxDD:-XX% | corr_max:0.XX | rend_lordo:XX%]
 
 VERIFICA:
 quota_azionaria: XX% (range ${regole.azionarioTarget-regole.azionarioRange}%-${regole.azionarioTarget+regole.azionarioRange}%)
@@ -1109,6 +1109,12 @@ REGOLE FORMATO:
     const testo = message.content[0].text;
     const parti = testo.split('PORTAFOGLIO_JSON:');
     const spiegazione = parti[0].replace('SPIEGAZIONE:', '').trim();
+
+    // Estrai rendimento lordo dalla riga METRICHE
+    const rendLordoMatch = spiegazione.match(/rend_lordo:([\d.]+)%/i)
+      || spiegazione.match(/rendimento[^:]*lordo[^:]*:?\s*[~≈]?(\d+[\.,]\d+)\s*%/i);
+    const rendAttesoLordoBackend = rendLordoMatch ? parseFloat(rendLordoMatch[1].replace(',', '.')) : null;
+    if (rendAttesoLordoBackend) console.log(`  [crea-portafoglio] rend_lordo estratto: ${rendAttesoLordoBackend}%`);
     let selezione = [];
     if (parti[1]) {
       try { selezione = JSON.parse(parti[1].trim().match(/\[[\s\S]*\]/)?.[0] || '[]'); } catch (e) {
@@ -1489,7 +1495,7 @@ REGOLE FORMATO:
       breve: { pct: bucketBreve.pct, anni: bucketBreve.anni },
       lungo: { pct: bucketLungo.pct, anni: bucketLungo.anni },
     } : null;
-    res.json({ spiegazione, selezione: selezioneConAlternative, capitaleUsato: conCapitale ? parseFloat(capitale) : null, avvisoMaxUSA, scenarioMacro, bucketInfo });
+    res.json({ spiegazione, selezione: selezioneConAlternative, capitaleUsato: conCapitale ? parseFloat(capitale) : null, avvisoMaxUSA, scenarioMacro, bucketInfo, rendAttesoLordo: rendAttesoLordoBackend });
   } catch (err) {
     res.status(500).json({ error: 'Errore creazione portafoglio AI: ' + err.message });
   }
