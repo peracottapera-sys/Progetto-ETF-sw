@@ -1244,11 +1244,12 @@ REGOLE FORMATO:
         perf5y: etf.perf5y,
         capitalizzazione: etf.capitalizzazione,
         variabilita: etf.variabilita,
-        maxDrawdown: etf.maxDrawdown ?? null,       // FIX: era mancante → DD max N/D
-        maxDrawdown5y: etf.maxDrawdown5y ?? null,   // FIX: era mancante → DD max 5A N/D
-        smartBeta: etf.smartBeta || null,           // FIX: era mancante → Smart Beta —
+        maxDrawdown: etf.maxDrawdown ?? null,
+        maxDrawdown5y: etf.maxDrawdown5y ?? null,
+        smartBeta: etf.smartBeta || null,
         annoNascita,
         quotazioneAcquisto: quotazioneReale || null,
+        bucket: hasBuckets ? assegnaBucketAutomatico({ ...etf, name: etf.name }) : undefined,
       };
       if (conCapitale && quotazioneReale > 0 && s.peso) {
         const cap = parseFloat(capitale);
@@ -1482,7 +1483,13 @@ REGOLE FORMATO:
     } catch (e) { /* fallback NEUTRO */ }
 
     console.log(`  ✓ Portafoglio AI: ${selezione.length} ETF consigliati + ${selezioneConAlternative.length - selezione.length} alternative | scenario: ${scenarioMacro}`);
-    res.json({ spiegazione, selezione: selezioneConAlternative, capitaleUsato: conCapitale ? parseFloat(capitale) : null, avvisoMaxUSA, scenarioMacro });
+    const bucketInfo = hasBuckets ? {
+      attivo: true,
+      filosofia: filosofiaBucket,
+      breve: { pct: bucketBreve.pct, anni: bucketBreve.anni },
+      lungo: { pct: bucketLungo.pct, anni: bucketLungo.anni },
+    } : null;
+    res.json({ spiegazione, selezione: selezioneConAlternative, capitaleUsato: conCapitale ? parseFloat(capitale) : null, avvisoMaxUSA, scenarioMacro, bucketInfo });
   } catch (err) {
     res.status(500).json({ error: 'Errore creazione portafoglio AI: ' + err.message });
   }
