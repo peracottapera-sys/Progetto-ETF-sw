@@ -129,8 +129,27 @@ function CreaPortafoglioModal({ portfolioId, onClose, onApplied, initialProfilo,
       ]);
     }
 
-    // Rendimento atteso lordo — già estratto dal backend
-    const rendAttesoLordo = rendAttesoLordoAI;
+    // Rendimento atteso lordo — dal backend, con fallback per categoria
+    const consigliatiApplicati = selezioneAggiornata.filter(s => s.tipo === 'consigliato' || !s.tipo);
+    let rendAttesoLordo = rendAttesoLordoAI;
+    if (rendAttesoLordo == null && consigliatiApplicati.length > 0) {
+      const REND_CAT = {
+        'azionario globale': 7, 'azionario usa': 7, 'azionario europa': 6.5,
+        'azionario emergenti': 6.5, 'azionario pacifico': 6, 'azionario tematic': 7,
+        'azionario small': 7.5, 'azionario': 7,
+        'obbligazionario governativo': 2.5, 'obbligazionario corporate': 3.5,
+        'obbligazionario': 3, 'materie prime': 4.5, 'oro': 4.5, 'liquidit': 2.5,
+      };
+      const totP = consigliatiApplicati.reduce((s, e) => s + (parseFloat(e.peso) || 0), 0);
+      if (totP > 0) {
+        const r = consigliatiApplicati.reduce((sum, s) => {
+          const cat = (s.categoria || '').toLowerCase();
+          const rend = Object.entries(REND_CAT).find(([k]) => cat.includes(k))?.[1] || 5;
+          return sum + rend * ((parseFloat(s.peso) || 0) / totP);
+        }, 0);
+        rendAttesoLordo = parseFloat(r.toFixed(1));
+      }
+    }
 
     // Salva il run AI per lo storico
     if (typeof saveAiRun === 'function') {
@@ -649,8 +668,26 @@ function CreaPortafoglioModal({ portfolioId, onClose, onApplied, initialProfilo,
                             : scenarioLabel.includes('ESPANSIONE') || scenarioLabel.includes('EASING') ? 'var(--accent-green)'
                             : 'var(--text-muted)';
 
-                          // Rendimento atteso lordo — dal backend direttamente
-                          const rendLordo = rendAttesoLordoAI;
+                          // Rendimento atteso lordo — dal backend, con fallback da rendimenti storici 20-30A per categoria
+                          let rendLordo = rendAttesoLordoAI;
+                          if (rendLordo == null && consigliati.length > 0) {
+                            const REND_CAT = {
+                              'azionario globale': 7, 'azionario usa': 7, 'azionario europa': 6.5,
+                              'azionario emergenti': 6.5, 'azionario pacifico': 6, 'azionario tematic': 7,
+                              'azionario small': 7.5, 'azionario': 7,
+                              'obbligazionario governativo': 2.5, 'obbligazionario corporate': 3.5,
+                              'obbligazionario': 3, 'materie prime': 4.5, 'oro': 4.5, 'liquidit': 2.5,
+                            };
+                            const totP = consigliati.reduce((s, e) => s + (parseFloat(e.peso) || 0), 0);
+                            if (totP > 0) {
+                              const rendStimato = consigliati.reduce((sum, s) => {
+                                const cat = (s.categoria || '').toLowerCase();
+                                const rend = Object.entries(REND_CAT).find(([k]) => cat.includes(k))?.[1] || 5;
+                                return sum + rend * ((parseFloat(s.peso) || 0) / totP);
+                              }, 0);
+                              rendLordo = parseFloat(rendStimato.toFixed(1));
+                            }
+                          }
 
                           return (
                             <div style={{ display:'flex', gap:6, flexWrap:'wrap', marginTop:2 }}>
