@@ -1008,7 +1008,12 @@ ${preferenze ? `
   Rendimento netto = lordo × 0.74 (dopo tasse 26%) − TER ponderato
 - 🚫 RANGE AZIONARIO FISSO: il range azionario ${regole.azionarioTarget-regole.azionarioRange}%-${regole.azionarioTarget+regole.azionarioRange}% è FISSO e NON si espande con obiettivi di rendimento più alti. Per raggiungere rendimenti più alti usa asset class più performanti DENTRO il range (es. più emergenti, small cap, tematici growth) — NON aumentare la quota azionaria oltre il limite.
 - Quota azionaria: OBBLIGATORIA tra ${regole.azionarioTarget-regole.azionarioRange}% e ${regole.azionarioTarget+regole.azionarioRange}% (target ${regole.azionarioTarget}%). Verifica i pesi prima di rispondere.
-${hasBuckets ? `- 🚫 VINCOLO AZ CON BUCKET: il bucket BREVE (${bucketBreve.pct}%) contiene ETF non azionari. La quota azionaria TOTALE non può superare ${regole.azionarioTarget+regole.azionarioRange}% anche con il bucket attivo. Il bucket LUNGO (${bucketLungo.pct}%) può avere al massimo il ${Math.min(100, Math.round((regole.azionarioTarget+regole.azionarioRange)*100/bucketLungo.pct))}% di azionario al suo interno per rispettare il limite totale.` : ''}
+${hasBuckets ? `- 🚫 VINCOLO AZ CON BUCKET — LEGGI CON ATTENZIONE:
+  Il bucket BREVE (${bucketBreve.pct}%) contiene solo ETF NON azionari (obblig/monetario).
+  Il range azionario ${regole.azionarioTarget-regole.azionarioRange}%-${regole.azionarioTarget+regole.azionarioRange}% si applica SOLO al bucket LUNGO (${bucketLungo.pct}%).
+  Quindi la quota azionaria SUL TOTALE PORTAFOGLIO deve essere tra ${Math.round((regole.azionarioTarget-regole.azionarioRange)*bucketLungo.pct/100)}% e ${Math.round((regole.azionarioTarget+regole.azionarioRange)*bucketLungo.pct/100)}%.
+  Esempio con bucket BREVE ${bucketBreve.pct}%: se il LUNGO ha 80% AZ → totale portafoglio = ${Math.round(80*bucketLungo.pct/100)}% AZ ✅
+  NON applicare il range ${regole.azionarioTarget-regole.azionarioRange}%-${regole.azionarioTarget+regole.azionarioRange}% al totale — sarebbe matematicamente impossibile con il bucket BREVE attivo.` : ''}
 ${profilo === 'Prudente' ? `- 🚫 AZIONARIO MAX 35% PRUDENTE: la somma di TUTTI gli ETF azionari (inclusi Tematici, ESG, Smart Beta) NON può superare 35%.` : ''}
 - Numero ETF: massimo ${regole.maxETF}
 - ⚠️ VINCOLO TER: il TER medio PONDERATO del portafoglio DEVE essere < ${regole.terPreferito}%. Se un singolo ETF ha TER > ${regole.terPreferito}%, includilo SOLO se porta un contributo di diversificazione o rendimento insostituibile. MAX assoluto per singolo ETF: ${regole.terMax}%. Un ETF con TER elevato che erode il rendimento sotto soglia NON deve essere incluso.
@@ -1039,7 +1044,7 @@ ${etfDisponibili.map(e => {
 - La volatilità media PONDERATA del portafoglio non deve superare ${regole.volatilita !== null ? regole.volatilita+'%' : 'nessun limite'} annuo
 - NON includere ETF con vol1y > 20% per profilo Bilanciato
 - L'oro (ETF fisico sull'oro) massimo 5% del portafoglio per profilo Bilanciato
-${profilo === 'Aggressivo' ? `- ⚠️ DIVERSIFICAZIONE AGGRESSIVO: NON costruire un portafoglio 100% azionario. Includi SEMPRE almeno 1 ETF non azionario (oro, commodity, o monetario se bucket attivo) con peso ≥ 5%. Un portafoglio 100% azionario non è diversificato e viola i principi di gestione del rischio.` : ''}
+${profilo === 'Aggressivo' ? `- ⚠️ DIVERSIFICAZIONE AGGRESSIVO: NON costruire un portafoglio 100% azionario. Includi SEMPRE almeno 1 ETF non azionario (oro, commodity, o monetario se bucket attivo) con peso ≥ 5%.${hasBuckets && filosofiaBucket === 'difensiva' ? ` Il bucket BREVE difensivo (${bucketBreve.pct}%) conta come quota non azionaria — non serve aggiungere altro OB nel bucket LUNGO.` : ''}` : ''}
 ${profilo === 'Bilanciato' ? `- ⚠️ VINCOLO OB BILANCIATO: la quota obbligazionaria totale deve essere tra il 25% e il 45%. Se superi il 45% sposta peso verso azionario. Se sei sotto il 25% aggiungi un ETF obbligazionario.
 - ⚠️ STABILITÀ BILANCIATO: per il nucleo del portafoglio privilegia ETF con AUM > 1B€ e storia > 5 anni. Usa ETF più piccoli o specializzati solo come satellite con peso max 15% ciascuno.` : ''}
 ${maxUSA && maxUSA !== 'No max' ? `- ⚠️ VINCOLO TASSATIVO MAX USA: la somma dei pesi degli ETF con esposizione prevalente agli USA (categoria "Azionario USA" o ETF S&P500/Nasdaq/Russell) NON deve superare ${maxUSA} del portafoglio totale. Questo è un hard limit — NON può essere ignorato per nessun motivo.` : '- Esposizione USA: nessun limite'}
@@ -1090,8 +1095,9 @@ SPIEGAZIONE:
 [Una riga: METRICHE: azionaria:XX% | vol:XX% | TER:XX% | maxDD:-XX% | corr_max:0.XX | rend_lordo:XX%]
 
 VERIFICA:
-quota_azionaria: XX% (range ${regole.azionarioTarget-regole.azionarioRange}%-${regole.azionarioTarget+regole.azionarioRange}%)
+quota_azionaria: XX% (range ${hasBuckets ? `${Math.round((regole.azionarioTarget-regole.azionarioRange)*bucketLungo.pct/100)}%-${Math.round((regole.azionarioTarget+regole.azionarioRange)*bucketLungo.pct/100)}% sul totale` : `${regole.azionarioTarget-regole.azionarioRange}%-${regole.azionarioTarget+regole.azionarioRange}%`})
 somma_pesi: 100%
+⚠️ Se quota_azionaria è fuori range: CORREGGI i pesi prima di scrivere il JSON. Non procedere finché non è nel range.
 
 PORTAFOGLIO_JSON:
 [{"isin": "ISIN", "peso": 30, "motivo": "max 80 caratteri"}]
