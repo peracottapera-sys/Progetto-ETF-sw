@@ -894,7 +894,7 @@ async function getEtfPerProfilo(profilo, escludiDistribuzione = false, filtriRil
 
 // POST /api/ai/crea-portafoglio
 router.post('/crea-portafoglio', async (req, res) => {
-  const { profilo, orizzonteAnni, capitale, preferenze, escludiDistribuzione, maxUSA } = req.body;
+  const { profilo, orizzonteAnni, capitale, preferenze, escludiDistribuzione, maxUSA, rendimentoTarget, rendimentoTargetLungo } = req.body;
   if (!profilo) return res.status(400).json({ error: 'Dati mancanti' });
 
   // Carica ETF dal DB filtrati per profilo + notizie macro in parallelo
@@ -1000,8 +1000,9 @@ ${preferenze ? `
 
 ## REGOLE OBBLIGATORIE PROFILO ${profilo.toUpperCase()}:
 - Rendimento atteso: ${regole.rendimentoMin} / ${regole.rendimentoMax}
-- ⚠️ VINCOLO RENDIMENTO MINIMO: il portafoglio deve avere un rendimento atteso NETTO stimato ≥ ${RENDIMENTO_MIN_PROFILO[profilo] || 4.0}% annuo.
-- ⚠️ VINCOLO RENDIMENTO MASSIMO: NON proiettare mai un rendimento netto superiore a ${{Prudente:'4.5',Bilanciato:'7.0',Aggressivo:'10.0'}[profilo] || '7.0'}% annuo. I dati perf5y riflettono un ciclo eccezionale (2020-2024) non ripetibile — NON usarli come stima futura.
+- ⚠️ VINCOLO RENDIMENTO MINIMO: il portafoglio deve avere un rendimento lordo atteso ≥ ${rendimentoTarget ? (rendimentoTarget - 0.5).toFixed(1) : RENDIMENTO_MIN_PROFILO[profilo] || 4.0}% annuo.
+- 🎯 OBIETTIVO RENDIMENTO LORDO: ${rendimentoTarget ? `L'utente ha scelto un obiettivo di ${rendimentoTarget}% lordo annuo${hasBuckets && rendimentoTargetLungo ? ` (il bucket LUNGO da solo deve puntare a ~${rendimentoTargetLungo}% lordo per compensare il bucket BREVE)` : ''}. Costruisci il portafoglio per avvicinarti il più possibile a questo target scegliendo asset class con rendimento storico appropriato.` : `Usa il range standard del profilo.`}
+- 🚫 VINCOLO RENDIMENTO MASSIMO: il rendimento lordo dichiarato NON può superare ${rendimentoTarget ? (rendimentoTarget + 1.0).toFixed(1) : {Prudente:'6.5',Bilanciato:'9.5',Aggressivo:'11.0'}[profilo] || '9.5'}% lordo annuo. Questo è un HARD LIMIT.
 - ⚠️ METODO STIMA RENDIMENTO: usa SEMPRE questi rendimenti attesi storici di lungo periodo (20-30 anni), NON perf5y:
   Azionario Globale/USA/Europa: ~7% lordo | Emergenti: ~6-7% lordo | Obblig. Gov EUR: ~2-3% lordo | Obblig. Corp EUR: ~3-4% lordo | Inflation-Linked: ~2-3% lordo | Oro/Commodity: ~4-5% lordo | Monetario EUR: ~2-3% lordo
   Rendimento netto = lordo × 0.74 (dopo tasse 26%) − TER ponderato
