@@ -327,12 +327,12 @@ function modulaRegolePerOrizzonte(regoleBase, orizzonteAnni) {
 
   if (anni <= 3) {
     // BREVE: più conservativo, meno azionario, più stringente su volatilità e drawdown
-    r.azionarioTarget = Math.max(0, r.azionarioTarget - 10);
+    r.azionarioTarget = Math.max(r.azionarioTarget - 10, regoleBase.azionarioTarget - regoleBase.azionarioRange); // non scendere sotto il minimo del profilo
     r.azionarioRange = Math.max(5, (r.azionarioRange || 10) - 2);
     if (r.maxDrawdownAbs) r.maxDrawdownAbs = Math.max(10, r.maxDrawdownAbs - 5);
     if (r.maxDrawdown) r.maxDrawdown = Math.min(-10, r.maxDrawdown + 5);
     if (r.volatilita) r.volatilita = Math.max(8, r.volatilita - 3);
-    r.noteOrizzonte = `Orizzonte BREVE (${anni} anni): ridotta quota azionaria, privilegia obbligazionario breve duration (1-3Y), liquidità EUR, bassa volatilità. Il capitale potrebbe servire presto.`;
+    r.noteOrizzonte = `Orizzonte BREVE (${anni} anni): quota azionaria ridotta ma NON sotto il minimo del profilo (${regoleBase.azionarioTarget - regoleBase.azionarioRange}%). Privilegia obbligazionario breve duration (1-3Y), liquidità EUR, bassa volatilità.`;
     r.durataObbligaz = 'breve (1-3 anni)';
     r.pesoCategoriePreferite = 'Obblig. Gov. EUR 1-3Y, Liquidità EUR, Obblig. Corp. EUR breve';
     r.pesoMacro = 'ALTO — contesto tassi e inflazione molto rilevante a breve';
@@ -1044,8 +1044,9 @@ ${etfDisponibili.map(e => {
 - La volatilità media PONDERATA del portafoglio non deve superare ${regole.volatilita !== null ? regole.volatilita+'%' : 'nessun limite'} annuo
 - NON includere ETF con vol1y > 20% per profilo Bilanciato
 - L'oro (ETF fisico sull'oro) massimo 5% del portafoglio per profilo Bilanciato
-${profilo === 'Aggressivo' ? `- ⚠️ DIVERSIFICAZIONE AGGRESSIVO: NON costruire un portafoglio 100% azionario. Includi SEMPRE almeno 1 ETF non azionario (oro, commodity, o monetario se bucket attivo) con peso ≥ 5%.${hasBuckets && filosofiaBucket === 'difensiva' ? ` Il bucket BREVE difensivo (${bucketBreve.pct}%) conta come quota non azionaria — non serve aggiungere altro OB nel bucket LUNGO.` : ''}` : ''}
-${profilo === 'Bilanciato' ? `- ⚠️ VINCOLO OB BILANCIATO: la quota obbligazionaria totale deve essere tra il 25% e il 45%. Se superi il 45% sposta peso verso azionario. Se sei sotto il 25% aggiungi un ETF obbligazionario.
+${profilo === 'Aggressivo' ? `- ⚠️ DIVERSIFICAZIONE AGGRESSIVO: NON costruire un portafoglio 100% azionario. Includi SEMPRE almeno 1 ETF non azionario (oro, commodity, o monetario se bucket attivo) con peso ≥ 5%.${hasBuckets && filosofiaBucket === 'difensiva' ? ` Il bucket BREVE difensivo (${bucketBreve.pct}%) conta come quota non azionaria — non serve aggiungere altro OB nel bucket LUNGO.` : ''}
+${hasBuckets ? `- 🚫 LIMITE OB AGGRESSIVO CON BUCKET: il bucket BREVE (${bucketBreve.pct}%) è già obbligazionario per definizione. Il bucket LUNGO NON deve contenere ETF obbligazionari salvo eccezioni (inflation-linked max 5%). La quota OB del bucket BREVE NON conta verso il limite OB del profilo — il limite OB 0-20% si applica SOLO agli ETF obbligazionari nel bucket LUNGO.` : '- 🚫 LIMITE OB AGGRESSIVO: la quota obbligazionaria totale deve restare tra 0% e 20%. Se superi 20% elimina ETF obbligazionari o sostituiscili con azionario/commodity.'}` : ''}
+${profilo === 'Bilanciato' ? `- ⚠️ VINCOLO OB BILANCIATO: la quota obbligazionaria totale deve essere tra il 25% e il 45%. Se superi il 45% sposta peso verso azionario. Se sei sotto il 25% aggiungi un ETF obbligazionario.${hasBuckets ? ` Con bucket BREVE attivo (${bucketBreve.pct}%): la quota OB del bucket BREVE NON conta verso questo limite — il limite 25-45% si applica solo agli ETF OB nel bucket LUNGO.` : ''}
 - ⚠️ STABILITÀ BILANCIATO: per il nucleo del portafoglio privilegia ETF con AUM > 1B€ e storia > 5 anni. Usa ETF più piccoli o specializzati solo come satellite con peso max 15% ciascuno.` : ''}
 ${maxUSA && maxUSA !== 'No max' ? `- ⚠️ VINCOLO TASSATIVO MAX USA: la somma dei pesi degli ETF con esposizione prevalente agli USA (categoria "Azionario USA" o ETF S&P500/Nasdaq/Russell) NON deve superare ${maxUSA} del portafoglio totale. Questo è un hard limit — NON può essere ignorato per nessun motivo.` : '- Esposizione USA: nessun limite'}
 - Le performance passate NON sono garanzia di rendimenti futuri: usa perf1y/5y solo per confronto relativo, NON come stima di rendimento futuro
@@ -1097,7 +1098,9 @@ SPIEGAZIONE:
 VERIFICA:
 quota_azionaria: XX% (range ${hasBuckets ? `${Math.round((regole.azionarioTarget-regole.azionarioRange)*bucketLungo.pct/100)}%-${Math.round((regole.azionarioTarget+regole.azionarioRange)*bucketLungo.pct/100)}% sul totale` : `${regole.azionarioTarget-regole.azionarioRange}%-${regole.azionarioTarget+regole.azionarioRange}%`})
 somma_pesi: 100%
-⚠️ Se quota_azionaria è fuori range: CORREGGI i pesi prima di scrivere il JSON. Non procedere finché non è nel range.
+limite_az: min=${hasBuckets ? Math.round((regole.azionarioTarget-regole.azionarioRange)*bucketLungo.pct/100) : regole.azionarioTarget-regole.azionarioRange}% max=${hasBuckets ? Math.round((regole.azionarioTarget+regole.azionarioRange)*bucketLungo.pct/100) : regole.azionarioTarget+regole.azionarioRange}%
+🚫 BLOCCO: se quota_azionaria > ${hasBuckets ? Math.round((regole.azionarioTarget+regole.azionarioRange)*bucketLungo.pct/100) : regole.azionarioTarget+regole.azionarioRange}% → DEVI ridurla prima di procedere. Sposta peso in eccesso su oro o commodity.
+🚫 BLOCCO: se quota_azionaria < ${hasBuckets ? Math.round((regole.azionarioTarget-regole.azionarioRange)*bucketLungo.pct/100) : regole.azionarioTarget-regole.azionarioRange}% → DEVI aumentarla prima di procedere. Sposta peso da OB/LIQ a azionario.
 
 PORTAFOGLIO_JSON:
 [{"isin": "ISIN", "peso": 30, "motivo": "max 80 caratteri"}]
