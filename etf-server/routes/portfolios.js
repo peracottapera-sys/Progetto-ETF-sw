@@ -67,7 +67,7 @@ module.exports = (pool) => {
     let catalogMap = {};
     try {
       const { rows: catRows } = await pool.query(
-        `SELECT isin, name, emittente, ter, categoria, valuta, aum_mln, vol1y, maxdd1y, perf1m, perf6m, perf1y, perf5y, smart_beta_factor, data_lancio FROM etf_catalog WHERE isin IN (${placeholders})`,
+        `SELECT isin, name, emittente, ter, categoria, valuta, aum_mln, vol1y, maxdd1y, perf1m, perf6m, perf1y, perf5y, smart_beta_factor FROM etf_catalog WHERE isin IN (${placeholders})`,
         isins
       );
       catRows.forEach(r => { catalogMap[r.isin] = r; });
@@ -85,7 +85,6 @@ module.exports = (pool) => {
         smartBeta: cat.smart_beta_factor || null,
         perf1m: cat.perf1m ?? null, perf6m: cat.perf6m ?? null,
         perf1y: cat.perf1y ?? null, perf5y: cat.perf5y ?? null,
-        annoNascita: cat.data_lancio ? new Date(cat.data_lancio).getFullYear() : null,
       };
     }));
   });
@@ -126,9 +125,9 @@ module.exports = (pool) => {
       await client.query('DELETE FROM acquisti WHERE portfolio_id = $1', [portfolioId]);
       for (const e of etfs)
         await client.query(
-          `INSERT INTO portfolio_etf (portfolio_id, isin, selected, tipo, bucket) VALUES ($1, $2, $3, $4, $5)
-           ON CONFLICT(portfolio_id, isin) DO UPDATE SET selected = EXCLUDED.selected, tipo = EXCLUDED.tipo, bucket = EXCLUDED.bucket`,
-          [portfolioId, e.isin, e.selected ? 1 : 0, e.tipo || 'consigliato', e.bucket || 'LUNGO']
+          `INSERT INTO portfolio_etf (portfolio_id, isin, selected, tipo) VALUES ($1, $2, $3, $4)
+           ON CONFLICT(portfolio_id, isin) DO UPDATE SET selected = EXCLUDED.selected, tipo = EXCLUDED.tipo`,
+          [portfolioId, e.isin, e.selected ? 1 : 0, e.tipo || 'consigliato']
         );
       for (const a of acquisti)
         if (a.quantita > 0 && a.quotazioneAcquisto > 0)
@@ -282,63 +281,121 @@ module.exports = (pool) => {
     res.json(rows);
   });
 
-  // ── AI Runs — storico creazioni portafoglio AI ────────────────────────────
+  // ── Import portafoglio da Excel ─────────────────────────────────────────────
 
-  // Salva un run AI
-  router.post('/ai-runs', authMiddleware, async (req, res) => {
-    const { portfolioId, profilo, orizzonte, capitale, scenarioMacro, metriche, etfSelezionati, spiegazione,
-            maxUsa, preferenze, escludiDistribuzione, bucketAttivo, bucketPctBreve } = req.body;
+  // GET /api/portfolios/import-template — serve il file template xlsx
+  router.get('/import-template', authMiddleware, async (req, res) => {
+    const path = require('path');
+    const fs   = require('fs');
+    // Il template viene servito dalla cartella public o dalla root del server
+    const possiblePaths = [
+      path.join(__dirname, '../public/template_import_portafoglio.xlsx'),
+      path.join(__dirname, '../template_import_portafoglio.xlsx'),
+      path.join(process.cwd(), 'template_import_portafoglio.xlsx'),
+    ];
+    const templatePath = possiblePaths.find(p => fs.existsSync(p));
+    if (!templatePath) return res.status(404).json({ error: 'Template non trovato sul server' });
+    res.download(templatePath, 'template_import_portafoglio.xlsx');
+  });
+
+  // POST /api/portfolios/import-preview — verifica ISIN nel catalogo
+  router.post('/import-preview', authMiddleware, async (req, res) => {
+    const { etfs } = req.body;
+    if (!Array.isArray(etfs) || etfs.length === 0)
+      return res.status(400).json({ error: 'Nessun ETF fornito' });
+
+    const results = await Promise.all(etfs.map(async (etf) => {
+      try {
+        const { rows } = await pool.query(
+          `SELECT isin, name, categoria, ter, perf1y, perf5y, aum_mln, valuta, distribuzione
+           FROM etf_catalog WHERE isin = $1`, [etf.isin]
+        );
+        if (rows[0]) {
+          return { ...etf, trovato: true, catalogoData: rows[0] };
+        } else {
+          return { ...etf, trovato: false, catalogoData: null };
+        }
+      } catch {
+        return { ...etf, trovato: false, catalogoData: null };
+      }
+    }));
+
+    console.log(`[import-preview] ${results.filter(r => r.trovato).length}/${results.length} ETF trovati nel catalogo`);
+    res.json({ results, trovati: results.filter(r => r.trovato).length, nonTrovati: results.filter(r => !r.trovato).length });
+  });
+
+  // POST /api/portfolios/import — importa ETF nel portafoglio creato
+  router.post('/import', authMiddleware, async (req, res) => {
+    const { portfolioId, etfs, profiloTarget, orizzonteAnni } = req.body;
+    if (!portfolioId || !Array.isArray(etfs) || etfs.length === 0)
+      return res.status(400).json({ error: 'Dati mancanti' });
+
+    // Verifica ownership portafoglio
+    const { rows: p } = await pool.query(
+      'SELECT id FROM portfolios WHERE id = $1 AND user_id = $2', [portfolioId, req.user.id]
+    );
+    if (!p[0]) return res.status(404).json({ error: 'Portafoglio non trovato' });
+
+    const client = await pool.connect();
+    const oggi = new Date().toISOString().slice(0, 10);
+    let importati = 0, custom = 0, errori = 0;
+
     try {
-      const { rows } = await pool.query(
-        `INSERT INTO ai_runs (portfolio_id, utente, profilo, orizzonte, capitale, scenario_macro, metriche, etf_selezionati, spiegazione,
-           max_usa, preferenze, escludi_distribuzione, bucket_attivo, bucket_pct_breve)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING id`,
-        [portfolioId || null, req.user?.username || null, profilo, orizzonte || null,
-         capitale || null, scenarioMacro || null,
-         metriche ? JSON.stringify(metriche) : null,
-         etfSelezionati ? JSON.stringify(etfSelezionati) : null,
-         spiegazione || null,
-         maxUsa || null, preferenze || null,
-         escludiDistribuzione ?? false, bucketAttivo ?? false,
-         bucketPctBreve ?? null]
-      );
-      res.json({ ok: true, id: rows[0].id });
-    } catch (e) {
-      res.status(500).json({ error: e.message });
+      await client.query('BEGIN');
+
+      for (const etf of etfs) {
+        try {
+          // 1. Se custom: inserisci nel catalogo con dati minimi
+          if (etf.custom) {
+            const { rows: esiste } = await client.query('SELECT isin FROM etf_catalog WHERE isin = $1', [etf.isin]);
+            if (!esiste[0]) {
+              await client.query(
+                `INSERT INTO etf_catalog (isin, name, categoria, ter, distribuzione, quotazione, aum_mln)
+                 VALUES ($1, $2, $3, 0, 'N/D', $4, 0)
+                 ON CONFLICT (isin) DO NOTHING`,
+                [etf.isin, etf.name || etf.isin, etf.categoria || 'Custom',
+                 etf.prezzoCarico || 0]
+              );
+              custom++;
+            }
+          }
+
+          // 2. Seleziona ETF nel portafoglio
+          await client.query(
+            `INSERT INTO portfolio_etf (portfolio_id, isin, selected, tipo)
+             VALUES ($1, $2, 1, 'consigliato')
+             ON CONFLICT (portfolio_id, isin) DO UPDATE SET selected = 1`,
+            [portfolioId, etf.isin]
+          );
+
+          // 3. Registra acquisto se quantità e prezzo disponibili
+          if (etf.quantita && etf.prezzoCarico) {
+            await client.query(
+              `INSERT INTO acquisti (portfolio_id, isin, quantita, quotazione_acquisto, data_acquisto)
+               VALUES ($1, $2, $3, $4, $5)
+               ON CONFLICT DO NOTHING`,
+              [portfolioId, etf.isin, etf.quantita, etf.prezzoCarico, oggi]
+            );
+          }
+
+          importati++;
+        } catch (err) {
+          console.log(`  [import] errore ETF ${etf.isin}:`, err.message);
+          errori++;
+        }
+      }
+
+      await client.query('COMMIT');
+      console.log(`[import] Portafoglio ${portfolioId}: ${importati} ETF importati, ${custom} custom, ${errori} errori`);
+      log(EVENTI.ACQUISTO, { portfolioId, azione: 'import_excel', importati, custom, errori }, req.user?.username).catch(() => {});
+      res.json({ ok: true, importati, custom, errori });
+    } catch (err) {
+      await client.query('ROLLBACK');
+      console.log('[import] Errore transazione:', err.message);
+      res.status(500).json({ error: 'Errore durante l\'importazione: ' + err.message });
+    } finally {
+      client.release();
     }
-  });
-
-  // Lista run AI (con filtri opzionali)
-  router.get('/ai-runs', authMiddleware, async (req, res) => {
-    const { profilo, portfolioId, limit = 50 } = req.query;
-    let where = ['utente = $1'];
-    const params = [req.user?.username];
-    if (profilo) { where.push(`profilo = $${params.length + 1}`); params.push(profilo); }
-    if (portfolioId) { where.push(`portfolio_id = $${params.length + 1}`); params.push(portfolioId); }
-    const { rows } = await pool.query(
-      `SELECT id, portfolio_id, profilo, orizzonte, capitale, scenario_macro, metriche, etf_selezionati, created_at,
-              max_usa, preferenze, escludi_distribuzione, bucket_attivo, bucket_pct_breve
-       FROM ai_runs WHERE ${where.join(' AND ')}
-       ORDER BY created_at DESC LIMIT $${params.length + 1}`,
-      [...params, parseInt(limit)]
-    );
-    res.json(rows);
-  });
-
-  // Singolo run AI con spiegazione completa
-  router.get('/ai-runs/:id', authMiddleware, async (req, res) => {
-    const { rows } = await pool.query(
-      'SELECT * FROM ai_runs WHERE id = $1 AND utente = $2',
-      [req.params.id, req.user?.username]
-    );
-    if (!rows[0]) return res.status(404).json({ error: 'Run non trovato' });
-    res.json(rows[0]);
-  });
-
-  // Elimina un run AI
-  router.delete('/ai-runs/:id', authMiddleware, async (req, res) => {
-    await pool.query('DELETE FROM ai_runs WHERE id = $1 AND utente = $2', [req.params.id, req.user?.username]);
-    res.json({ ok: true });
   });
 
   return router;
