@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
+import ImportPortafoglioModal from './modals/ImportPortafoglioModal';
 
 const API = process.env.REACT_APP_API_URL || (window.location.hostname === 'localhost' ? 'http://localhost:3001' : '');
 
@@ -9,6 +10,7 @@ export default function PortfolioSelector() {
 
   // step: 'list' | 'new' | 'ai-prompt' | 'ai-loading' | 'ai-result'
   const [step, setStep] = useState('list');
+  const [showImport, setShowImport] = useState(false);
   const [form, setForm] = useState({ name: '', riskProfile: 'Prudente', maxUSA: 'No max' });
   const [aiForm, setAiForm] = useState({ orizzonteAnni: 'MEDIO', capitale: '', preferenze: '', escludiDistribuzione: true, usaBucket: false, pctBreve: 30, anniBreve: 3, rendBreve: '', anniLungo: 10, rendLungo: '' });
   const [error, setError] = useState('');
@@ -63,6 +65,7 @@ export default function PortfolioSelector() {
   // ── Render ──
   return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-primary)', padding: 24 }}>
+      {showImport && <ImportPortafoglioModal onClose={() => setShowImport(false)} />}
       <div style={{ width: '100%', maxWidth: 600 }}>
 
         {/* Header */}
@@ -117,9 +120,15 @@ export default function PortfolioSelector() {
             </div>
           ))}
           {portfolios.length < 3 && (
-            <button className="btn btn-secondary" style={{ width: '100%', justifyContent: 'center', padding: 14, marginTop: 8, borderStyle: 'dashed' }} onClick={() => setStep('new')}>
-              + Nuovo Portafoglio
-            </button>
+            <div style={{ display:'flex', gap:8, marginTop:8 }}>
+              <button className="btn btn-secondary" style={{ flex:1, justifyContent:'center', padding:14, borderStyle:'dashed' }} onClick={() => setStep('new')}>
+                + Nuovo Portafoglio
+              </button>
+              <button className="btn btn-secondary" style={{ flex:1, justifyContent:'center', padding:14, borderStyle:'dashed', color:'var(--accent-blue)', borderColor:'var(--accent-blue)' }}
+                onClick={() => setShowImport(true)}>
+                📥 Importa da Excel
+              </button>
+            </div>
           )}
           {portfolios.length >= 3 && (
             <div className="alert alert-info" style={{ marginTop: 12 }}>Hai raggiunto il limite massimo di 3 portafogli per account.</div>
