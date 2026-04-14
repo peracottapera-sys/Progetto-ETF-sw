@@ -60,7 +60,8 @@ function parseExcel(file) {
 
 // ── Componente principale ──────────────────────────────────────────────────
 export default function ImportPortafoglioModal({ onClose }) {
-  const { createPortfolio, token, portfolios, loadPortfoliosFromDB } = useApp();
+  const { createPortfolio, token, currentUser, getUserPortfolios, loadPortfoliosFromDB } = useApp();
+  const portfolios = currentUser ? getUserPortfolios(currentUser.id) : [];
   const fileRef = useRef();
 
   const [step, setStep] = useState('form'); // form | anteprima | caricamento
@@ -79,7 +80,42 @@ export default function ImportPortafoglioModal({ onClose }) {
 
   // ── Download template ────────────────────────────────────────────────────
   const handleDownloadTemplate = () => {
-    window.open(`${API}/api/portfolios/import-template`, '_blank');
+    const wb = XLSX.utils.book_new();
+
+    // Foglio Istruzioni
+    const istrData = [
+      ['ETF Portfolio Manager — Template Import Portafoglio', '', '', '', '', ''],
+      ['', '', '', '', '', ''],
+      ['ISTRUZIONI', '', '', '', '', ''],
+      ['1.', 'Vai al foglio "Portafoglio" (tab in basso)', '', '', '', ''],
+      ['2.', 'Per ogni ETF inserisci ISIN (obbligatorio), Nome, Quantità e Prezzo di carico', '', '', '', ''],
+      ['3.', 'Il codice ISIN è composto da 12 caratteri (es. IE00B4L5Y983)', '', '', '', ''],
+      ['4.', 'La Quantità è il numero di quote possedute (es. 50)', '', '', '', ''],
+      ['5.', 'Il Prezzo di carico è il prezzo medio di acquisto in Euro (es. 112.50)', '', '', '', ''],
+      ['6.', 'Non modificare le intestazioni delle colonne', '', '', '', ''],
+      ['7.', 'Salva il file in formato .xlsx e importalo nell\'app', '', '', '', ''],
+      ['', '', '', '', '', ''],
+      ['ESEMPIO', '', '', '', '', ''],
+      ['ISIN', 'Nome ETF', 'Quantità', 'Prezzo carico (€)', 'Valore totale (€)', 'Note'],
+      ['IE00B4L5Y983', 'iShares Core MSCI World UCITS ETF', 50, 112.50, 5625, 'ETF core globale'],
+      ['IE00BKM4GZ66', 'iShares Core MSCI EM IMI UCITS ETF', 30, 76.20, 2286, 'Mercati emergenti'],
+      ['LU0290356871', 'Xtrackers Eurozone Govt Bond 1-3Y', 80, 173.00, 13840, 'Obblig. breve termine'],
+    ];
+    const wsIstr = XLSX.utils.aoa_to_sheet(istrData);
+    wsIstr['!cols'] = [{ wch: 18 }, { wch: 44 }, { wch: 12 }, { wch: 20 }, { wch: 18 }, { wch: 25 }];
+    XLSX.utils.book_append_sheet(wb, wsIstr, 'Istruzioni');
+
+    // Foglio Portafoglio — 30 righe vuote con intestazioni
+    const portData = [
+      ['ISIN *', 'Nome ETF', 'Quantità *', 'Prezzo carico (€)', 'Valore totale (€)', 'Note'],
+      ...Array(30).fill(['', '', '', '', '', '']),
+      ['TOTALE', '', '', '', '', ''],
+    ];
+    const wsPort = XLSX.utils.aoa_to_sheet(portData);
+    wsPort['!cols'] = [{ wch: 16 }, { wch: 44 }, { wch: 12 }, { wch: 20 }, { wch: 18 }, { wch: 28 }];
+    XLSX.utils.book_append_sheet(wb, wsPort, 'Portafoglio');
+
+    XLSX.writeFile(wb, 'template_import_portafoglio.xlsx');
   };
 
   // ── Upload file ──────────────────────────────────────────────────────────
