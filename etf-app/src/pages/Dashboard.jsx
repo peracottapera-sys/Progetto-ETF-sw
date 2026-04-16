@@ -203,13 +203,17 @@ export default function Dashboard({ setActiveTab }) {
         : <span>ponderata per valore · <span style={{ color: 'var(--text-muted)' }}>lordo</span></span>,
       nota: 'Rendimenti passati · non garanzia futura',
     },
-    ...(rendAtteso != null ? [{
+    {
       label: 'Rend. Atteso AI~',
-      value: `${rendAtteso}%`,
-      valueColor: rendAtteso < 3 ? 'var(--accent-red)' : rendAtteso > 10 ? 'var(--accent-amber)' : 'var(--accent-green)',
-      sub: <span style={{ color: 'var(--text-muted)' }}>lordo annuo · stima AI</span>,
-      nota: 'Proiezione su stor. 20-30A · non garantito',
-    }] : []),
+      value: rendAtteso != null ? `${rendAtteso}%` : '—',
+      valueColor: rendAtteso != null
+        ? (rendAtteso < 3 ? 'var(--accent-red)' : rendAtteso > 10 ? 'var(--accent-amber)' : 'var(--accent-green)')
+        : 'var(--text-muted)',
+      sub: rendAtteso != null
+        ? <span style={{ color: 'var(--text-muted)' }}>lordo annuo · stima AI</span>
+        : <span style={{ color: 'var(--text-muted)' }}>lancia Analisi AI per calcolo</span>,
+      nota: rendAtteso != null ? 'Proiezione su stor. 20-30A · non garantito' : '',
+    },
     { label: 'Valore Acquistato', value: `€ ${valoreAcquistato.toLocaleString('it-IT', { maximumFractionDigits: 0 })}`, valueColor: 'var(--text-primary)', sub: 'valore di carico' },
   ];
 

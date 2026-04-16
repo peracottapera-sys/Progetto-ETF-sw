@@ -189,7 +189,9 @@ export default function ImportPortafoglioModal({ onClose }) {
       if (!res.ok) throw new Error(data.error || 'Errore import');
 
       setProgress('Completato!');
-      await loadPortfoliosFromDB();
+      // FIX: passare token + userId, altrimenti la fetch va in 401 e il catch
+      // sostituisce lo stato con loadFromLocalStorage → dopo l'import si vede stato stale.
+      await loadPortfoliosFromDB(token, currentUser?.id);
       setTimeout(() => onClose(), 800);
     } catch (err) {
       setErrore(err.message);
