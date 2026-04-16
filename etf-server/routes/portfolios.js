@@ -349,12 +349,13 @@ module.exports = (pool) => {
           if (etf.custom) {
             const { rows: esiste } = await client.query('SELECT isin FROM etf_catalog WHERE isin = $1', [etf.isin]);
             if (!esiste[0]) {
+              // quotazione NULL → verrà popolata da prezzi_storici quando disponibile.
+              // prezzoCarico NON va in etf_catalog.quotazione (è il carico utente, non la quotazione attuale).
               await client.query(
                 `INSERT INTO etf_catalog (isin, name, categoria, ter, distribuzione, quotazione, aum_mln)
-                 VALUES ($1, $2, $3, 0, 'N/D', $4, 0)
+                 VALUES ($1, $2, $3, 0, 'N/D', NULL, 0)
                  ON CONFLICT (isin) DO NOTHING`,
-                [etf.isin, etf.name || etf.isin, etf.categoria || 'Custom',
-                 etf.prezzoCarico || 0]
+                [etf.isin, etf.name || etf.isin, etf.categoria || 'Custom']
               );
               custom++;
             }
@@ -395,6 +396,77 @@ module.exports = (pool) => {
       res.status(500).json({ error: 'Errore durante l\'importazione: ' + err.message });
     } finally {
       client.release();
+    }
+  });
+
+  // ── AI Runs: cronologia dei run AI ─────────────────────────────────────────
+
+  // GET /ai-runs?portfolioId=&profilo=&limit=
+  router.get('/ai-runs', authMiddleware, async (req, res) => {
+    try {
+      const { portfolioId, profilo, limit } = req.query;
+      const where = ['user_id = $1'];
+      const params = [req.user.id];
+      if (portfolioId) { where.push(`portfolio_id = $${params.length + 1}`); params.push(portfolioId); }
+      if (profilo)     { where.push(`profilo = $${params.length + 1}`);      params.push(profilo); }
+      const lim = Math.min(parseInt(limit, 10) || 100, 500);
+      const { rows } = await pool.query(
+        `SELECT * FROM ai_runs WHERE ${where.join(' AND ')} ORDER BY created_at DESC LIMIT ${lim}`,
+        params
+      );
+      res.json(rows);
+    } catch (err) {
+      console.log('[ai-runs] GET errore:', err.message);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // POST /ai-runs
+  router.post('/ai-runs', authMiddleware, async (req, res) => {
+    try {
+      const {
+        portfolioId, profilo, orizzonte, capitale, scenarioMacro, maxUsa, preferenze,
+        escludiDistribuzione, bucketAttivo, bucketPctBreve, metriche, etfSelezionati,
+      } = req.body;
+      // Se portfolioId presente, verifica ownership
+      if (portfolioId) {
+        const { rows: p } = await pool.query(
+          'SELECT id FROM portfolios WHERE id = $1 AND user_id = $2', [portfolioId, req.user.id]
+        );
+        if (!p[0]) return res.status(404).json({ error: 'Portafoglio non trovato' });
+      }
+      const { rows } = await pool.query(
+        `INSERT INTO ai_runs
+         (user_id, portfolio_id, profilo, orizzonte, capitale, scenario_macro, max_usa, preferenze,
+          escludi_distribuzione, bucket_attivo, bucket_pct_breve, metriche, etf_selezionati)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+         RETURNING *`,
+        [
+          req.user.id, portfolioId || null, profilo || null, orizzonte || null,
+          capitale || null, scenarioMacro || null, maxUsa || null, preferenze || null,
+          !!escludiDistribuzione, !!bucketAttivo, bucketPctBreve ?? null,
+          metriche ? JSON.stringify(metriche) : null,
+          etfSelezionati ? JSON.stringify(etfSelezionati) : null,
+        ]
+      );
+      res.json(rows[0]);
+    } catch (err) {
+      console.log('[ai-runs] POST errore:', err.message);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // DELETE /ai-runs/:id
+  router.delete('/ai-runs/:id', authMiddleware, async (req, res) => {
+    try {
+      const { rowCount } = await pool.query(
+        'DELETE FROM ai_runs WHERE id = $1 AND user_id = $2', [req.params.id, req.user.id]
+      );
+      if (rowCount === 0) return res.status(404).json({ error: 'Run non trovato' });
+      res.json({ ok: true });
+    } catch (err) {
+      console.log('[ai-runs] DELETE errore:', err.message);
+      res.status(500).json({ error: err.message });
     }
   });
 
