@@ -399,75 +399,65 @@ module.exports = (pool) => {
     }
   });
 
-  // ── AI Runs: cronologia dei run AI ─────────────────────────────────────────
+  // ── AI Runs — storico creazioni portafoglio AI ────────────────────────────
+  // NOTA: queste route erano presenti dal 29/03, andate perse in un merge/rebase.
+  // Schema ripristinato identico al commit 2f9e68dc (1 aprile) — filtro per `utente` (username).
 
-  // GET /ai-runs?portfolioId=&profilo=&limit=
-  router.get('/ai-runs', authMiddleware, async (req, res) => {
-    try {
-      const { portfolioId, profilo, limit } = req.query;
-      const where = ['user_id = $1'];
-      const params = [req.user.id];
-      if (portfolioId) { where.push(`portfolio_id = $${params.length + 1}`); params.push(portfolioId); }
-      if (profilo)     { where.push(`profilo = $${params.length + 1}`);      params.push(profilo); }
-      const lim = Math.min(parseInt(limit, 10) || 100, 500);
-      const { rows } = await pool.query(
-        `SELECT * FROM ai_runs WHERE ${where.join(' AND ')} ORDER BY created_at DESC LIMIT ${lim}`,
-        params
-      );
-      res.json(rows);
-    } catch (err) {
-      console.log('[ai-runs] GET errore:', err.message);
-      res.status(500).json({ error: err.message });
-    }
-  });
-
-  // POST /ai-runs
+  // Salva un run AI
   router.post('/ai-runs', authMiddleware, async (req, res) => {
+    const { portfolioId, profilo, orizzonte, capitale, scenarioMacro, metriche, etfSelezionati, spiegazione,
+            maxUsa, preferenze, escludiDistribuzione, bucketAttivo, bucketPctBreve } = req.body;
     try {
-      const {
-        portfolioId, profilo, orizzonte, capitale, scenarioMacro, maxUsa, preferenze,
-        escludiDistribuzione, bucketAttivo, bucketPctBreve, metriche, etfSelezionati,
-      } = req.body;
-      // Se portfolioId presente, verifica ownership
-      if (portfolioId) {
-        const { rows: p } = await pool.query(
-          'SELECT id FROM portfolios WHERE id = $1 AND user_id = $2', [portfolioId, req.user.id]
-        );
-        if (!p[0]) return res.status(404).json({ error: 'Portafoglio non trovato' });
-      }
       const { rows } = await pool.query(
-        `INSERT INTO ai_runs
-         (user_id, portfolio_id, profilo, orizzonte, capitale, scenario_macro, max_usa, preferenze,
-          escludi_distribuzione, bucket_attivo, bucket_pct_breve, metriche, etf_selezionati)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
-         RETURNING *`,
-        [
-          req.user.id, portfolioId || null, profilo || null, orizzonte || null,
-          capitale || null, scenarioMacro || null, maxUsa || null, preferenze || null,
-          !!escludiDistribuzione, !!bucketAttivo, bucketPctBreve ?? null,
-          metriche ? JSON.stringify(metriche) : null,
-          etfSelezionati ? JSON.stringify(etfSelezionati) : null,
-        ]
+        `INSERT INTO ai_runs (portfolio_id, utente, profilo, orizzonte, capitale, scenario_macro, metriche, etf_selezionati, spiegazione,
+           max_usa, preferenze, escludi_distribuzione, bucket_attivo, bucket_pct_breve)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING id`,
+        [portfolioId || null, req.user?.username || null, profilo, orizzonte || null,
+         capitale || null, scenarioMacro || null,
+         metriche ? JSON.stringify(metriche) : null,
+         etfSelezionati ? JSON.stringify(etfSelezionati) : null,
+         spiegazione || null,
+         maxUsa || null, preferenze || null,
+         escludiDistribuzione ?? false, bucketAttivo ?? false,
+         bucketPctBreve ?? null]
       );
-      res.json(rows[0]);
-    } catch (err) {
-      console.log('[ai-runs] POST errore:', err.message);
-      res.status(500).json({ error: err.message });
+      res.json({ ok: true, id: rows[0].id });
+    } catch (e) {
+      res.status(500).json({ error: e.message });
     }
   });
 
-  // DELETE /ai-runs/:id
+  // Lista run AI (con filtri opzionali)
+  router.get('/ai-runs', authMiddleware, async (req, res) => {
+    const { profilo, portfolioId, limit = 50 } = req.query;
+    let where = ['utente = $1'];
+    const params = [req.user?.username];
+    if (profilo) { where.push(`profilo = $${params.length + 1}`); params.push(profilo); }
+    if (portfolioId) { where.push(`portfolio_id = $${params.length + 1}`); params.push(portfolioId); }
+    const { rows } = await pool.query(
+      `SELECT id, portfolio_id, profilo, orizzonte, capitale, scenario_macro, metriche, etf_selezionati, created_at,
+              max_usa, preferenze, escludi_distribuzione, bucket_attivo, bucket_pct_breve
+       FROM ai_runs WHERE ${where.join(' AND ')}
+       ORDER BY created_at DESC LIMIT $${params.length + 1}`,
+      [...params, parseInt(limit)]
+    );
+    res.json(rows);
+  });
+
+  // Singolo run AI con spiegazione completa
+  router.get('/ai-runs/:id', authMiddleware, async (req, res) => {
+    const { rows } = await pool.query(
+      'SELECT * FROM ai_runs WHERE id = $1 AND utente = $2',
+      [req.params.id, req.user?.username]
+    );
+    if (!rows[0]) return res.status(404).json({ error: 'Run non trovato' });
+    res.json(rows[0]);
+  });
+
+  // Elimina un run AI
   router.delete('/ai-runs/:id', authMiddleware, async (req, res) => {
-    try {
-      const { rowCount } = await pool.query(
-        'DELETE FROM ai_runs WHERE id = $1 AND user_id = $2', [req.params.id, req.user.id]
-      );
-      if (rowCount === 0) return res.status(404).json({ error: 'Run non trovato' });
-      res.json({ ok: true });
-    } catch (err) {
-      console.log('[ai-runs] DELETE errore:', err.message);
-      res.status(500).json({ error: err.message });
-    }
+    await pool.query('DELETE FROM ai_runs WHERE id = $1 AND utente = $2', [req.params.id, req.user?.username]);
+    res.json({ ok: true });
   });
 
   return router;
