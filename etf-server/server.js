@@ -14,9 +14,9 @@ const PORT = process.env.PORT || 3001;
 app.use(cors());
 app.use(express.json());
 
-// ══════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════════════
 //  DATABASE POSTGRESQL — INIT
-// ══════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════════════
 const pool = new Pool({
   connectionString: (process.env.DATABASE_URL || '').replace('postgres.railway.internal:5432', 'crossover.proxy.rlwy.net:20706'),
   ssl: process.env.DATABASE_URL?.includes('railway') ? { rejectUnauthorized: false } : false,
@@ -199,9 +199,9 @@ async function initDB() {
   console.log('✓ Database PostgreSQL pronto');
 }
 
-// ══════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════════════
 //  ROUTES — mount
-// ══════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════════════
 const { fetchETF, ETF_INFO_MAP } = require('./routes/etf');
 
 app.use('/api/auth',        require('./routes/auth')(pool));
@@ -244,7 +244,7 @@ app.get('/api/test', async (req, res) => {
   } catch (e) { res.json({ errore: e.message }); }
 });
 
-// ── AI Config endpoint ───────────────────────────────────────────────────
+// ── AI Config endpoint ─────────────────────────────────────────────────────
 const authMiddleware = require('./middleware/auth');
 
 app.get('/api/ai/config', authMiddleware, async (req, res) => {
@@ -293,7 +293,7 @@ app.post('/api/ai/config/reset', authMiddleware, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// ── App Logs endpoint ────────────────────────────────────────────────────
+// ── App Logs endpoint ──────────────────────────────────────────────────────
 app.delete('/api/admin/logs', authMiddleware, async (req, res) => {
   try {
     const { ids } = req.body;
@@ -322,7 +322,7 @@ app.get('/api/admin/logs', authMiddleware, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// ── Macro context endpoint ───────────────────────────────────────────────
+// ── Macro context endpoint ─────────────────────────────────────────────────
 const { getMacroContext, getMacroDati } = require('./routes/macro');
 
 app.get('/api/macro/context', async (req, res) => {
@@ -332,15 +332,49 @@ app.get('/api/macro/context', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// ── Scheduler aggiornamento prezzi 18:00 ─────────────────────────────────
+// ── Scheduler aggiornamento prezzi 18:00 ──────────────────────────────────
 const { schedulaAggiornamento18 } = require('./routes/catalog');
 
 // ── Serve frontend build ──────────────────────────────────────────────────
-const distPath = process.env.STATIC_PATH || path.join(__dirname, '..', 'etf-app', 'build');
-if (fs.existsSync(distPath)) {
+// Ricerca robusta: prova vari path possibili e logga cosa vede sul filesystem
+// così se Railway o Docker cambiano il layout scopriamo subito dov'è finito.
+const distCandidates = [
+  process.env.STATIC_PATH,
+  path.join(__dirname, '..', 'etf-app', 'build'),
+  path.join(__dirname, '..', 'etf-app', 'dist'),
+  path.join(__dirname, 'public'),
+  '/app/etf-app/build',
+  '/app/etf-app/dist',
+].filter(Boolean);
+
+console.log('[static] __dirname    =', __dirname);
+console.log('[static] process.cwd() =', process.cwd());
+try {
+  const rootFs = fs.existsSync('/app') ? '/app' : process.cwd();
+  console.log(`[static] ${rootFs} contiene:`, fs.readdirSync(rootFs).join(', '));
+  const etfAppPath = path.join(rootFs, 'etf-app');
+  if (fs.existsSync(etfAppPath)) {
+    console.log(`[static] ${etfAppPath} contiene:`, fs.readdirSync(etfAppPath).join(', '));
+  } else {
+    console.log(`[static] ${etfAppPath} NON ESISTE`);
+  }
+} catch (e) {
+  console.log('[static] readdir error:', e.message);
+}
+
+let distPath = null;
+for (const c of distCandidates) {
+  const trovata = fs.existsSync(c);
+  console.log(`[static] provo: ${c} → ${trovata ? 'TROVATA ✓' : 'no'}`);
+  if (trovata && !distPath) { distPath = c; }
+}
+
+if (distPath) {
   app.use(express.static(distPath));
   app.get(/^(?!\/api).*/, (req, res) => res.sendFile(path.join(distPath, 'index.html')));
   console.log(`📦 Frontend servito da: ${distPath}`);
+} else {
+  console.log('⚠️  Nessuna cartella statica trovata, frontend non servito.');
 }
 
 // ── Start ─────────────────────────────────────────────────────────────────
