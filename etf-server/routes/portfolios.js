@@ -399,19 +399,22 @@ module.exports = (pool) => {
     }
   });
 
-  // ── AI Runs — storico creazioni portafoglio AI ────────────────────────────
-  // NOTA: queste route erano presenti dal 29/03, andate perse in un merge/rebase.
-  // Schema ripristinato identico al commit 2f9e68dc (1 aprile) — filtro per `utente` (username).
+  // ── AI Runs — storico creazioni e analisi AI ──────────────────────────────
+  // Tabella ai_runs condivisa tra due tipi:
+  //   - tipo='creazione' : portafoglio generato via CreaPortafoglioModal
+  //   - tipo='analisi'   : revisione di un portafoglio via AIModal
+  // Filtro ownership: colonna `utente` (username).
 
   // Salva un run AI
   router.post('/ai-runs', authMiddleware, async (req, res) => {
     const { portfolioId, profilo, orizzonte, capitale, scenarioMacro, metriche, etfSelezionati, spiegazione,
-            maxUsa, preferenze, escludiDistribuzione, bucketAttivo, bucketPctBreve } = req.body;
+            maxUsa, preferenze, escludiDistribuzione, bucketAttivo, bucketPctBreve,
+            tipo } = req.body;
     try {
       const { rows } = await pool.query(
         `INSERT INTO ai_runs (portfolio_id, utente, profilo, orizzonte, capitale, scenario_macro, metriche, etf_selezionati, spiegazione,
-           max_usa, preferenze, escludi_distribuzione, bucket_attivo, bucket_pct_breve)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING id`,
+           max_usa, preferenze, escludi_distribuzione, bucket_attivo, bucket_pct_breve, tipo)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) RETURNING id`,
         [portfolioId || null, req.user?.username || null, profilo, orizzonte || null,
          capitale || null, scenarioMacro || null,
          metriche ? JSON.stringify(metriche) : null,
@@ -419,7 +422,8 @@ module.exports = (pool) => {
          spiegazione || null,
          maxUsa || null, preferenze || null,
          escludiDistribuzione ?? false, bucketAttivo ?? false,
-         bucketPctBreve ?? null]
+         bucketPctBreve ?? null,
+         (tipo === 'analisi' ? 'analisi' : 'creazione')]
       );
       res.json({ ok: true, id: rows[0].id });
     } catch (e) {
@@ -429,14 +433,15 @@ module.exports = (pool) => {
 
   // Lista run AI (con filtri opzionali)
   router.get('/ai-runs', authMiddleware, async (req, res) => {
-    const { profilo, portfolioId, limit = 50 } = req.query;
+    const { profilo, portfolioId, tipo, limit = 50 } = req.query;
     let where = ['utente = $1'];
     const params = [req.user?.username];
-    if (profilo) { where.push(`profilo = $${params.length + 1}`); params.push(profilo); }
+    if (profilo)     { where.push(`profilo = $${params.length + 1}`);      params.push(profilo); }
     if (portfolioId) { where.push(`portfolio_id = $${params.length + 1}`); params.push(portfolioId); }
+    if (tipo)        { where.push(`tipo = $${params.length + 1}`);         params.push(tipo); }
     const { rows } = await pool.query(
       `SELECT id, portfolio_id, profilo, orizzonte, capitale, scenario_macro, metriche, etf_selezionati, created_at,
-              max_usa, preferenze, escludi_distribuzione, bucket_attivo, bucket_pct_breve
+              max_usa, preferenze, escludi_distribuzione, bucket_attivo, bucket_pct_breve, tipo
        FROM ai_runs WHERE ${where.join(' AND ')}
        ORDER BY created_at DESC LIMIT $${params.length + 1}`,
       [...params, parseInt(limit)]

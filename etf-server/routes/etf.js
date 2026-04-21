@@ -85,18 +85,41 @@ async function fetchQuote(ticker) {
   }
 }
 
-async function fetchETF(isin) {
-  const ticker = ISIN_TICKER_MAP[isin];
-  if (ticker) {
-    const dati = await fetchQuote(ticker);
-    if (dati) return { isin, ...dati, fonte: 'yahoo', aggiornato: new Date().toISOString() };
+async function fetchETF(isin, tickerDB) {
+  // Priorità ticker: 1) tickerDB (dal catalogo, aggiornato da import_tickers_v3)
+  //                  2) ISIN_TICKER_MAP (mappa statica di fallback)
+  //                  3) bruteforce ISIN+suffisso (SOLO se gli altri falliscono)
+  const IS_ISIN_TICKER = /^[A-Z]{2}[A-Z0-9]{10}\./.test(tickerDB || '');
+
+  // Se il DB ha un ticker mnemonico reale (non ISIN.suffisso), usalo per primo
+  if (tickerDB && !IS_ISIN_TICKER) {
+    const dati = await fetchQuote(tickerDB);
+    if (dati?.quotazione) return { isin, ...dati, fonte: 'yahoo', aggiornato: new Date().toISOString() };
+    console.log(`  ⚠ Ticker DB ${tickerDB} non risponde per ${isin} — provo fallback`);
   }
+
+  // Fallback: mappa statica
+  const tickerStatic = ISIN_TICKER_MAP[isin];
+  if (tickerStatic && tickerStatic !== tickerDB) {
+    const dati = await fetchQuote(tickerStatic);
+    if (dati?.quotazione) return { isin, ...dati, fonte: 'yahoo', aggiornato: new Date().toISOString() };
+  }
+
+  // Se il DB ha un ticker ISIN.suffisso, provalo prima del bruteforce
+  if (tickerDB && IS_ISIN_TICKER) {
+    const dati = await fetchQuote(tickerDB);
+    if (dati?.quotazione) return { isin, ...dati, fonte: 'yahoo', aggiornato: new Date().toISOString() };
+  }
+
+  // Ultimo resort: bruteforce ISIN+suffisso
+  // ⚠ NON salvare questo ticker nel DB se il DB ha già un mnemonico reale
   for (const suf of ['.MI', '.AS', '.DE', '.PA', '.F', '.L', '.SW', '.IR', '.SG']) {
     const t = isin + suf;
+    if (t === tickerDB) continue; // già provato sopra
     const dati = await fetchQuote(t);
     if (dati?.quotazione) {
       console.log(`  ✓ Trovato automatico: ${t}`);
-      return { isin, ...dati, fonte: 'yahoo', aggiornato: new Date().toISOString() };
+      return { isin, ...dati, fonte: 'yahoo', aggiornato: new Date().toISOString(), tickerTrovato: t, isinFallback: true };
     }
     await new Promise(r => setTimeout(r, 200));
   }
