@@ -8,7 +8,8 @@ COPY . .
 
 ARG CACHEBUST=3
 RUN cd etf-app && npm install && CI=false npm run build
-RUN mv etf-app/build etf-app/dist
+# RUN mv etf-app/build etf-app/dist
+# (rimossa: non serve rinominare, server.js legge da etf-app/build)
 RUN cd etf-server && npm install
 
 EXPOSE 8080
