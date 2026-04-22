@@ -80,7 +80,7 @@ function AIModal({ portfolio, onClose }) {
             await saveAiRun({
               tipo: 'analisi',
               portfolioId: portfolio?.id || null,
-              profilo: portfolio?.profilo || null,
+              profilo: portfolio?.riskProfile || portfolio?.profilo || 'Personalizzato',
               orizzonte,
               capitale: (portfolio?.etfs || [])
                 .filter(e => e.selected && e.acquisto?.quantita > 0)
