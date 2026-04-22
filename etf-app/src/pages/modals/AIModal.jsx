@@ -26,7 +26,7 @@ function SemaforoRow({ k, v }) {
 }
 
 function AIModal({ portfolio, onClose, onApplied }) {
-  const { token, loadPortfoliosFromDB, currentUser, saveAiRun } = useApp();
+  const { token, loadPortfoliosFromDB, currentUser, saveAiRun, aggiornaPrezziBatch, getMinusvalenze } = useApp();
   // Step pre-analisi
   const [step, setStep] = useState('form'); // 'form' | 'analisi'
   const [opzioni, setOpzioni] = useState({
@@ -240,9 +240,47 @@ function AIModal({ portfolio, onClose, onApplied }) {
   const handlePDF = async () => {
     setPdfLoading(true);
     try {
+      // Aggiorna i prezzi degli ETF per avere una simulazione fiscale accurata
+      let portfolioAggiornato = portfolio;
+      if (typeof aggiornaPrezziBatch === 'function' && portfolio?.id) {
+        try {
+          const ret = await aggiornaPrezziBatch(portfolio.id);
+          if (ret?.ok) {
+            await loadPortfoliosFromDB(token, currentUser?.id);
+            // Non ricarico direttamente portfolio da context (è prop), uso le quotazioni appena salvate
+            // Il backend leggerà dai prezzi appena scritti; qui uso portfolio.etfs con le quotazioni nuove
+            if (Array.isArray(ret.prezzi)) {
+              const prezziMap = Object.fromEntries(ret.prezzi.map(p => [p.isin, p.prezzo]));
+              portfolioAggiornato = {
+                ...portfolio,
+                etfs: portfolio.etfs.map(e => ({
+                  ...e,
+                  quotazione: prezziMap[e.isin] ?? e.quotazione,
+                })),
+              };
+            }
+          }
+        } catch (e) {
+          console.warn('[AIModal] aggiornaPrezziBatch fallito, uso prezzi esistenti:', e.message);
+        }
+      }
+
+      // Recupera il saldo minusvalenze per la simulazione fiscale
+      let saldoMinusAttuale = 0;
+      if (typeof getMinusvalenze === 'function' && portfolio?.id) {
+        try {
+          const m = await getMinusvalenze(portfolio.id);
+          saldoMinusAttuale = m?.saldo || 0;
+        } catch {}
+      }
+
       const res = await fetch(`${API}/api/ai/genera-pdf`, {
         method: 'POST', headers: authHdr,
-        body: JSON.stringify({ portfolio, semafori, puntiChiave, analisiDettagliata, modifiche }),
+        body: JSON.stringify({
+          portfolio: portfolioAggiornato,
+          semafori, puntiChiave, analisiDettagliata, modifiche,
+          saldoMinusAttuale,
+        }),
       });
       if (!res.ok) throw new Error('Errore generazione PDF');
       const html = await res.text();

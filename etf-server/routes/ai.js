@@ -656,7 +656,7 @@ R8 — CRITICO: JSON valido e COMPLETO. Non troncare.`;
 
 // POST /api/ai/genera-pdf — restituisce HTML stampabile (browser → Stampa → Salva PDF)
 router.post('/genera-pdf', authMiddleware, (req, res) => {
-  const { portfolio, semafori, puntiChiave, analisiDettagliata, modifiche } = req.body;
+  const { portfolio, semafori, puntiChiave, analisiDettagliata, modifiche, saldoMinusAttuale } = req.body;
   if (!portfolio || !analisiDettagliata) return res.status(400).json({ error: 'Dati mancanti' });
 
   const data = new Date().toLocaleDateString('it-IT');
@@ -665,6 +665,107 @@ router.post('/genera-pdf', authMiddleware, (req, res) => {
 
   const etfSelezionati = (portfolio.etfs||[]).filter(e=>e.selected);
   const totInvestito = etfSelezionati.filter(e=>e.acquisto).reduce((s,e)=>s+(e.acquisto.quantita*e.acquisto.quotazioneAcquisto),0);
+  const fmt = n => n.toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const fmt0 = n => n.toLocaleString('it-IT',{maximumFractionDigits:0});
+
+  // ── SIMULAZIONE FISCALE ────────────────────────────────────────────────
+  // Elabora le modifiche AI calcolando vendite (deseleziona + ribilancia al ribasso)
+  // e acquisti (aggiungi + ribilancia al rialzo + seleziona), con calcolo tasse FIFO
+  // e compensazione minusvalenze disponibili.
+  let simulazione = null;
+  if (Array.isArray(modifiche) && modifiche.length > 0) {
+    const vendite = [];
+    const acquisti = [];
+    let minusDispSim = parseFloat(saldoMinusAttuale || 0);
+    const saldoMinusIniziale = minusDispSim;
+    let plusLordaTot = 0, plusCompensataTot = 0, minusGenerateTot = 0;
+    let imponibileTot = 0, tasseTot = 0, capitaleLiberato = 0;
+
+    for (const m of modifiche) {
+      const etfCorrente = etfSelezionati.find(e => e.isin === m.isin);
+      const qAttuale = etfCorrente?.acquisto?.quantita || 0;
+      const prezzoAcq = etfCorrente?.acquisto?.quotazioneAcquisto || 0;
+      const prezzoAtt = etfCorrente?.quotazione || prezzoAcq;
+
+      let qDaVendere = 0, qDaComprare = 0, prezzoComprare = 0;
+
+      if (m.azione === 'deseleziona') {
+        qDaVendere = qAttuale;
+      } else if (m.azione === 'ribilancia' && etfCorrente) {
+        // Calcola la quantità target dalla nuova %. Base: totInvestito (simuliamo redistribuzione isocapitale)
+        const valoreTarget = (parseFloat(m.nuovaPct || 0) / 100) * totInvestito;
+        const qTarget = prezzoAtt > 0 ? Math.round((valoreTarget / prezzoAtt) * 10000) / 10000 : 0;
+        if (qTarget < qAttuale) {
+          qDaVendere = Math.round((qAttuale - qTarget) * 10000) / 10000;
+        } else if (qTarget > qAttuale) {
+          qDaComprare = Math.round((qTarget - qAttuale) * 10000) / 10000;
+          prezzoComprare = prezzoAtt;
+        }
+      } else if (m.azione === 'aggiungi' || m.azione === 'seleziona') {
+        // Il capitale per l'acquisto viene dal capitale liberato dalle vendite + reinvestimento
+        const prezzoAcq2 = parseFloat(m.quotazione || prezzoAtt) || 0;
+        if (prezzoAcq2 > 0) {
+          // Quantità stimata: distribuzione in base alla nuovaPct se presente, altrimenti quota media
+          const pctTarget = parseFloat(m.nuovaPct || (100 / ((modifiche.filter(x => x.azione === 'aggiungi' || x.azione === 'seleziona').length) || 1)));
+          const valoreTarget = (pctTarget / 100) * totInvestito;
+          qDaComprare = Math.round((valoreTarget / prezzoAcq2) * 10000) / 10000;
+          prezzoComprare = prezzoAcq2;
+        }
+      }
+
+      if (qDaVendere > 0 && prezzoAtt > 0) {
+        const controvaloreVendita = qDaVendere * prezzoAtt;
+        const costoAcquisto = qDaVendere * prezzoAcq;
+        const plusLorda = controvaloreVendita - costoAcquisto;
+        let minusUsata = 0, tasse = 0, imponibile = 0, minusGen = 0;
+        if (plusLorda > 0) {
+          minusUsata = Math.min(minusDispSim, plusLorda);
+          imponibile = plusLorda - minusUsata;
+          tasse = Math.round(imponibile * 0.26 * 100) / 100;
+          minusDispSim = Math.max(0, minusDispSim - plusLorda);
+          plusLordaTot += plusLorda;
+          plusCompensataTot += minusUsata;
+          imponibileTot += imponibile;
+          tasseTot += tasse;
+        } else if (plusLorda < 0) {
+          minusGen = Math.abs(plusLorda);
+          minusDispSim += minusGen;
+          minusGenerateTot += minusGen;
+        }
+        capitaleLiberato += controvaloreVendita - tasse;
+        vendite.push({
+          isin: m.isin,
+          name: etfCorrente?.name || m.isin,
+          quantita: qDaVendere,
+          prezzoAcq, prezzoVen: prezzoAtt,
+          plusLorda, minusUsata, imponibile, tasse, minusGen,
+          tipoAzione: m.azione,
+        });
+      }
+      if (qDaComprare > 0 && prezzoComprare > 0) {
+        acquisti.push({
+          isin: m.isin,
+          name: etfCorrente?.name || m.name || m.isin,
+          quantita: qDaComprare,
+          prezzo: prezzoComprare,
+          controvalore: qDaComprare * prezzoComprare,
+          tipoAzione: m.azione,
+        });
+      }
+    }
+
+    const totVendite = vendite.reduce((s, v) => s + v.quantita * v.prezzoVen, 0);
+    const totAcquisti = acquisti.reduce((s, a) => s + a.controvalore, 0);
+    const capitaleNettoDisponibile = totVendite - tasseTot;
+
+    simulazione = {
+      vendite, acquisti,
+      saldoMinusIniziale, saldoMinusFinale: minusDispSim,
+      plusLordaTot, plusCompensataTot, imponibileTot, tasseTot, minusGenerateTot,
+      totVendite, totAcquisti, capitaleNettoDisponibile,
+      capitaleLiberatoNetto: capitaleLiberato,
+    };
+  }
 
   const html = `<!DOCTYPE html><html lang="it"><head><meta charset="UTF-8">
 <title>Analisi Portafoglio ${portfolio.name} — ${data}</title>
@@ -674,6 +775,7 @@ router.post('/genera-pdf', authMiddleware, (req, res) => {
   body { font-family: 'Segoe UI', Arial, sans-serif; color: #1a1a2e; font-size: 11pt; line-height: 1.5; }
   h1 { font-size: 20pt; color: #1a1a2e; margin: 0 0 4px; }
   h2 { font-size: 13pt; color: #1a1a2e; border-bottom: 2px solid #eab308; padding-bottom: 4px; margin: 20px 0 10px; }
+  h3 { font-size: 11pt; color: #1a1a2e; margin: 14px 0 6px; }
   .subtitle { color: #666; font-size: 10pt; margin-bottom: 20px; }
   .header-bar { background: #1a1a2e; color: white; padding: 16px 20px; border-radius: 8px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
   .header-bar h1 { color: white; }
@@ -697,6 +799,17 @@ router.post('/genera-pdf', authMiddleware, (req, res) => {
   .badge-add { background: #dcfce7; color: #166534; }
   .badge-rem { background: #fee2e2; color: #991b1b; }
   .badge-reb { background: #dbeafe; color: #1e40af; }
+  .sim-box { background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 12px 16px; margin: 10px 0; }
+  .sim-saldo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 10px 0; }
+  .sim-saldo { border: 1px solid #e5e7eb; border-radius: 6px; padding: 8px 12px; background: white; }
+  .sim-saldo-label { font-size: 9pt; color: #666; text-transform: uppercase; letter-spacing: 0.3px; }
+  .sim-saldo-val { font-size: 13pt; font-weight: 700; }
+  .sim-riassunto { background: #eff6ff; border-left: 4px solid #2563eb; padding: 12px 16px; border-radius: 0 6px 6px 0; margin-top: 12px; font-size: 10pt; }
+  .sim-riassunto strong { color: #1e3a8a; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  td.pos { color: #166534; font-weight: 600; }
+  td.neg { color: #991b1b; font-weight: 600; }
+  .disclaimer { font-size: 8.5pt; color: #666; font-style: italic; margin-top: 8px; }
   .footer { margin-top: 30px; padding-top: 10px; border-top: 1px solid #e5e7eb; font-size: 8.5pt; color: #999; text-align: center; }
   @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
 </style></head><body>
@@ -708,7 +821,7 @@ router.post('/genera-pdf', authMiddleware, (req, res) => {
   </div>
   <div style="text-align:right;color:#ccc;font-size:9.5pt">
     <div>ETF selezionati: ${etfSelezionati.length}</div>
-    <div>Valore investito: €${totInvestito.toLocaleString('it-IT',{maximumFractionDigits:0})}</div>
+    <div>Valore investito: €${fmt0(totInvestito)}</div>
   </div>
 </div>
 
@@ -747,7 +860,7 @@ ${analisiDettagliata
   <tr><th>ETF</th><th>ISIN</th><th>Categoria</th><th>TER%</th><th>Perf.1A</th><th>Valore €</th></tr>
   ${etfSelezionati.map(e=>{
     const val = e.acquisto ? (e.acquisto.quantita*e.acquisto.quotazioneAcquisto) : 0;
-    return `<tr><td>${e.name||e.isin}</td><td style="font-family:monospace;font-size:8.5pt">${e.isin}</td><td>${e.categoria||'—'}</td><td>${(e.ter||0).toFixed(2)}%</td><td>${e.perf1y>0?'+':''}${(e.perf1y||0).toFixed(1)}%</td><td>${val>0?'€'+val.toLocaleString('it-IT',{maximumFractionDigits:0}):'—'}</td></tr>`;
+    return `<tr><td>${e.name||e.isin}</td><td style="font-family:monospace;font-size:8.5pt">${e.isin}</td><td>${e.categoria||'—'}</td><td>${(e.ter||0).toFixed(2)}%</td><td>${e.perf1y>0?'+':''}${(e.perf1y||0).toFixed(1)}%</td><td>${val>0?'€'+fmt0(val):'—'}</td></tr>`;
   }).join('')}
 </table>
 
@@ -758,6 +871,99 @@ ${modifiche.map(m=>{
   const label = m.azione==='aggiungi'?'AGGIUNGI':m.azione==='seleziona'?'ATTIVA':m.azione==='ribilancia'?`RIBILANCIA ${m.nuovaPct||''}%`:'RIMUOVI';
   return `<div class="modifiche-item"><span class="badge ${badge}">${label}</span><div><strong>${m.isin}</strong> — ${m.motivo||''}</div></div>`;
 }).join('')}` : '<p style="color:#22c55e;font-weight:600">✓ Il portafoglio è già conforme alle regole del profilo.</p>'}
+
+${simulazione ? `
+<h2>Simulazione Fiscale — se applichi le modifiche al prezzo attuale</h2>
+<p style="font-size:10pt;color:#444;margin:0 0 10px">
+  Le vendite sotto sono calcolate usando le quotazioni aggiornate al ${data}.
+  La tassazione è al 26% sulla plusvalenza al netto delle minusvalenze compensabili disponibili
+  (metodo FIFO). Questa è una simulazione: il portafoglio non viene modificato.
+</p>
+
+<div class="sim-saldo-grid">
+  <div class="sim-saldo">
+    <div class="sim-saldo-label">Saldo Minusvalenze — attuale</div>
+    <div class="sim-saldo-val" style="color:#1a1a2e">€${fmt(simulazione.saldoMinusIniziale)}</div>
+  </div>
+  <div class="sim-saldo">
+    <div class="sim-saldo-label">Saldo Minusvalenze — post simulazione</div>
+    <div class="sim-saldo-val" style="color:${simulazione.saldoMinusFinale >= simulazione.saldoMinusIniziale ? '#166534' : '#991b1b'}">€${fmt(simulazione.saldoMinusFinale)}</div>
+  </div>
+</div>
+
+${simulazione.vendite.length > 0 ? `
+<h3>Vendite simulate</h3>
+<table>
+  <tr>
+    <th>ETF</th><th>Azione</th><th style="text-align:right">Quote</th>
+    <th style="text-align:right">Prz.Acq</th><th style="text-align:right">Prz.Ven</th>
+    <th style="text-align:right">Plus/Minus</th><th style="text-align:right">Minus comp.</th>
+    <th style="text-align:right">Imponibile</th><th style="text-align:right">Tasse 26%</th>
+  </tr>
+  ${simulazione.vendite.map(v=>`
+    <tr>
+      <td>${v.name}<br><span style="font-family:monospace;font-size:8pt;color:#666">${v.isin}</span></td>
+      <td><span class="badge ${v.tipoAzione==='deseleziona'?'badge-rem':'badge-reb'}">${v.tipoAzione==='deseleziona'?'RIMUOVI':'RIBIL. ↓'}</span></td>
+      <td class="num">${v.quantita.toLocaleString('it-IT',{maximumFractionDigits:2})}</td>
+      <td class="num">€${fmt(v.prezzoAcq)}</td>
+      <td class="num">€${fmt(v.prezzoVen)}</td>
+      <td class="num ${v.plusLorda>=0?'pos':'neg'}">${v.plusLorda>=0?'+':''}€${fmt(v.plusLorda)}</td>
+      <td class="num">${v.minusUsata>0?'−€'+fmt(v.minusUsata):'—'}</td>
+      <td class="num">${v.imponibile>0?'€'+fmt(v.imponibile):'—'}</td>
+      <td class="num ${v.tasse>0?'neg':''}">${v.tasse>0?'€'+fmt(v.tasse):'—'}</td>
+    </tr>
+  `).join('')}
+  <tr style="background:#fef3c7;font-weight:700">
+    <td colspan="5" style="text-align:right">TOTALI</td>
+    <td class="num ${simulazione.plusLordaTot - simulazione.minusGenerateTot >= 0 ? 'pos' : 'neg'}">
+      ${simulazione.plusLordaTot - simulazione.minusGenerateTot >= 0 ? '+' : ''}€${fmt(simulazione.plusLordaTot - simulazione.minusGenerateTot)}
+    </td>
+    <td class="num">${simulazione.plusCompensataTot > 0 ? '−€'+fmt(simulazione.plusCompensataTot) : '—'}</td>
+    <td class="num">€${fmt(simulazione.imponibileTot)}</td>
+    <td class="num neg">€${fmt(simulazione.tasseTot)}</td>
+  </tr>
+</table>
+` : '<p><em>Nessuna vendita prevista dalle modifiche proposte.</em></p>'}
+
+${simulazione.acquisti.length > 0 ? `
+<h3>Acquisti simulati (da eseguire sul broker)</h3>
+<table>
+  <tr>
+    <th>ETF</th><th>Azione</th>
+    <th style="text-align:right">Quote</th>
+    <th style="text-align:right">Prezzo</th>
+    <th style="text-align:right">Controvalore</th>
+  </tr>
+  ${simulazione.acquisti.map(a=>`
+    <tr>
+      <td>${a.name}<br><span style="font-family:monospace;font-size:8pt;color:#666">${a.isin}</span></td>
+      <td><span class="badge ${a.tipoAzione==='ribilancia'?'badge-reb':'badge-add'}">
+        ${a.tipoAzione==='aggiungi'?'AGGIUNGI':a.tipoAzione==='seleziona'?'ATTIVA':'RIBIL. ↑'}
+      </span></td>
+      <td class="num">${a.quantita.toLocaleString('it-IT',{maximumFractionDigits:2})}</td>
+      <td class="num">€${fmt(a.prezzo)}</td>
+      <td class="num">€${fmt(a.controvalore)}</td>
+    </tr>
+  `).join('')}
+</table>
+` : ''}
+
+<div class="sim-riassunto">
+  <strong>Riassunto:</strong> Vendite totali €${fmt0(simulazione.totVendite)} ·
+  Tasse stimate <strong style="color:#991b1b">€${fmt0(simulazione.tasseTot)}</strong> ·
+  Capitale netto disponibile €${fmt0(simulazione.capitaleNettoDisponibile)} ·
+  Acquisti proposti €${fmt0(simulazione.totAcquisti)}
+  ${simulazione.totAcquisti > simulazione.capitaleNettoDisponibile
+    ? `<br><span style="color:#991b1b">⚠️ Gli acquisti proposti (€${fmt0(simulazione.totAcquisti)}) superano il capitale netto disponibile (€${fmt0(simulazione.capitaleNettoDisponibile)}) di €${fmt0(simulazione.totAcquisti - simulazione.capitaleNettoDisponibile)}. Sul broker dovrai integrare con liquidità aggiuntiva o ridurre proporzionalmente gli acquisti.</span>`
+    : ''}
+</div>
+
+<p class="disclaimer">
+  Calcolo fiscale semplificato: aliquota 26% sulla plusvalenza al netto delle minus compensabili.
+  Non considera costi di transazione, bolli, differenze di regime fiscale o situazioni particolari.
+  Verifica sempre con il tuo intermediario o commercialista.
+</p>
+` : ''}
 
 <div class="footer">
   Analisi generata da ETF Portfolio Manager · powered by Claude · ${data}<br>
