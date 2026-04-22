@@ -526,6 +526,14 @@ drawdown:VERDE|GIALLO|ROSSO:commento breve
 ter:VERDE|GIALLO|ROSSO:commento breve
 azionario:VERDE|GIALLO|ROSSO:commento breve
 
+METRICHE:
+rend_lordo:X.X%
+[STIMA rendimento atteso lordo annuo del portafoglio DOPO le modifiche suggerite (se le applica).
+Calcola su media ponderata delle classi: azionario globale 7-9%, USA 8-10%, Europa 5-7%,
+emergenti 7-10%, small cap 9-11%, obbligazionario govt 2-4%, corporate 3-5%, high yield 5-7%,
+REIT/tematici 6-9%, oro 3-5%, monetario 2-3%. HARD LIMIT per profilo:
+Prudente ≤4.5%, Bilanciato ≤7.0%, Aggressivo ≤10.0%. Un solo numero con 1 decimale.]
+
 PUNTI_CHIAVE:
 - punto 1 (max 120 caratteri)
 - punto 2
@@ -605,12 +613,17 @@ R8 — CRITICO: JSON valido e COMPLETO. Non troncare.`;
     };
 
     // Semafori
-    const semaforiRaw = getSection('SEMAFORI', 'PUNTI_CHIAVE');
+    const semaforiRaw = getSection('SEMAFORI', 'METRICHE');
     const semafori = {};
     semaforiRaw.split('\n').forEach(r => {
       const p = r.trim().split(':');
       if (p.length >= 3) semafori[p[0]] = { stato: p[1], commento: p.slice(2).join(':') };
     });
+
+    // Metriche (rendimento atteso)
+    const metricheRaw = getSection('METRICHE', 'PUNTI_CHIAVE');
+    const rendMatch = metricheRaw.match(/rend_lordo\s*:\s*(\d+[.,]\d+)\s*%?/i);
+    const rendAttesoLordo = rendMatch ? parseFloat(rendMatch[1].replace(',', '.')) : null;
 
     // Punti chiave
     const puntiRaw = getSection('PUNTI_CHIAVE', 'ANALISI_DETTAGLIATA');
@@ -632,8 +645,8 @@ R8 — CRITICO: JSON valido e COMPLETO. Non troncare.`;
       } catch {}
     }
 
-    console.log(`  ✓ Analisi OK | semafori:${Object.keys(semafori).length} | punti:${puntiChiave.length} | modifiche:${modifiche.length}`);
-    res.json({ semafori, puntiChiave, analisiDettagliata, modifiche });
+    console.log(`  ✓ Analisi OK | semafori:${Object.keys(semafori).length} | punti:${puntiChiave.length} | modifiche:${modifiche.length}${rendAttesoLordo != null ? ` | rend:${rendAttesoLordo}%` : ''}`);
+    res.json({ semafori, puntiChiave, analisiDettagliata, modifiche, metriche: { rendAttesoLordo } });
   } catch (err) {
     console.error('[analisi]', err.message);
     res.status(500).json({ error: 'Errore analisi AI: ' + err.message });
