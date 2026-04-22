@@ -373,6 +373,25 @@ if (distPath) {
   app.use(express.static(distPath));
   app.get(/^(?!\/api).*/, (req, res) => res.sendFile(path.join(distPath, 'index.html')));
   console.log(`📦 Frontend servito da: ${distPath}`);
+
+  // Log diagnostico: contenuto della cartella static/js e riferimento bundle in index.html
+  try {
+    const jsDir = path.join(distPath, 'static', 'js');
+    if (fs.existsSync(jsDir)) {
+      const jsFiles = fs.readdirSync(jsDir).filter(f => f.endsWith('.js'));
+      console.log(`[static] bundle JS in ${jsDir}:`, jsFiles.join(', '));
+    } else {
+      console.log(`[static] ${jsDir} NON ESISTE`);
+    }
+    const idx = path.join(distPath, 'index.html');
+    if (fs.existsSync(idx)) {
+      const html = fs.readFileSync(idx, 'utf8');
+      const m = html.match(/main\.[a-f0-9]+\.js/);
+      console.log(`[static] index.html riferisce bundle: ${m ? m[0] : '(non trovato)'}`);
+    }
+  } catch (e) {
+    console.log('[static] error leggendo bundle:', e.message);
+  }
 } else {
   console.log('⚠️  Nessuna cartella statica trovata, frontend non servito.');
 }
