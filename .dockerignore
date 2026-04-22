@@ -1,0 +1,28 @@
+# Non portare nel container roba già committata che va ricompilata o scaricata dal registro
+etf-app/build
+etf-app/node_modules
+etf-server/node_modules
+node_modules
+
+# Git
+.git
+.gitignore
+
+# Sistema
+.DS_Store
+Thumbs.db
+
+# Log locali
+logs
+*.log
+
+# Artefatti test/locali
+TestCases
+TestCases_*.xlsx
+commit_airuns.txt
+*.docx
+
+# Script Python usati una-tantum (non servono nel container Node)
+*.py
+DATI ETF old
+"Script Pyton"
