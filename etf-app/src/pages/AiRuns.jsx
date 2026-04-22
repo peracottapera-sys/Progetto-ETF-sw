@@ -4,7 +4,7 @@ import { useApp } from '../context/AppContext';
 export default function AiRuns() {
   const { getAiRuns, deleteAiRun, currentPortfolio } = useApp();
   const [runs, setRuns] = useState([]);
-  const [filtro, setFiltro] = useState({ profilo: '', portfolioId: '' });
+  const [filtro, setFiltro] = useState({ profilo: '', portfolioId: '', tipo: '' });
   const [expandedId, setExpandedId] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -13,6 +13,7 @@ export default function AiRuns() {
     const params = {};
     if (filtro.profilo) params.profilo = filtro.profilo;
     if (filtro.portfolioId) params.portfolioId = filtro.portfolioId;
+    if (filtro.tipo) params.tipo = filtro.tipo;
     const data = await getAiRuns(params);
     setRuns(data);
     setLoading(false);
@@ -28,17 +29,18 @@ export default function AiRuns() {
 
   const esportaExcel = () => {
     const righe = [
-      ['ID', 'Data', 'Profilo', 'Orizzonte', 'Capitale', 'Scenario', 'Max USA', 'Preferenze', 'Solo Acc.', 'Bucket', 'Bucket Breve%', 'N.ETF', 'TER tot.', 'TER medio', 'Rend. lordo~', 'ETF selezionati', 'Dettaglio ETF (ISIN · peso · categoria · TER)'],
+      ['ID', 'Data', 'Tipo', 'Profilo', 'Orizzonte', 'Capitale', 'Scenario', 'Max USA', 'Preferenze', 'Solo Acc.', 'Bucket', 'Bucket Breve%', 'N.ETF', 'TER tot.', 'TER medio', 'Rend. lordo~', 'ETF selezionati', 'Dettaglio ETF (ISIN · peso · categoria · TER)'],
       ...runs.map(r => {
         const etfs = Array.isArray(r.etf_selezionati) ? r.etf_selezionati : [];
-        const etfStr = etfs.map(e => `${e.isin}(${e.peso}%)`).join(', ');
-        const etfDettaglio = etfs.map(e => `${e.isin} · ${e.peso}% · ${e.categoria || '—'} · TER ${e.ter ?? '—'}%`).join(' | ');
-        const terMedio = etfs.length > 0
+        const etfStr = etfs.map(e => `${e.isin}(${e.peso || e.azione || ''})`).join(', ');
+        const etfDettaglio = etfs.map(e => `${e.isin} · ${e.peso ?? e.azione ?? '—'} · ${e.categoria || '—'} · TER ${e.ter ?? '—'}%`).join(' | ');
+        const terMedio = etfs.length > 0 && etfs.some(e => e.ter != null)
           ? (etfs.reduce((s, e) => s + (e.ter || 0), 0) / etfs.length).toFixed(3)
           : '—';
         return [
           r.id,
           new Date(r.created_at).toLocaleString('it-IT'),
+          r.tipo === 'analisi' ? 'Analisi' : 'Creazione',
           r.profilo,
           r.orizzonte || '—',
           r.capitale ? `€${r.capitale.toLocaleString('it-IT')}` : '—',
@@ -69,6 +71,16 @@ export default function AiRuns() {
 
   const profiloColore = { Prudente: '#22c55e', Bilanciato: '#f59e0b', Aggressivo: '#ef4444' };
   const orizzonteColore = { LUNGO: '#22c55e', MEDIO: '#f59e0b', BREVE: '#60a5fa' };
+  const tipoBadge = {
+    creazione: { label: 'Creazione', color: '#a78bfa', emoji: '🆕' },
+    analisi:   { label: 'Analisi',   color: '#22d3ee', emoji: '🔄' },
+  };
+
+  // Contatori per i pill (ricalcolati quando cambiano i runs)
+  // Nota: quando filtro.tipo è attivo, `runs` contiene solo quel tipo; per i contatori
+  // totali usiamo il valore reale dei filtri non-tipo. Semplifichiamo mostrando il count
+  // del subset corrente (Tutti = runs.length, altrimenti runs filtrati già).
+  const countTutti = filtro.tipo ? '' : runs.length;
 
   return (
     <div style={{ padding: '0 0 28px 0' }}>
@@ -80,7 +92,7 @@ export default function AiRuns() {
               🤖 Storico Run AI
             </h2>
             <p style={{ color:'var(--text-secondary)', fontSize:12, marginTop:3 }}>
-              {runs.length} run salvati
+              {runs.length} run {filtro.tipo ? `di tipo ${filtro.tipo}` : 'salvati'}
             </p>
           </div>
           <button className="btn btn-secondary" style={{ fontSize:12 }} onClick={esportaExcel}>
@@ -88,7 +100,28 @@ export default function AiRuns() {
           </button>
         </div>
 
-        {/* Filtri */}
+        {/* Pill filtro Tipo */}
+        <div style={{ display:'flex', gap:6, marginBottom:10 }}>
+          {[
+            { v: '',          label: 'Tutti',      emoji: '📋' },
+            { v: 'creazione', label: 'Creazioni',  emoji: '🆕' },
+            { v: 'analisi',   label: 'Analisi',    emoji: '🔄' },
+          ].map(p => {
+            const attivo = filtro.tipo === p.v;
+            return (
+              <button key={p.v} onClick={() => setFiltro(f => ({ ...f, tipo: p.v }))}
+                style={{ fontSize:11, fontWeight:attivo ? 700 : 500,
+                  padding:'5px 12px', borderRadius:20, cursor:'pointer',
+                  border: attivo ? '1px solid var(--accent-gold)' : '1px solid var(--border)',
+                  background: attivo ? 'var(--accent-gold)' : 'transparent',
+                  color: attivo ? '#000' : 'var(--text-secondary)' }}>
+                {p.emoji} {p.label}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Filtri secondari */}
         <div style={{ display:'flex', gap:10, flexWrap:'wrap' }}>
           <select className="input" style={{ fontSize:12, width:140 }}
             value={filtro.profilo} onChange={e => setFiltro(f => ({...f, profilo: e.target.value}))}>
@@ -102,7 +135,7 @@ export default function AiRuns() {
             <option value="">Tutti i portafogli</option>
             {currentPortfolio && <option value={currentPortfolio.id}>{currentPortfolio.name}</option>}
           </select>
-          <button className="btn btn-ghost" style={{ fontSize:12 }} onClick={() => setFiltro({ profilo:'', portfolioId:'' })}>
+          <button className="btn btn-ghost" style={{ fontSize:12 }} onClick={() => setFiltro({ profilo:'', portfolioId:'', tipo:'' })}>
             ✕ Reset
           </button>
         </div>
@@ -112,7 +145,11 @@ export default function AiRuns() {
         {loading && <div style={{ color:'var(--text-muted)', fontSize:13, padding:'20px 0' }}>Caricamento...</div>}
         {!loading && runs.length === 0 && (
           <div style={{ color:'var(--text-muted)', fontSize:13, padding:'20px 0' }}>
-            Nessun run salvato. I prossimi portafogli creati con AI verranno registrati qui.
+            {filtro.tipo === 'analisi'
+              ? 'Nessuna analisi salvata. Le prossime analisi AI verranno registrate qui.'
+              : filtro.tipo === 'creazione'
+                ? 'Nessuna creazione salvata. I prossimi portafogli generati con AI verranno registrati qui.'
+                : 'Nessun run salvato. I prossimi portafogli creati o analizzati con AI verranno registrati qui.'}
           </div>
         )}
 
@@ -122,6 +159,7 @@ export default function AiRuns() {
           const dataStr = new Date(r.created_at).toLocaleString('it-IT', {
             day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit'
           });
+          const tipoInfo = tipoBadge[r.tipo] || tipoBadge.creazione;
 
           return (
             <div key={r.id} style={{ background:'var(--bg-card)', border:'1px solid var(--border)',
@@ -132,6 +170,13 @@ export default function AiRuns() {
                 cursor:'pointer' }} onClick={() => setExpandedId(isExpanded ? null : r.id)}>
 
                 <span style={{ fontSize:11, color:'var(--text-muted)', minWidth:110 }}>{dataStr}</span>
+
+                {/* Badge TIPO (Creazione / Analisi) */}
+                <span style={{ fontSize:10, fontWeight:700, padding:'2px 7px', borderRadius:4,
+                  background: `${tipoInfo.color}22`, color: tipoInfo.color,
+                  border: `1px solid ${tipoInfo.color}44` }}>
+                  {tipoInfo.emoji} {tipoInfo.label}
+                </span>
 
                 <span style={{ fontSize:11, fontWeight:700, padding:'2px 8px', borderRadius:4,
                   background: `${profiloColore[r.profilo] || '#888'}22`,
@@ -161,8 +206,9 @@ export default function AiRuns() {
 
                 <div style={{ marginLeft:'auto', display:'flex', alignItems:'center', gap:10 }}>
                   <span style={{ fontSize:11, color:'var(--text-secondary)' }}>
-                    {etfs.length} ETF{r.metriche?.terTotale ? ` · TER ${r.metriche.terTotale.toFixed(2)}%` : ''}
+                    {etfs.length} {r.tipo === 'analisi' ? 'modif.' : 'ETF'}{r.metriche?.terTotale ? ` · TER ${r.metriche.terTotale.toFixed(2)}%` : ''}
                     {r.metriche?.rendAttesoLordo ? ` · Rend. ${r.metriche.rendAttesoLordo}% lordo` : ''}
+                    {r.tipo === 'analisi' && r.metriche?.semaforoGlobale ? ` · ${r.metriche.semaforoGlobale === 'VERDE' ? '🟢' : r.metriche.semaforoGlobale === 'GIALLO' ? '🟡' : '🔴'}` : ''}
                   </span>
                   <span style={{ fontSize:12, color:'var(--text-muted)' }}>{isExpanded ? '▲' : '▼'}</span>
                   <button className="btn btn-ghost" style={{ fontSize:10, padding:'2px 7px', color:'var(--accent-red)' }}
@@ -173,26 +219,68 @@ export default function AiRuns() {
               {/* Dettaglio espanso */}
               {isExpanded && (
                 <div style={{ borderTop:'1px solid var(--border)', padding:'12px 16px' }}>
-                  {/* ETF selezionati */}
+                  {/* Semafori (solo per analisi, se presenti nelle metriche) */}
+                  {r.tipo === 'analisi' && r.metriche?.semafori && (
+                    <div style={{ marginBottom:12 }}>
+                      <div style={{ fontSize:11, fontWeight:700, color:'var(--text-secondary)',
+                        textTransform:'uppercase', marginBottom:8 }}>Semafori</div>
+                      <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
+                        {Object.entries(r.metriche.semafori).map(([k, v]) => {
+                          const stato = (typeof v === 'object' ? v?.stato : v) || '';
+                          const col = stato.toUpperCase() === 'VERDE' ? '#22c55e'
+                                    : stato.toUpperCase() === 'GIALLO' ? '#f59e0b'
+                                    : stato.toUpperCase() === 'ROSSO' ? '#ef4444' : '#6b7280';
+                          const emoji = stato.toUpperCase() === 'VERDE' ? '🟢'
+                                      : stato.toUpperCase() === 'GIALLO' ? '🟡'
+                                      : stato.toUpperCase() === 'ROSSO' ? '🔴' : '⚪';
+                          return (
+                            <span key={k} style={{ fontSize:11, padding:'3px 9px',
+                              borderRadius:6, border:`1px solid ${col}44`, color:col,
+                              background:`${col}11` }}>
+                              {emoji} {k}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ETF (creazione) o Modifiche suggerite (analisi) */}
                   <div style={{ marginBottom:12 }}>
                     <div style={{ fontSize:11, fontWeight:700, color:'var(--text-secondary)',
-                      textTransform:'uppercase', marginBottom:8 }}>ETF Selezionati</div>
+                      textTransform:'uppercase', marginBottom:8 }}>
+                      {r.tipo === 'analisi' ? `Modifiche suggerite (${etfs.length})` : 'ETF Selezionati'}
+                    </div>
                     <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
-                      {etfs.map((e, i) => (
-                        <div key={i} style={{ background:'var(--bg-secondary)', borderRadius:6,
-                          padding:'4px 10px', border:'1px solid var(--border)' }}>
-                          <span style={{ fontSize:11, fontWeight:600 }}>{e.peso}%</span>
-                          <span style={{ fontSize:10, color:'var(--text-muted)', margin:'0 4px' }}>·</span>
-                          <span style={{ fontSize:11 }}>{e.name || e.isin}</span>
-                          {e.bucket && (
-                            <span style={{ fontSize:9, marginLeft:4,
-                              color: e.bucket === 'BREVE' ? 'var(--accent-blue)' : 'var(--accent-amber)' }}>
-                              {e.bucket === 'BREVE' ? '🔵' : '🟡'}
-                            </span>
-                          )}
-                          {e.ter && <span style={{ fontSize:9, color:'var(--text-muted)', marginLeft:4 }}>{e.ter}%</span>}
-                        </div>
-                      ))}
+                      {etfs.map((e, i) => {
+                        // Per analisi: usa azione + colore; per creazione: usa peso%
+                        const isAnalisi = r.tipo === 'analisi';
+                        const azColor = e.azione === 'seleziona' || e.azione === 'aggiungi' ? '#22c55e'
+                                      : e.azione === 'deseleziona' ? '#ef4444' : '#888';
+                        const azLabel = e.azione === 'seleziona'   ? '🟢 TIENI'
+                                      : e.azione === 'aggiungi'    ? '➕ AGGIUNGI'
+                                      : e.azione === 'deseleziona' ? '🔴 VENDI'
+                                      : e.azione || '—';
+                        return (
+                          <div key={i} style={{ background:'var(--bg-secondary)', borderRadius:6,
+                            padding:'4px 10px', border:'1px solid var(--border)' }}>
+                            {isAnalisi ? (
+                              <span style={{ fontSize:10, fontWeight:700, color:azColor }}>{azLabel}</span>
+                            ) : (
+                              <span style={{ fontSize:11, fontWeight:600 }}>{e.peso}%</span>
+                            )}
+                            <span style={{ fontSize:10, color:'var(--text-muted)', margin:'0 4px' }}>·</span>
+                            <span style={{ fontSize:11 }}>{e.name || e.isin}</span>
+                            {e.bucket && (
+                              <span style={{ fontSize:9, marginLeft:4,
+                                color: e.bucket === 'BREVE' ? 'var(--accent-blue)' : 'var(--accent-amber)' }}>
+                                {e.bucket === 'BREVE' ? '🔵' : '🟡'}
+                              </span>
+                            )}
+                            {e.ter && <span style={{ fontSize:9, color:'var(--text-muted)', marginLeft:4 }}>{e.ter}%</span>}
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
 

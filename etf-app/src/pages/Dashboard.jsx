@@ -45,10 +45,21 @@ export default function Dashboard({ setActiveTab }) {
   useEffect(() => {
     const pid = currentPortfolio?.id;
     if (!pid || typeof getAiRuns !== 'function') return;
-    getAiRuns({ portfolioId: pid, limit: 1 }).then(runs => {
-      const rend = runs?.[0]?.metriche?.rendAttesoLordo;
-      if (rend != null) setRendAtteso(parseFloat(rend));
-    }).catch(() => {});
+    // Logica: analisi più recente se esiste, altrimenti creazione più recente.
+    // Prima provo tipo=analisi, se vuoto fallback su tipo=creazione.
+    const fetchRend = async () => {
+      try {
+        const analisi = await getAiRuns({ portfolioId: pid, tipo: 'analisi', limit: 1 });
+        let rend = analisi?.[0]?.metriche?.rendAttesoLordo;
+        if (rend == null) {
+          const creazione = await getAiRuns({ portfolioId: pid, tipo: 'creazione', limit: 1 });
+          rend = creazione?.[0]?.metriche?.rendAttesoLordo;
+        }
+        if (rend != null) setRendAtteso(parseFloat(rend));
+        else setRendAtteso(null);
+      } catch { /* resta null → placeholder */ }
+    };
+    fetchRend();
   }, [currentPortfolio?.id]);
 
   // Ricava orizzonte dai bucket se disponibile

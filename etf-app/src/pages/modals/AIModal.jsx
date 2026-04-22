@@ -26,7 +26,7 @@ function SemaforoRow({ k, v }) {
 }
 
 function AIModal({ portfolio, onClose }) {
-  const { token, loadPortfoliosFromDB, currentUser } = useApp();
+  const { token, loadPortfoliosFromDB, currentUser, saveAiRun } = useApp();
   // Step pre-analisi
   const [step, setStep] = useState('form'); // 'form' | 'analisi'
   const [opzioni, setOpzioni] = useState({
@@ -72,6 +72,44 @@ function AIModal({ portfolio, onClose }) {
         const init = {};
         (data.modifiche || []).forEach((_, i) => { init[i] = true; });
         setApprovate(init);
+
+        // Log analisi in ai_runs (tipo='analisi') per storico.
+        // Indipendente dal fatto che l'utente applichi poi le modifiche.
+        if (typeof saveAiRun === 'function') {
+          try {
+            await saveAiRun({
+              tipo: 'analisi',
+              portfolioId: portfolio?.id || null,
+              profilo: portfolio?.profilo || null,
+              orizzonte,
+              capitale: (portfolio?.etfs || [])
+                .filter(e => e.selected && e.acquisto?.quantita > 0)
+                .reduce((s, e) => s + e.acquisto.quantita * e.acquisto.quotazioneAcquisto, 0) || null,
+              scenarioMacro: data.scenarioMacro || null,
+              maxUsa: opzioni.maxUSA,
+              preferenze: opzioni.note || opzioni.obiettivo,
+              escludiDistribuzione: false,
+              bucketAttivo: bucket.attivo,
+              bucketPctBreve: bucket.attivo ? bucket.pctBreve : null,
+              metriche: {
+                ...(data.metriche || {}),
+                rendAttesoLordo: data.metriche?.rendAttesoLordo ?? data.rendAttesoLordo ?? null,
+                semaforoGlobale: (() => {
+                  const stati = Object.values(data.semafori || {}).map(v => (typeof v === 'object' ? v?.stato : v) || '');
+                  if (stati.some(s => s.toUpperCase() === 'ROSSO')) return 'ROSSO';
+                  if (stati.some(s => s.toUpperCase() === 'GIALLO')) return 'GIALLO';
+                  return 'VERDE';
+                })(),
+                nModifiche: (data.modifiche || []).length,
+                semafori: data.semafori || null,
+              },
+              etfSelezionati: data.modifiche || [],
+              spiegazione: data.analisiDettagliata || '',
+            });
+          } catch (e) {
+            console.warn('[AIModal] saveAiRun analisi fallito:', e.message);
+          }
+        }
       } else {
         setErrore(data.error || 'Risposta non valida dal server');
       }
