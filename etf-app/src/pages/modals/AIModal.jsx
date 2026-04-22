@@ -156,6 +156,9 @@ function AIModal({ portfolio, onClose, onApplied }) {
     }
 
     // Step 2: redistribuisci il capitale TOTALE proporzionalmente su tutti gli ETF selezionati finali
+    // NOTA: usiamo quote frazionarie (4 decimali) invece di Math.floor per preservare il capitale.
+    // Al termine, l'ultimo ETF assorbe l'eventuale residuo floating-point così il totale finale
+    // combacia esattamente col totale iniziale.
     const totInvestitoOriginale = portfolio.etfs
       .filter(e => e.selected && e.acquisto?.quantita > 0)
       .reduce((s, e) => s + e.acquisto.quantita * e.acquisto.quotazioneAcquisto, 0);
@@ -177,6 +180,7 @@ function AIModal({ portfolio, onClose, onApplied }) {
         const capitalePerEsistenti = totInvestitoOriginale - (nNuovi * pesoMedioNuovi);
         const scaleFactor = totOriginaleRimasto > 0 ? capitalePerEsistenti / totOriginaleRimasto : 1;
 
+        const etfConPrezzo = [];
         etfSelezionatiFinali.forEach(e => {
           const prezzo = e.quotazione || e.acquisto?.quotazioneAcquisto || 0;
           if (!prezzo) {
@@ -185,17 +189,28 @@ function AIModal({ portfolio, onClose, onApplied }) {
           }
           let capitaleTarget;
           if (e.acquisto?.quantita > 0) {
-            // ETF esistente: scala proporzionalmente
             capitaleTarget = e.acquisto.quantita * e.acquisto.quotazioneAcquisto * scaleFactor;
           } else {
-            // ETF nuovo: peso medio
             capitaleTarget = pesoMedioNuovi;
           }
-          const quantita = Math.floor(capitaleTarget / prezzo);
+          // Quota frazionaria a 4 decimali — preserva il capitale
+          const quantita = Math.round((capitaleTarget / prezzo) * 10000) / 10000;
           if (quantita > 0) {
             e.acquisto = { quantita, quotazioneAcquisto: prezzo, dataAcquisto: oggi };
+            etfConPrezzo.push(e);
           }
         });
+
+        // Aggiustamento finale: l'ultimo ETF assorbe il residuo per far combaciare il totale
+        if (etfConPrezzo.length > 0) {
+          const totCalcolato = etfConPrezzo.reduce((s, e) => s + e.acquisto.quantita * e.acquisto.quotazioneAcquisto, 0);
+          const residuo = totInvestitoOriginale - totCalcolato;
+          if (Math.abs(residuo) > 0.01) {
+            const ultimo = etfConPrezzo[etfConPrezzo.length - 1];
+            const deltaQ = Math.round((residuo / ultimo.acquisto.quotazioneAcquisto) * 10000) / 10000;
+            ultimo.acquisto.quantita = Math.round((ultimo.acquisto.quantita + deltaQ) * 10000) / 10000;
+          }
+        }
       }
     }
 
