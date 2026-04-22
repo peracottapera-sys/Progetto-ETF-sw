@@ -25,7 +25,7 @@ function SemaforoRow({ k, v }) {
   );
 }
 
-function AIModal({ portfolio, onClose }) {
+function AIModal({ portfolio, onClose, onApplied }) {
   const { token, loadPortfoliosFromDB, currentUser, saveAiRun } = useApp();
   // Step pre-analisi
   const [step, setStep] = useState('form'); // 'form' | 'analisi'
@@ -46,6 +46,7 @@ function AIModal({ portfolio, onClose }) {
   const [pdfLoading, setPdfLoading] = useState(false);
   const [errore, setErrore] = useState('');
   const [applicate, setApplicate] = useState(false);
+  const [rendAttesoLordo, setRendAttesoLordo] = useState(null);
   const orizAnni = portfolio?.orizzonteAnni || 7;
   const [orizzonte, setOrizzonte] = useState(orizAnni <= 4 ? 'BREVE' : orizAnni >= 10 ? 'LUNGO' : 'MEDIO');
   const [bucket, setBucket] = useState({ attivo: false, pctBreve: 30, anniBreve: 3 });
@@ -72,6 +73,10 @@ function AIModal({ portfolio, onClose }) {
         const init = {};
         (data.modifiche || []).forEach((_, i) => { init[i] = true; });
         setApprovate(init);
+
+        // Salvo il rendimento atteso per poterlo passare alla Dashboard via onApplied
+        const rend = data.metriche?.rendAttesoLordo ?? data.rendAttesoLordo ?? null;
+        if (rend != null) setRendAttesoLordo(parseFloat(rend));
 
         // Log analisi in ai_runs (tipo='analisi') per storico.
         // Indipendente dal fatto che l'utente applichi poi le modifiche.
@@ -211,6 +216,9 @@ function AIModal({ portfolio, onClose }) {
     await loadPortfoliosFromDB(token, currentUser?.id);
     setApplicate(true);
     setApplying(false);
+    if (typeof onApplied === 'function' && rendAttesoLordo != null) {
+      onApplied(rendAttesoLordo);
+    }
     setTimeout(() => onClose(), 1500);
   };
 

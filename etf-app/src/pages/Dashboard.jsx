@@ -232,7 +232,9 @@ export default function Dashboard({ setActiveTab }) {
     <div style={{ padding: '0 0 28px 0' }}>
       {acquistoEtf && <AcquistoModal etf={acquistoEtf} portfolioId={portfolioId} onClose={() => setAcquistoEtf(null)} />}
       {venditaEtf && <VenditaModal etf={venditaEtf} portfolioId={portfolioId} onClose={() => setVenditaEtf(null)} />}
-      {showAI && <AIModal portfolio={currentPortfolio} onClose={() => setShowAI(false)} />}
+      {showAI && <AIModal portfolio={currentPortfolio}
+        onApplied={(rend) => { if (rend != null) setRendAtteso(rend); }}
+        onClose={() => setShowAI(false)} />}
       {showCrea && <CreaPortafoglioModal portfolioId={portfolioId} initialProfilo={riskProfile} initialData={pendingData}
         onApplied={(rend) => { if (rend != null) setRendAtteso(rend); }}
         onClose={() => { setShowCrea(false); setPendingData(null); }} />}
