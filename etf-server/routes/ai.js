@@ -756,41 +756,99 @@ router.post('/genera-pdf', authMiddleware, (req, res) => {
 
     const totVendite = vendite.reduce((s, v) => s + v.quantita * v.prezzoVen, 0);
     let totAcquisti = acquisti.reduce((s, a) => s + a.controvalore, 0);
-    const capitaleNettoDisponibile = totVendite - tasseTot;
+    let capitaleNettoDisponibile = totVendite - tasseTot;
 
-    // ── Distribuzione automatica del residuo sugli ETF "non toccati" ────────
-    // Se dopo vendite ed acquisti espliciti resta capitale non allocato, lo
-    // distribuiamo proporzionalmente sugli ETF rimanenti (quelli non citati
-    // nelle modifiche dell'AI e non deselezionati). Questo replica nel PDF
-    // quello che fa handleApplica con la redistribuzione proporzionale.
-    const residuoDaAllocare = capitaleNettoDisponibile - totAcquisti;
-    if (residuoDaAllocare > 1) { // soglia 1€ per evitare rumore
-      const isinToccati = new Set(modifiche.map(m => m.isin));
-      const etfNonToccati = etfSelezionati.filter(e =>
-        !isinToccati.has(e.isin) && e.acquisto?.quantita > 0 && (e.quotazione || e.acquisto?.quotazioneAcquisto) > 0
-      );
+    // ── Gestione deficit: vendite aggiuntive con priorità fiscale ────────────
+    // Se gli acquisti proposti superano il capitale disponibile (es. ribilanciature
+    // al rialzo senza vendite esplicite), generiamo vendite parziali dagli ETF non
+    // toccati. Criterio: plusvalenza latente % crescente (prima chi ha guadagnato
+    // meno o perso → tasse minime, compensazione minus).
+    const deficit = totAcquisti - capitaleNettoDisponibile;
+    const isinToccati = new Set(modifiche.map(m => m.isin));
+    const etfNonToccati = etfSelezionati.filter(e =>
+      !isinToccati.has(e.isin) && e.acquisto?.quantita > 0 && (e.quotazione || e.acquisto?.quotazioneAcquisto) > 0
+    );
 
-      if (etfNonToccati.length > 0) {
-        // Peso proporzionale al valore attuale
-        const totPesi = etfNonToccati.reduce((s, e) => s + (e.acquisto.quantita * e.acquisto.quotazioneAcquisto), 0);
-        etfNonToccati.forEach(e => {
+    if (deficit > 1 && etfNonToccati.length > 0) {
+      // Ordina per plusvalenza latente % crescente (prima chi è meno in gain)
+      const etfOrdinati = etfNonToccati
+        .map(e => {
           const prezzo = e.quotazione || e.acquisto.quotazioneAcquisto;
-          const pesoPct = (e.acquisto.quantita * e.acquisto.quotazioneAcquisto) / totPesi;
-          const quotaCapitale = residuoDaAllocare * pesoPct;
-          const qAggiuntive = Math.round((quotaCapitale / prezzo) * 10000) / 10000;
-          if (qAggiuntive > 0) {
-            acquisti.push({
-              isin: e.isin,
-              name: e.name || e.isin,
-              quantita: qAggiuntive,
-              prezzo,
-              controvalore: qAggiuntive * prezzo,
-              tipoAzione: 'ridistribuzione',
-            });
-          }
+          const plusPct = (prezzo - e.acquisto.quotazioneAcquisto) / e.acquisto.quotazioneAcquisto;
+          return { e, prezzo, plusPct, valore: e.acquisto.quantita * prezzo };
+        })
+        .sort((a, b) => a.plusPct - b.plusPct);
+
+      let daCoprire = deficit;
+      for (const item of etfOrdinati) {
+        if (daCoprire <= 1) break;
+        const { e, prezzo } = item;
+        // Stima tasse marginali sul venduto: se plusPct > 0, serve vendere un po' di più
+        // per coprire anche la tassa 26%. Se plusPct <= 0, non ci sono tasse (e si genera minus).
+        const plusUnit = prezzo - e.acquisto.quotazioneAcquisto;
+        const tasseUnitarie = plusUnit > 0 ? plusUnit * 0.26 : 0;
+        const nettoUnitario = prezzo - tasseUnitarie; // cosa rimane per €1 di prezzo di vendita al netto tassa marginale
+        const qNecessarie = nettoUnitario > 0 ? daCoprire / nettoUnitario : 0;
+        const qDisponibili = e.acquisto.quantita;
+        const qDaVendere = Math.min(qNecessarie, qDisponibili);
+        const qArr = Math.round(qDaVendere * 10000) / 10000;
+        if (qArr <= 0) continue;
+
+        const controv = qArr * prezzo;
+        const costoAcq = qArr * e.acquisto.quotazioneAcquisto;
+        const plusLorda = controv - costoAcq;
+        let minusUsata = 0, tasse = 0, imponibile = 0, minusGen = 0;
+        if (plusLorda > 0) {
+          minusUsata = Math.min(minusDispSim, plusLorda);
+          imponibile = plusLorda - minusUsata;
+          tasse = Math.round(imponibile * 0.26 * 100) / 100;
+          minusDispSim = Math.max(0, minusDispSim - plusLorda);
+          plusLordaTot += plusLorda;
+          plusCompensataTot += minusUsata;
+          imponibileTot += imponibile;
+          tasseTot += tasse;
+        } else if (plusLorda < 0) {
+          minusGen = Math.abs(plusLorda);
+          minusDispSim += minusGen;
+          minusGenerateTot += minusGen;
+        }
+        vendite.push({
+          isin: e.isin,
+          name: e.name || e.isin,
+          quantita: qArr,
+          prezzoAcq: e.acquisto.quotazioneAcquisto,
+          prezzoVen: prezzo,
+          plusLorda, minusUsata, imponibile, tasse, minusGen,
+          tipoAzione: 'ribil_proporzionale',
         });
-        totAcquisti = acquisti.reduce((s, a) => s + a.controvalore, 0);
+        daCoprire -= (controv - tasse);
       }
+      // Ricalcolo totali
+      const totVenditeAgg = vendite.reduce((s, v) => s + v.quantita * v.prezzoVen, 0);
+      capitaleNettoDisponibile = totVenditeAgg - tasseTot;
+    }
+
+    // ── Distribuzione del residuo (caso opposto: acquisti < capitale netto) ─
+    const residuoDaAllocare = capitaleNettoDisponibile - totAcquisti;
+    if (residuoDaAllocare > 1 && etfNonToccati.length > 0) {
+      const totPesi = etfNonToccati.reduce((s, e) => s + (e.acquisto.quantita * e.acquisto.quotazioneAcquisto), 0);
+      etfNonToccati.forEach(e => {
+        const prezzo = e.quotazione || e.acquisto.quotazioneAcquisto;
+        const pesoPct = (e.acquisto.quantita * e.acquisto.quotazioneAcquisto) / totPesi;
+        const quotaCapitale = residuoDaAllocare * pesoPct;
+        const qAggiuntive = Math.round((quotaCapitale / prezzo) * 10000) / 10000;
+        if (qAggiuntive > 0) {
+          acquisti.push({
+            isin: e.isin,
+            name: e.name || e.isin,
+            quantita: qAggiuntive,
+            prezzo,
+            controvalore: qAggiuntive * prezzo,
+            tipoAzione: 'ridistribuzione',
+          });
+        }
+      });
+      totAcquisti = acquisti.reduce((s, a) => s + a.controvalore, 0);
     }
 
     simulazione = {
@@ -928,6 +986,12 @@ ${simulazione ? `
 
 ${simulazione.vendite.length > 0 ? `
 <h3>Vendite simulate</h3>
+<p style="font-size:9pt;color:#666;margin:-4px 0 8px">
+  Include le vendite esplicite dalle modifiche AI (RIMUOVI, RIBIL. ↓) e le vendite aggiuntive
+  generate automaticamente per coprire ribilanciature al rialzo senza contropartita (RIBIL. PROP.).
+  Quest'ultime sono prelevate dagli ETF non toccati dalle modifiche, in ordine di plusvalenza
+  latente crescente per minimizzare il carico fiscale.
+</p>
 <table>
   <tr>
     <th>ETF</th><th>Azione</th><th style="text-align:right">Quote</th>
@@ -938,7 +1002,10 @@ ${simulazione.vendite.length > 0 ? `
   ${simulazione.vendite.map(v=>`
     <tr>
       <td>${v.name}<br><span style="font-family:monospace;font-size:8pt;color:#666">${v.isin}</span></td>
-      <td><span class="badge ${v.tipoAzione==='deseleziona'?'badge-rem':'badge-reb'}">${v.tipoAzione==='deseleziona'?'RIMUOVI':'RIBIL. ↓'}</span></td>
+      <td><span class="badge ${v.tipoAzione==='deseleziona'?'badge-rem':'badge-reb'}">${
+        v.tipoAzione==='deseleziona'?'RIMUOVI':
+        v.tipoAzione==='ribil_proporzionale'?'RIBIL. PROP.':'RIBIL. ↓'
+      }</span></td>
       <td class="num">${v.quantita.toLocaleString('it-IT',{maximumFractionDigits:2})}</td>
       <td class="num">€${fmt(v.prezzoAcq)}</td>
       <td class="num">€${fmt(v.prezzoVen)}</td>
