@@ -166,6 +166,89 @@ module.exports = (pool, fetchETF) => {
     }
   });
 
+  // Fix ticker senza suffisso di exchange (es. "QDV4" → "QDV4.DE")
+  // Prova i 9 exchange comuni e salva il primo che risponde con prezzo valido.
+  // Risposta immediata, elaborazione in background con log su console.
+  router.post('/admin/fix-ticker-senza-suffisso', authMiddleware, async (req, res) => {
+    const { limit, dryRun } = req.body || {};
+    const { rows: etfs } = await pool.query(
+      `SELECT isin, ticker_yahoo, name FROM etf_catalog
+       WHERE active = 1 AND ticker_yahoo IS NOT NULL AND ticker_yahoo != ''
+       AND ticker_yahoo NOT LIKE '%.%'
+       ORDER BY isin
+       LIMIT $1`,
+      [Math.min(parseInt(limit) || 500, 500)]
+    );
+    res.json({ message: `Fix avviato su ${etfs.length} ETF (dryRun=${!!dryRun}). Vedi i log del server per progress.`, etfDaProcessare: etfs.length });
+
+    // Esecuzione in background
+    (async () => {
+      const axios = require('axios');
+      const HEADERS = { 'User-Agent': 'Mozilla/5.0' };
+      const oggi = new Date().toISOString().slice(0, 10);
+      const SUFFIXES = ['.DE', '.MI', '.L', '.AS', '.PA', '.F', '.SW', '.IR', '.SG'];
+      const risultati = { fixed: [], notFound: [], errors: [] };
+
+      console.log(`\n[fix-ticker] Inizio fix su ${etfs.length} ETF (dryRun=${!!dryRun})`);
+
+      for (const etf of etfs) {
+        const { isin, ticker_yahoo: tickerBase, name } = etf;
+        let trovato = null;
+
+        for (const suf of SUFFIXES) {
+          const tickerProva = tickerBase + suf;
+          try {
+            const url = `https://query1.finance.yahoo.com/v8/finance/chart/${tickerProva}?interval=1d&range=5y`;
+            const { data } = await axios.get(url, { headers: HEADERS, timeout: 8000 });
+            const result = data?.chart?.result?.[0];
+            if (!result) { await new Promise(r => setTimeout(r, 150)); continue; }
+            const meta = result.meta;
+            const closes = result.indicators?.quote?.[0]?.close || [];
+            const validi = closes.filter(c => c != null);
+            const prezzo = meta?.regularMarketPrice || validi[validi.length - 1];
+            if (prezzo > 0) {
+              const l = validi.length;
+              const perf = (idx) => idx >= 0 && idx < l && validi[idx] ? parseFloat(((prezzo - validi[idx]) / validi[idx] * 100).toFixed(2)) : null;
+              trovato = {
+                ticker: tickerProva,
+                prezzo: parseFloat(prezzo.toFixed(3)),
+                perf1m: perf(l - 22), perf6m: perf(l - 126),
+                perf1y: perf(l - 252), perf5y: perf(0),
+              };
+              break;
+            }
+          } catch { /* 404 atteso per exchange sbagliati */ }
+          await new Promise(r => setTimeout(r, 150));
+        }
+
+        if (trovato) {
+          if (!dryRun) {
+            await pool.query('UPDATE etf_catalog SET ticker_yahoo=$1, quotazione=$2, perf1m=COALESCE($3,perf1m), perf6m=COALESCE($4,perf6m), perf1y=COALESCE($5,perf1y), perf5y=COALESCE($6,perf5y), updated_at=$7 WHERE isin=$8',
+              [trovato.ticker, trovato.prezzo, trovato.perf1m, trovato.perf6m, trovato.perf1y, trovato.perf5y, oggi, isin]);
+            await pool.query(`INSERT INTO prezzi_storici (isin, data, prezzo, perf1m, perf6m, perf1y, perf5y) VALUES ($1,$2,$3,$4,$5,$6,$7)
+              ON CONFLICT(isin, data) DO UPDATE SET prezzo=EXCLUDED.prezzo, perf1m=EXCLUDED.perf1m, perf6m=EXCLUDED.perf6m, perf1y=EXCLUDED.perf1y, perf5y=EXCLUDED.perf5y`,
+              [isin, oggi, trovato.prezzo, trovato.perf1m, trovato.perf6m, trovato.perf1y, trovato.perf5y]);
+          }
+          risultati.fixed.push({ isin, name, da: tickerBase, a: trovato.ticker, prezzo: trovato.prezzo });
+          console.log(`[fix-ticker] ✓ ${isin} (${name?.slice(0,40)}): ${tickerBase} → ${trovato.ticker} @ €${trovato.prezzo}${dryRun ? ' [DRY-RUN]' : ''}`);
+        } else {
+          risultati.notFound.push({ isin, name, ticker: tickerBase });
+          console.log(`[fix-ticker] ✗ ${isin} (${name?.slice(0,40)}): ${tickerBase} non trovato su nessun exchange`);
+        }
+
+        await new Promise(r => setTimeout(r, 300));
+      }
+
+      console.log(`\n[fix-ticker] Completato: ${risultati.fixed.length} fixed, ${risultati.notFound.length} not found`);
+      log(EVENTI.AGGIORNA_PREZZI_SELETTIVO, {
+        ok: risultati.fixed.length,
+        err: risultati.notFound.length,
+        totale: etfs.length,
+        motivo: `fix-ticker-senza-suffisso${dryRun ? '-dryrun' : ''}`,
+      }).catch(() => {});
+    })().catch(e => console.error('[fix-ticker] Errore fatale:', e.message));
+  });
+
   return router;
 };
 
