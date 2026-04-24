@@ -676,6 +676,7 @@ router.post('/genera-pdf', authMiddleware, (req, res) => {
   if (Array.isArray(modifiche) && modifiche.length > 0) {
     const vendite = [];
     const acquisti = [];
+    const modificheNonSimulate = []; // aggiunte che non si riescono a simulare (prezzo mancante / ETF non in catalogo)
     let minusDispSim = parseFloat(saldoMinusAttuale || 0);
     const saldoMinusIniziale = minusDispSim;
     let plusLordaTot = 0, plusCompensataTot = 0, minusGenerateTot = 0;
@@ -710,6 +711,16 @@ router.post('/genera-pdf', authMiddleware, (req, res) => {
           const valoreTarget = (pctTarget / 100) * totInvestito;
           qDaComprare = Math.round((valoreTarget / prezzoAcq2) * 10000) / 10000;
           prezzoComprare = prezzoAcq2;
+        } else {
+          // Prezzo non disponibile → modifica non simulabile, ma la registriamo per avvisare l'utente
+          modificheNonSimulate.push({
+            isin: m.isin,
+            name: m.name || m.isin,
+            azione: m.azione,
+            nuovaPct: m.nuovaPct,
+            motivo: m.motivo,
+            problema: 'Prezzo non disponibile nel catalogo. L\'ETF potrebbe non essere in listino o non ancora censito. Verifica manualmente sul broker.',
+          });
         }
       }
 
@@ -852,7 +863,7 @@ router.post('/genera-pdf', authMiddleware, (req, res) => {
     }
 
     simulazione = {
-      vendite, acquisti,
+      vendite, acquisti, modificheNonSimulate,
       saldoMinusIniziale, saldoMinusFinale: minusDispSim,
       plusLordaTot, plusCompensataTot, imponibileTot, tasseTot, minusGenerateTot,
       totVendite, totAcquisti, capitaleNettoDisponibile,
@@ -1053,6 +1064,28 @@ ${simulazione.acquisti.length > 0 ? `
     </tr>
   `).join('')}
 </table>
+` : ''}
+
+${simulazione.modificheNonSimulate && simulazione.modificheNonSimulate.length > 0 ? `
+<div style="background:#fef2f2; border:1px solid #fca5a5; border-left:4px solid #dc2626; border-radius:0 6px 6px 0; padding:12px 16px; margin-top:14px; font-size:10pt">
+  <strong style="color:#991b1b">⚠️ Modifiche AI non simulate (${simulazione.modificheNonSimulate.length})</strong>
+  <p style="margin:6px 0 8px;color:#444">
+    Le modifiche seguenti sono state proposte dall'AI ma non è stato possibile simularle perché
+    il prezzo dell'ETF non è disponibile (non ancora in catalogo, quotazione mancante, o ISIN non verificato):
+  </p>
+  <ul style="margin:6px 0 0;padding-left:18px">
+  ${simulazione.modificheNonSimulate.map(m=>`
+    <li style="margin:4px 0">
+      <strong>${m.azione === 'aggiungi' ? 'AGGIUNGI' : 'ATTIVA'}</strong>
+      <code style="font-family:monospace;font-size:9pt;background:#fff;padding:1px 4px;border-radius:3px">${m.isin}</code>
+      ${m.name && m.name !== m.isin ? `— ${m.name}` : ''}
+      ${m.nuovaPct ? ` al ${m.nuovaPct}%` : ''}
+      <br><span style="font-size:9pt;color:#666">${m.motivo || ''}</span>
+      <br><span style="font-size:9pt;color:#991b1b;font-style:italic">${m.problema}</span>
+    </li>
+  `).join('')}
+  </ul>
+</div>
 ` : ''}
 
 <div class="sim-riassunto">
