@@ -755,8 +755,43 @@ router.post('/genera-pdf', authMiddleware, (req, res) => {
     }
 
     const totVendite = vendite.reduce((s, v) => s + v.quantita * v.prezzoVen, 0);
-    const totAcquisti = acquisti.reduce((s, a) => s + a.controvalore, 0);
+    let totAcquisti = acquisti.reduce((s, a) => s + a.controvalore, 0);
     const capitaleNettoDisponibile = totVendite - tasseTot;
+
+    // ── Distribuzione automatica del residuo sugli ETF "non toccati" ────────
+    // Se dopo vendite ed acquisti espliciti resta capitale non allocato, lo
+    // distribuiamo proporzionalmente sugli ETF rimanenti (quelli non citati
+    // nelle modifiche dell'AI e non deselezionati). Questo replica nel PDF
+    // quello che fa handleApplica con la redistribuzione proporzionale.
+    const residuoDaAllocare = capitaleNettoDisponibile - totAcquisti;
+    if (residuoDaAllocare > 1) { // soglia 1€ per evitare rumore
+      const isinToccati = new Set(modifiche.map(m => m.isin));
+      const etfNonToccati = etfSelezionati.filter(e =>
+        !isinToccati.has(e.isin) && e.acquisto?.quantita > 0 && (e.quotazione || e.acquisto?.quotazioneAcquisto) > 0
+      );
+
+      if (etfNonToccati.length > 0) {
+        // Peso proporzionale al valore attuale
+        const totPesi = etfNonToccati.reduce((s, e) => s + (e.acquisto.quantita * e.acquisto.quotazioneAcquisto), 0);
+        etfNonToccati.forEach(e => {
+          const prezzo = e.quotazione || e.acquisto.quotazioneAcquisto;
+          const pesoPct = (e.acquisto.quantita * e.acquisto.quotazioneAcquisto) / totPesi;
+          const quotaCapitale = residuoDaAllocare * pesoPct;
+          const qAggiuntive = Math.round((quotaCapitale / prezzo) * 10000) / 10000;
+          if (qAggiuntive > 0) {
+            acquisti.push({
+              isin: e.isin,
+              name: e.name || e.isin,
+              quantita: qAggiuntive,
+              prezzo,
+              controvalore: qAggiuntive * prezzo,
+              tipoAzione: 'ridistribuzione',
+            });
+          }
+        });
+        totAcquisti = acquisti.reduce((s, a) => s + a.controvalore, 0);
+      }
+    }
 
     simulazione = {
       vendite, acquisti,
@@ -927,6 +962,11 @@ ${simulazione.vendite.length > 0 ? `
 
 ${simulazione.acquisti.length > 0 ? `
 <h3>Acquisti simulati (da eseguire sul broker)</h3>
+<p style="font-size:9pt;color:#666;margin:-4px 0 8px">
+  Include le ribilanciature esplicite suggerite dall'AI e la ridistribuzione automatica
+  del capitale residuo (vendite al netto delle tasse, meno acquisti espliciti) sugli ETF
+  rimasti non toccati dalle modifiche, in proporzione al loro peso attuale.
+</p>
 <table>
   <tr>
     <th>ETF</th><th>Azione</th>
@@ -937,8 +977,8 @@ ${simulazione.acquisti.length > 0 ? `
   ${simulazione.acquisti.map(a=>`
     <tr>
       <td>${a.name}<br><span style="font-family:monospace;font-size:8pt;color:#666">${a.isin}</span></td>
-      <td><span class="badge ${a.tipoAzione==='ribilancia'?'badge-reb':'badge-add'}">
-        ${a.tipoAzione==='aggiungi'?'AGGIUNGI':a.tipoAzione==='seleziona'?'ATTIVA':'RIBIL. ↑'}
+      <td><span class="badge ${a.tipoAzione==='ribilancia'||a.tipoAzione==='ridistribuzione'?'badge-reb':'badge-add'}">
+        ${a.tipoAzione==='aggiungi'?'AGGIUNGI':a.tipoAzione==='seleziona'?'ATTIVA':a.tipoAzione==='ridistribuzione'?'RIDISTRIB.':'RIBIL. ↑'}
       </span></td>
       <td class="num">${a.quantita.toLocaleString('it-IT',{maximumFractionDigits:2})}</td>
       <td class="num">€${fmt(a.prezzo)}</td>
