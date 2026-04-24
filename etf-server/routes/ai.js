@@ -993,7 +993,7 @@ ${simulazione.acquisti.length > 0 ? `
   Tasse stimate <strong style="color:#991b1b">€${fmt0(simulazione.tasseTot)}</strong> ·
   Capitale netto disponibile €${fmt0(simulazione.capitaleNettoDisponibile)} ·
   Acquisti proposti €${fmt0(simulazione.totAcquisti)}
-  ${simulazione.totAcquisti > simulazione.capitaleNettoDisponibile
+  ${simulazione.totAcquisti > simulazione.capitaleNettoDisponibile + 1
     ? `<br><span style="color:#991b1b">⚠️ Gli acquisti proposti (€${fmt0(simulazione.totAcquisti)}) superano il capitale netto disponibile (€${fmt0(simulazione.capitaleNettoDisponibile)}) di €${fmt0(simulazione.totAcquisti - simulazione.capitaleNettoDisponibile)}. Sul broker dovrai integrare con liquidità aggiuntiva o ridurre proporzionalmente gli acquisti.</span>`
     : ''}
 </div>
