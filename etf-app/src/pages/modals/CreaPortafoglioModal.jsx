@@ -65,18 +65,25 @@ function CreaPortafoglioModal({ portfolioId, onClose, onApplied, initialProfilo,
       const res = await fetch(`${API}/api/ai/crea-portafoglio`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          profilo: form.profilo,
-          orizzonteAnni: form.orizzonteAnni === 'BREVE' ? 3 : form.orizzonteAnni === 'LUNGO' ? 15 : 7,
-          bucketBreve: bucket.attivo ? { pct: Math.min(bucket.pctBreve, 40), anni: bucket.anniBreve, filosofia: bucket.filosofia || 'difensiva' } : undefined,
-          bucketLungo: bucket.attivo ? { pct: 100 - Math.min(bucket.pctBreve, form.orizzonteAnni === 'LUNGO' ? 40 : 20), anni: form.orizzonteAnni === 'LUNGO' ? 15 : 7 } : undefined,
-          capitale: form.capitale ? parseFloat(form.capitale) : null,
-          preferenze: form.preferenze,
-          escludiDistribuzione: form.escludiDistribuzione,
-          maxUSA: form.maxUSA,
-          rendimentoTarget: getTargetComplessivo(),
-          rendimentoTargetLungo: parseFloat(getTargetLungo()),
-        })
+        body: JSON.stringify((() => {
+          // Calcolo pctBreve effettiva una sola volta, max 40% globale.
+          // Il limite legato all'orizzonte è SOLO una guida UI; al backend mandiamo
+          // sempre numeri coerenti (BREVE + LUNGO = 100).
+          const pctBreveEff = bucket.attivo ? Math.min(bucket.pctBreve, 40) : 0;
+          const pctLungoEff = 100 - pctBreveEff;
+          return {
+            profilo: form.profilo,
+            orizzonteAnni: form.orizzonteAnni === 'BREVE' ? 3 : form.orizzonteAnni === 'LUNGO' ? 15 : 7,
+            bucketBreve: bucket.attivo ? { pct: pctBreveEff, anni: bucket.anniBreve, filosofia: bucket.filosofia || 'difensiva' } : undefined,
+            bucketLungo: bucket.attivo ? { pct: pctLungoEff, anni: form.orizzonteAnni === 'LUNGO' ? 15 : 7 } : undefined,
+            capitale: form.capitale ? parseFloat(form.capitale) : null,
+            preferenze: form.preferenze,
+            escludiDistribuzione: form.escludiDistribuzione,
+            maxUSA: form.maxUSA,
+            rendimentoTarget: getTargetComplessivo(),
+            rendimentoTargetLungo: parseFloat(getTargetLungo()),
+          };
+        })())
       });
       const data = await res.json();
       if (data.selezione) {
