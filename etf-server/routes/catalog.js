@@ -166,6 +166,152 @@ module.exports = (pool, fetchETF) => {
     }
   });
 
+  // Diagnostica classificazione ETF: cerca pattern comuni di mis-classificazione.
+  // Restituisce CSV scaricabile con isin, name, categoria_attuale, pattern_sospetto.
+  router.get('/admin/diagnostica-classificazione', authMiddleware, async (req, res) => {
+    try {
+      const sospetti = [];
+
+      // Q1 — Emerging Markets non classificati come Emergenti
+      const q1 = await pool.query(`
+        SELECT isin, name, categoria, 'EM_classificato_altrove' AS pattern
+        FROM etf_catalog
+        WHERE active = 1
+          AND (name ILIKE '%emerging%' OR name ILIKE '%emergenti%' OR name ILIKE '%MSCI EM%')
+          AND categoria NOT ILIKE '%Emergenti%'
+      `);
+      sospetti.push(...q1.rows);
+
+      // Q2 — Settoriali (Tech, Health, Energy, Financial...) NON classificati come tematici/settoriali
+      const q2 = await pool.query(`
+        SELECT isin, name, categoria, 'settoriale_geografico' AS pattern
+        FROM etf_catalog
+        WHERE active = 1
+          AND (
+            name ILIKE '%technology%' OR name ILIKE '%health%care%'
+            OR name ILIKE '%energy%' OR name ILIKE '%financial%'
+            OR name ILIKE '%real estate%' OR name ILIKE '%consumer%'
+            OR name ILIKE '%industrial%' OR name ILIKE '%materials%'
+            OR name ILIKE '%utilities%' OR name ILIKE '%communication%'
+          )
+          AND categoria NOT ILIKE '%Tematico%'
+          AND categoria NOT ILIKE '%settoriale%'
+          AND categoria NOT ILIKE '%Health%'
+          AND categoria NOT ILIKE '%Tech%'
+          AND categoria NOT ILIKE '%Energ%'
+      `);
+      sospetti.push(...q2.rows);
+
+      // Q3 — Singoli paesi non emergenti, classificati genericamente
+      const q3 = await pool.query(`
+        SELECT isin, name, categoria, 'paese_singolo' AS pattern
+        FROM etf_catalog
+        WHERE active = 1
+          AND (
+            name ILIKE '%FTSE 100%' OR name ILIKE '%FTSE MIB%' OR name ILIKE '%DAX%'
+            OR name ILIKE '%CAC 40%' OR name ILIKE '%TOPIX%' OR name ILIKE '%Nikkei%'
+            OR name ILIKE '%India%' OR name ILIKE '%China%' OR name ILIKE '%Brazil%'
+            OR name ILIKE '%Japan%' OR name ILIKE '%Italy%' OR name ILIKE '%Germany%'
+            OR name ILIKE '%France%' OR name ILIKE '%UK Equity%' OR name ILIKE '%Korea%'
+          )
+          AND categoria NOT ILIKE '%Tematico%'
+          AND categoria NOT ILIKE '%paese%'
+      `);
+      sospetti.push(...q3.rows);
+
+      // Q4 — World ex-* non classificato come Globale
+      const q4 = await pool.query(`
+        SELECT isin, name, categoria, 'world_ex_non_globale' AS pattern
+        FROM etf_catalog
+        WHERE active = 1
+          AND name ILIKE '%World ex%'
+          AND categoria NOT ILIKE '%Globale%'
+          AND categoria NOT ILIKE '%Internazionale%'
+      `);
+      sospetti.push(...q4.rows);
+
+      // Q5 — Riepilogo distribuzione categorie globale (per riferimento)
+      const q5 = await pool.query(`
+        SELECT categoria, COUNT(*) AS n
+        FROM etf_catalog
+        WHERE active = 1
+        GROUP BY categoria
+        ORDER BY n DESC
+      `);
+
+      // Costruisci CSV: prima la lista dettaglio sospetti, poi una sezione di riepilogo
+      const headers = ['isin', 'name', 'categoria', 'pattern'];
+      const escape = v => {
+        if (v == null) return '';
+        const s = String(v);
+        return /[",;\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+      };
+
+      let csv = '\ufeff' + headers.join(';') + '\n' +
+        sospetti.map(r => headers.map(h => escape(r[h])).join(';')).join('\n');
+
+      // Sezione riepilogo categorie in coda
+      csv += '\n\n--- DISTRIBUZIONE CATEGORIE NEL CATALOGO ---\ncategoria;n\n';
+      csv += q5.rows.map(r => `${escape(r.categoria)};${r.n}`).join('\n');
+
+      const fileName = `diagnostica_classificazione_${new Date().toISOString().slice(0,10)}.csv`;
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+      res.send(csv);
+    } catch (e) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // Export CSV degli ETF "fossili" (mai aggiornati o stale > 30 giorni)
+  // Il browser scarica direttamente il file. Bypassa il limite di 100 righe del DB UI.
+  router.get('/admin/export-fossili-csv', authMiddleware, async (req, res) => {
+    try {
+      const { rows } = await pool.query(`
+        SELECT
+          c.isin,
+          COALESCE(c.ticker_yahoo, '') AS ticker,
+          COALESCE(c.name, '') AS name,
+          COALESCE(c.categoria, '') AS categoria,
+          COALESCE(c.emittente, '') AS emittente,
+          COALESCE(c.valuta, '') AS valuta,
+          (SELECT MAX(data) FROM prezzi_storici WHERE isin = c.isin) AS ultimo_prezzo,
+          CASE
+            WHEN NOT EXISTS (SELECT 1 FROM prezzi_storici WHERE isin = c.isin AND prezzo > 0) THEN 'mai'
+            ELSE 'stale'
+          END AS motivo,
+          CASE
+            WHEN c.ticker_yahoo IS NULL OR c.ticker_yahoo = '' THEN 'ticker_vuoto'
+            WHEN c.ticker_yahoo NOT LIKE '%.%' THEN 'ticker_senza_suffisso'
+            ELSE 'ticker_normale'
+          END AS tipo_ticker
+        FROM etf_catalog c
+        WHERE c.active = 1
+          AND (
+            NOT EXISTS (SELECT 1 FROM prezzi_storici ps WHERE ps.isin = c.isin AND ps.prezzo > 0)
+            OR (SELECT MAX(data) FROM prezzi_storici WHERE isin = c.isin)::date < CURRENT_DATE - 30
+          )
+        ORDER BY motivo, c.emittente, c.name
+      `);
+
+      const headers = ['isin','ticker','name','categoria','emittente','valuta','ultimo_prezzo','motivo','tipo_ticker'];
+      const escape = v => {
+        if (v == null) return '';
+        const s = String(v);
+        return /[",;\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+      };
+      const csv = '\ufeff' + headers.join(';') + '\n' +
+        rows.map(r => headers.map(h => escape(r[h])).join(';')).join('\n');
+
+      const fileName = `fossili_etf_${new Date().toISOString().slice(0,10)}.csv`;
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+      res.send(csv);
+    } catch (e) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
   // Fix ticker senza suffisso di exchange (es. "QDV4" → "QDV4.DE")
   // Prova i 9 exchange comuni e salva il primo che risponde con prezzo valido.
   // Risposta immediata, elaborazione in background con log su console.
