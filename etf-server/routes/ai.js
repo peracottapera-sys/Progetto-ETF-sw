@@ -375,6 +375,177 @@ async function getAIConfig(db) {
 module.exports = (db, fetchETF, ETF_INFO_MAP) => {
   const router = express.Router();
 
+// ─── Helper: validazione modifiche AI contro il catalogo ──────────────────
+// Per ogni modifica `aggiungi`/`seleziona`:
+//  - se ISIN nel catalogo + prezzo OK → arricchisce con dati reali, logga differenze
+//  - se ISIN nel catalogo + prezzo stale → flag `_warningType: 'stale'`
+//  - se ISIN non nel catalogo → flag `_warningType: 'isin_inventato'`
+// Restituisce le modifiche modificate in-place (per riferimento) e statistiche.
+async function validaModificheAI(modifiche, dbPool) {
+  const stats = { totali: 0, arricchite: 0, stale: 0, inventati: 0 };
+  if (!Array.isArray(modifiche) || modifiche.length === 0) return stats;
+
+  // Filtra solo aggiungi/seleziona — deseleziona/ribilancia operano su ISIN già esistenti nel portafoglio
+  const daValidare = modifiche.filter(m => m.azione === 'aggiungi' || m.azione === 'seleziona');
+  if (daValidare.length === 0) return stats;
+  stats.totali = daValidare.length;
+
+  const isinList = daValidare.map(m => m.isin).filter(Boolean);
+  if (isinList.length === 0) return stats;
+
+  const placeholders = isinList.map((_, i) => `$${i + 1}`).join(',');
+  const { rows } = await dbPool.query(
+    `SELECT c.isin, c.name, c.ter, c.categoria, c.quotazione,
+            (SELECT MAX(data) FROM prezzi_storici WHERE isin = c.isin) AS ultima_data,
+            (SELECT prezzo FROM prezzi_storici WHERE isin = c.isin ORDER BY data DESC LIMIT 1) AS ultimo_prezzo_storico
+     FROM etf_catalog c WHERE c.isin IN (${placeholders}) AND c.active = 1`,
+    isinList
+  );
+  const catalogMap = new Map(rows.map(r => [r.isin, r]));
+
+  for (const m of daValidare) {
+    const cat = catalogMap.get(m.isin);
+    if (!cat) {
+      m._warningType = 'isin_inventato';
+      m._warningMsg = `ISIN ${m.isin} non presente nel catalogo. L'AI potrebbe averlo inventato.`;
+      stats.inventati += 1;
+      console.log(`[validaModifiche] ⚠ ISIN INVENTATO: ${m.isin} (azione: ${m.azione}, motivo: ${(m.motivo || '').slice(0, 80)})`);
+      continue;
+    }
+
+    // Logga differenze rilevanti tra dati AI e dati catalogo
+    const diffLog = [];
+    if (m.ter != null && Math.abs(parseFloat(m.ter) - parseFloat(cat.ter || 0)) > 0.05) {
+      diffLog.push(`TER: AI=${m.ter} vs DB=${cat.ter}`);
+    }
+    const prezzoCat = cat.quotazione || cat.ultimo_prezzo_storico || 0;
+    if (m.quotazione != null && prezzoCat > 0 && Math.abs(parseFloat(m.quotazione) - prezzoCat) / prezzoCat > 0.05) {
+      diffLog.push(`Prezzo: AI=${m.quotazione} vs DB=${prezzoCat}`);
+    }
+    if (m.categoria && cat.categoria && m.categoria.toLowerCase() !== cat.categoria.toLowerCase()) {
+      diffLog.push(`Categoria: AI="${m.categoria}" vs DB="${cat.categoria}"`);
+    }
+    if (diffLog.length > 0) {
+      console.log(`[validaModifiche] ${m.isin} differenze AI/DB: ${diffLog.join(' | ')}`);
+    }
+
+    // Sovrascrivi sempre con dati catalogo (più affidabili)
+    m.name = cat.name || m.name;
+    m.ter = cat.ter != null ? cat.ter : m.ter;
+    m.categoria = cat.categoria || m.categoria;
+    m.quotazione = prezzoCat;
+
+    // Verifica freschezza prezzo
+    const dataPrezzo = cat.ultima_data ? new Date(cat.ultima_data) : null;
+    const giorniStale = dataPrezzo ? (Date.now() - dataPrezzo.getTime()) / (1000 * 60 * 60 * 24) : 999;
+    if (prezzoCat <= 0 || giorniStale > 30) {
+      m._warningType = 'stale';
+      m._warningMsg = `ETF ${m.isin} in catalogo ma prezzo non aggiornato${dataPrezzo ? ` (ultimo: ${dataPrezzo.toLocaleDateString('it-IT')})` : ' (mai fetchato)'}.`;
+      stats.stale += 1;
+    } else {
+      stats.arricchite += 1;
+    }
+  }
+  return stats;
+}
+
+// ─── Helper: retry chiamata AI per sostituire ISIN inventati ──────────────
+async function retryISINInventati(modificheInventate, portfolio, dbPool) {
+  if (!Array.isArray(modificheInventate) || modificheInventate.length === 0) return [];
+
+  // Per ciascun ISIN inventato, raccogli le categorie target dal motivo/categoria AI
+  // e prendi un campionamento del catalogo nelle stesse categorie.
+  const categorieTarget = new Set();
+  for (const m of modificheInventate) {
+    if (m.categoria) categorieTarget.add(m.categoria);
+  }
+
+  // Catalogo filtrato: stesse categorie richieste, escludendo ISIN già nel portafoglio
+  // e con prezzo valido recente (< 30gg)
+  const isinNelPortafoglio = (portfolio.etfs || []).map(e => e.isin);
+  const isinPlaceholders = isinNelPortafoglio.length > 0
+    ? `AND c.isin NOT IN (${isinNelPortafoglio.map((_, i) => `$${i + 1}`).join(',')})`
+    : '';
+  const queryParams = [...isinNelPortafoglio];
+
+  let queryWhere = `c.active = 1
+    AND c.quotazione IS NOT NULL AND c.quotazione > 0
+    AND EXISTS (SELECT 1 FROM prezzi_storici ps WHERE ps.isin = c.isin AND ps.data::date >= CURRENT_DATE - 30)
+    ${isinPlaceholders}`;
+
+  if (categorieTarget.size > 0) {
+    const catParams = [...categorieTarget];
+    const catPlaceholders = catParams.map((_, i) => `$${queryParams.length + i + 1}`).join(',');
+    queryWhere += ` AND c.categoria IN (${catPlaceholders})`;
+    queryParams.push(...catParams);
+  }
+
+  const { rows: candidati } = await dbPool.query(
+    `SELECT c.isin, c.name, c.ter, c.categoria, c.quotazione, c.aum_mln, c.vol1y, c.maxdd1y, c.perf1y
+     FROM etf_catalog c
+     WHERE ${queryWhere}
+     ORDER BY c.aum_mln DESC NULLS LAST
+     LIMIT 30`,
+    queryParams
+  );
+
+  if (candidati.length === 0) {
+    console.log('[retryISIN] Nessun candidato disponibile nel catalogo per le categorie richieste');
+    return [];
+  }
+
+  const catalogoStr = candidati.map(c =>
+    `- ${c.isin} | ${c.name} | Cat:${c.categoria} | TER:${c.ter}% | Vol1A:${c.vol1y || 'N/D'}% | Prezzo:€${c.quotazione} | AUM:${c.aum_mln || 'N/D'}M€`
+  ).join('\n');
+
+  const richieste = modificheInventate.map((m, i) =>
+    `${i + 1}. ISIN inventato: ${m.isin}\n   Categoria richiesta: ${m.categoria || 'N/D'}\n   Peso target: ${m.nuovaPct || 'N/D'}%\n   Motivo originale: ${m.motivo || 'N/D'}`
+  ).join('\n\n');
+
+  const prompt = `Hai proposto i seguenti ISIN che NON esistono nel catalogo. Per ciascuno, scegli un sostituto VALIDO dalla lista qui sotto, mantenendo lo stesso intento (categoria, scopo).
+
+ISIN DA SOSTITUIRE:
+${richieste}
+
+CATALOGO DISPONIBILE (solo ETF con prezzo aggiornato):
+${catalogoStr}
+
+REGOLE:
+- Scegli SOLO ISIN dalla lista qui sopra (sono ETF reali con prezzo aggiornato).
+- Mantieni la stessa categoria del motivo originale, se possibile.
+- Se non c'è un sostituto adeguato per qualche ISIN, NON inventarne uno: ometti quella riga.
+- Mantieni la stessa nuovaPct dell'originale.
+- Risposta in JSON puro, senza testo extra. Formato:
+[
+  { "isin_originale": "IE00XXX", "isin_sostituto": "IE00YYY", "motivo": "..." },
+  ...
+]`;
+
+  try {
+    const message = await getAnthropic().messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 800,
+      messages: [{ role: 'user', content: prompt }],
+    });
+    const testo = message.content?.[0]?.text || '';
+    const matches = [...testo.matchAll(/\[([\s\S]*?)\]/g)];
+    for (let i = matches.length - 1; i >= 0; i--) {
+      try {
+        const parsed = JSON.parse('[' + matches[i][1] + ']');
+        if (Array.isArray(parsed) && parsed[0]?.isin_originale) {
+          console.log(`[retryISIN] AI ha proposto ${parsed.length} sostituti su ${modificheInventate.length} richiesti`);
+          return parsed;
+        }
+      } catch {}
+    }
+    console.log('[retryISIN] Risposta AI non parsabile come JSON');
+    return [];
+  } catch (e) {
+    console.log('[retryISIN] Errore chiamata AI:', e.message);
+    return [];
+  }
+}
+
 router.post('/analisi', async (req, res) => {
   const { portfolio, opzioni } = req.body;
   if (!portfolio) return res.status(400).json({ error: 'Portfolio mancante' });
@@ -646,6 +817,48 @@ R8 — CRITICO: JSON valido e COMPLETO. Non troncare.`;
     }
 
     console.log(`  ✓ Analisi OK | semafori:${Object.keys(semafori).length} | punti:${puntiChiave.length} | modifiche:${modifiche.length}${rendAttesoLordo != null ? ` | rend:${rendAttesoLordo}%` : ''}`);
+
+    // ── Validazione modifiche AI contro il catalogo ────────────────────────
+    let stats = { totali: 0, arricchite: 0, stale: 0, inventati: 0 };
+    if (modifiche.length > 0) {
+      stats = await validaModificheAI(modifiche, db);
+      console.log(`  [validaModifiche] tot:${stats.totali} arricchite:${stats.arricchite} stale:${stats.stale} inventati:${stats.inventati}`);
+
+      // Retry solo se 2+ ISIN inventati (soglia decisa)
+      const inventati = modifiche.filter(m => m._warningType === 'isin_inventato');
+      if (inventati.length >= 2) {
+        console.log(`  [retryISIN] Avvio retry per ${inventati.length} ISIN inventati`);
+        const sostituti = await retryISINInventati(inventati, portfolio, db);
+
+        // Applica i sostituti: per ogni mapping isin_originale → isin_sostituto,
+        // sostituisci la modifica corrispondente con quella nuova.
+        let applicati = 0;
+        for (const sost of sostituti) {
+          const idx = modifiche.findIndex(m => m.isin === sost.isin_originale);
+          if (idx >= 0 && sost.isin_sostituto) {
+            const mOrig = modifiche[idx];
+            modifiche[idx] = {
+              ...mOrig,
+              isin: sost.isin_sostituto,
+              motivo: sost.motivo || mOrig.motivo,
+              _sostituito: { da: sost.isin_originale, motivo: 'Retry: ISIN originale non in catalogo' },
+            };
+            // Rimuovi flag warning precedente (verrà ri-validato sotto)
+            delete modifiche[idx]._warningType;
+            delete modifiche[idx]._warningMsg;
+            applicati += 1;
+          }
+        }
+        console.log(`  [retryISIN] ${applicati} sostituzioni applicate`);
+
+        // Ri-valida le modifiche dopo i sostituiti
+        if (applicati > 0) {
+          const stats2 = await validaModificheAI(modifiche, db);
+          console.log(`  [validaModifiche post-retry] tot:${stats2.totali} arricchite:${stats2.arricchite} stale:${stats2.stale} inventati:${stats2.inventati}`);
+        }
+      }
+    }
+
     res.json({ semafori, puntiChiave, analisiDettagliata, modifiche, metriche: { rendAttesoLordo } });
   } catch (err) {
     console.error('[analisi]', err.message);
@@ -712,14 +925,27 @@ router.post('/genera-pdf', authMiddleware, (req, res) => {
           qDaComprare = Math.round((valoreTarget / prezzoAcq2) * 10000) / 10000;
           prezzoComprare = prezzoAcq2;
         } else {
-          // Prezzo non disponibile → modifica non simulabile, ma la registriamo per avvisare l'utente
+          // Prezzo non disponibile → modifica non simulabile, ma la registriamo per avvisare l'utente.
+          // Il messaggio differisce in base al motivo (verificato dalla validazione AI):
+          //  - isin_inventato: AI ha proposto un ISIN che non esiste nel catalogo
+          //  - stale: ISIN esiste ma il prezzo è obsoleto
+          //  - default: caso classico (custom, prezzo non ancora caricato)
+          let problemaMsg;
+          if (m._warningType === 'isin_inventato') {
+            problemaMsg = m._warningMsg || `ISIN ${m.isin} non presente nel catalogo. L'AI potrebbe averlo inventato — non procedere senza verifica.`;
+          } else if (m._warningType === 'stale') {
+            problemaMsg = m._warningMsg || `ETF in catalogo ma prezzo non aggiornato. Aggiorna il catalogo o verifica manualmente sul broker.`;
+          } else {
+            problemaMsg = 'Prezzo non disponibile nel catalogo. L\'ETF potrebbe non essere in listino o non ancora censito. Verifica manualmente sul broker.';
+          }
           modificheNonSimulate.push({
             isin: m.isin,
             name: m.name || m.isin,
             azione: m.azione,
             nuovaPct: m.nuovaPct,
             motivo: m.motivo,
-            problema: 'Prezzo non disponibile nel catalogo. L\'ETF potrebbe non essere in listino o non ancora censito. Verifica manualmente sul broker.',
+            problema: problemaMsg,
+            _warningType: m._warningType || 'unknown',
           });
         }
       }
