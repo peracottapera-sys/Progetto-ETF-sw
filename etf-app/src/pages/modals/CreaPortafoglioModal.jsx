@@ -174,7 +174,11 @@ function CreaPortafoglioModal({ portfolioId, onClose, onApplied, initialProfilo,
         bucketPctBreve: bucket?.attivo ? bucket.pctBreve : null,
         metriche: {
           nEtf: consigliati.length,
-          terTotale: parseFloat(consigliati.reduce((t, s) => t + (s.ter || 0), 0).toFixed(2)),
+          // TER totale = media ponderata sui pesi degli ETF consigliati.
+          // Es: ETF con peso 30% e TER 0.10% contribuisce per 0.030% al TER del portafoglio.
+          terTotale: parseFloat(
+            (consigliati.reduce((s, e) => s + (e.ter || 0) * (e.peso || 0), 0) / 100).toFixed(2)
+          ),
           rendAttesoLordo,
         },
         etfSelezionati: consigliati.map(s => ({
@@ -425,8 +429,11 @@ function CreaPortafoglioModal({ portfolioId, onClose, onApplied, initialProfilo,
                 const consigliati = selezione.filter(s => s.tipo === 'consigliato' || !s.tipo);
                 const totPeso = consigliati.reduce((t, s, i) => t + (parseFloat(pesi[selezione.indexOf(s)]) || s.peso || 0), 0);
 
-                // TER totale = SOMMA dei TER di tutti i consigliati selezionati
-                const terTotale = consigliati.reduce((t, s) => t + (s.ter || 0), 0);
+                // TER totale = media ponderata sui pesi (somma di peso_i × ter_i / 100)
+                const terTotale = consigliati.reduce((s, e, i) => {
+                  const peso = parseFloat(pesi[selezione.indexOf(e)]) || e.peso || 0;
+                  return s + (e.ter || 0) * peso;
+                }, 0) / 100;
 
                 // Correlazione max: estratta dal testo (unica fonte disponibile)
                 const corrMatch = spiegazione.match(/correlazione[^:]*:?\s*[~≈]?(0\.\d+)/i)
