@@ -116,16 +116,59 @@ function CreaPortafoglioModal({ portfolioId, onClose, onApplied, initialProfilo,
   const capitale = form.capitale ? parseFloat(form.capitale) : null;
 
   const handleApplica = async () => {
-    const selezioneAggiornata = selezione.map((s, i) => {
+    const oggi = new Date().toISOString().slice(0, 10);
+
+    // Step 1: filtra i "placeholder" — ETF restituiti dall'AI con peso 0, ISIN non valido,
+    // o motivazione che indica un placeholder. Non vanno salvati.
+    const isPlaceholder = (s) => {
+      if (!s.isin || s.isin.length < 10) return true;
+      // ISIN deve iniziare con 2 lettere (codice paese)
+      if (!/^[A-Z]{2}/.test(s.isin)) return true;
+      // Motivazione esplicita di placeholder
+      if (typeof s.motivo === 'string' && /placeholder/i.test(s.motivo)) return true;
+      // Peso 0 e nessun nome reale → quasi sicuramente un placeholder
+      if ((!s.peso || s.peso === 0) && (!s.name || s.name === s.isin)) return true;
+      return false;
+    };
+
+    const selezioneFiltrata = selezione.filter(s => !isPlaceholder(s));
+    const placeholderRimossi = selezione.length - selezioneFiltrata.length;
+    if (placeholderRimossi > 0) {
+      console.warn(`[handleApplica] Filtrati ${placeholderRimossi} placeholder dalla selezione AI`);
+    }
+
+    // Step 2: calcola quantità con quote frazionarie (4 decimali) per preservare capitale.
+    // Math.floor scartava le frazioni perdendo fino al prezzo × n_etf di capitale.
+    const selezioneAggiornata = selezioneFiltrata.map((s, i) => {
+      const idx = selezione.indexOf(s);
       const isConsigliato = s.tipo === 'consigliato' || !s.tipo;
-      const isApproved = isConsigliato && !!approvate[i];
-      const pesoVal = isConsigliato ? (parseFloat(pesi[i]) || s.peso || 0) : 0;
+      const isApproved = isConsigliato && !!approvate[idx];
+      const pesoVal = isConsigliato ? (parseFloat(pesi[idx]) || s.peso || 0) : 0;
       const valAllocato = (isApproved && capitale) ? capitale * pesoVal / 100 : null;
       const quantita = valAllocato && s.quotazioneAcquisto > 0
-        ? Math.floor(valAllocato / s.quotazioneAcquisto)
+        ? Math.round((valAllocato / s.quotazioneAcquisto) * 10000) / 10000
         : (s.quantita || null);
       return { ...s, peso: pesoVal, quantita, _selected: isApproved };
     });
+
+    // Step 3: aggiustamento finale — l'ultimo ETF approvato assorbe il residuo
+    // floating-point per far combaciare il totale col capitale richiesto.
+    if (capitale && capitale > 0) {
+      const approvati = selezioneAggiornata.filter(s => s._selected && s.quantita > 0 && s.quotazioneAcquisto > 0);
+      if (approvati.length > 0) {
+        const totCalcolato = approvati.reduce((sum, s) => sum + s.quantita * s.quotazioneAcquisto, 0);
+        // Capitale target = somma pesi approvati / 100 × capitale (può non essere il 100%)
+        const totPesoApprovati = approvati.reduce((sum, s) => sum + (s.peso || 0), 0);
+        const capitaleTarget = capitale * (totPesoApprovati / 100);
+        const residuo = capitaleTarget - totCalcolato;
+        if (Math.abs(residuo) > 0.01) {
+          const ultimo = approvati[approvati.length - 1];
+          const deltaQ = Math.round((residuo / ultimo.quotazioneAcquisto) * 10000) / 10000;
+          ultimo.quantita = Math.round((ultimo.quantita + deltaQ) * 10000) / 10000;
+        }
+      }
+    }
+
     await applicaPortafoglioAI(portfolioId, selezioneAggiornata, capitale || 0);
 
     // Salva i bucket se la pianificazione è attiva
@@ -771,7 +814,9 @@ function CreaPortafoglioModal({ portfolioId, onClose, onApplied, initialProfilo,
                   const nome = s.name || s.isin;
                   const pesoVal = parseFloat(pesi[i]) || 0;
                   const valAllocato = capitale ? (capitale * pesoVal / 100) : null;
-                  const qtCalcolata = valAllocato && s.quotazioneAcquisto ? Math.floor(valAllocato / s.quotazioneAcquisto) : s.quantita || null;
+                  const qtCalcolata = valAllocato && s.quotazioneAcquisto
+                    ? Math.round((valAllocato / s.quotazioneAcquisto) * 10000) / 10000
+                    : s.quantita || null;
                   const bucketColore = s.bucket === 'BREVE' ? 'var(--accent-blue)' : s.bucket === 'LUNGO' ? 'var(--accent-amber)' : null;
                   return (
                     <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '12px 0', borderBottom: '1px solid var(--border)' }}>
