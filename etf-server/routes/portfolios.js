@@ -67,7 +67,7 @@ module.exports = (pool) => {
     let catalogMap = {};
     try {
       const { rows: catRows } = await pool.query(
-        `SELECT isin, name, emittente, ter, categoria, valuta, aum_mln, vol1y, maxdd1y, perf1m, perf6m, perf1y, perf5y, smart_beta_factor FROM etf_catalog WHERE isin IN (${placeholders})`,
+        `SELECT isin, name, emittente, ter, categoria, area_geografica, valuta, aum_mln, vol1y, maxdd1y, perf1m, perf6m, perf1y, perf5y, smart_beta_factor FROM etf_catalog WHERE isin IN (${placeholders})`,
         isins
       );
       catRows.forEach(r => { catalogMap[r.isin] = r; });
@@ -80,6 +80,7 @@ module.exports = (pool) => {
         quotazione: prezziMap[r.isin] || 0,
         name: cat.name || null, emittente: cat.emittente || null,
         ter: cat.ter ?? null, categoria: cat.categoria || null,
+        area_geografica: cat.area_geografica || null,
         valuta: cat.valuta || null, capitalizzazione: cat.aum_mln ?? null,
         variabilita: cat.vol1y ?? null, maxDrawdown: cat.maxdd1y ?? null,
         smartBeta: cat.smart_beta_factor || null,

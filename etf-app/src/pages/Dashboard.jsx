@@ -410,7 +410,7 @@ export default function Dashboard({ setActiveTab }) {
                     <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{etf.emittente}</div>
                     <div style={{ display: 'flex', gap: 4, alignItems: 'center', marginTop: 2, flexWrap: 'wrap' }}>
                       <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
-                        {etf.categoria}{etf.smartBeta ? ` · ${etf.smartBeta}` : ''}
+                        {etf.categoria}{etf.area_geografica ? ` · ${etf.area_geografica}` : ''}{etf.smartBeta ? ` · ${etf.smartBeta}` : ''}
                       </span>
                       {hasBuckets && etf.tipo !== 'venduto' && (
                         <button

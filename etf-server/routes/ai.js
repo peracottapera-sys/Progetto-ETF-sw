@@ -683,7 +683,7 @@ ${etfSelezionati.map(e => {
 ${etfNonSelezionati.slice(0,20).map(e => `- ${e.name} (${e.isin}) | ${e.categoria||'N/D'} | TER:${e.ter}% | Vol1A:${e.variabilita||'N/D'}% | Perf1A:${e.perf1y||0}%`).join('\n') || 'Nessuno'}
 
 ## ETF DAL CATALOGO COMPATIBILI COL PROFILO (puoi suggerire "aggiungi"):
-${etfCatalogo.map(e => `- ${e.name} (${e.isin}) | ${e.categoria}${e.smartBeta ? ' ['+e.smartBeta+']' : ''} | TER:${e.ter}% | Quotaz:€${e.quotazione||0} | Vol1A:${e.variabilita||'N/D'}% | Perf1A:${e.perf1y||0}%`).join('\n')}
+${etfCatalogo.map(e => `- ${e.name} (${e.isin}) | ${e.categoria}${e.area_geografica ? ' · '+e.area_geografica : ''}${e.smartBeta ? ' ['+e.smartBeta+']' : ''} | TER:${e.ter}% | Quotaz:€${e.quotazione||0} | Vol1A:${e.variabilita||'N/D'}% | Perf1A:${e.perf1y||0}%`).join('\n')}
 
 ${macroContext}
 
@@ -1428,7 +1428,7 @@ async function getEtfPerProfilo(profilo, escludiDistribuzione = false, filtriRil
            perf2024, perf2023, perf2022,
            vol1y, vol3y, vol5y,
            maxdd1y, maxdd5y, maxdd_max,
-           distribuzione, categoria, smart_beta_factor,
+           distribuzione, categoria, area_geografica, smart_beta_factor,
            data_lancio, partecipazioni, sostenibile
     FROM etf_catalog
     WHERE active = 1
@@ -1451,6 +1451,7 @@ async function getEtfPerProfilo(profilo, escludiDistribuzione = false, filtriRil
     isin:             e.isin,
     name:             e.name,
     categoria:        e.categoria || 'N/D',
+    area_geografica:  e.area_geografica || null,
     emittente:        e.name.split(' ')[0],
     ter:              e.ter ?? 0,
     tassazione:       26,
@@ -1622,7 +1623,7 @@ ${etfDisponibili.map(e => {
     e.partecipazioni ? `Titoli:${e.partecipazioni}` : null,
     e.sostenibile ? 'ESG' : null,
   ].filter(Boolean).join(' ');
-  return `- ${e.name} (${e.isin}) | Cat:${e.categoria} | TER:${e.ter}% | ${vol} | ${dd} | ${perf} | AUM:${e.capitalizzazione}M€${extra ? ' | '+extra : ''}`;
+  return `- ${e.name} (${e.isin}) | Cat:${e.categoria}${e.area_geografica ? ' · Area:'+e.area_geografica : ''} | TER:${e.ter}% | ${vol} | ${dd} | ${perf} | AUM:${e.capitalizzazione}M€${extra ? ' | '+extra : ''}`;
 }).join('\n')}
 
 ## VINCOLI AGGIUNTIVI OBBLIGATORI:
