@@ -1,6 +1,167 @@
 const express = require('express');
 const authMiddleware = require('../middleware/auth');
 const { log, EVENTI } = require('./logger');
+const Anthropic = require('@anthropic-ai/sdk');
+
+const getAnthropic = () => {
+  const key = process.env.ANTHROPIC_API_KEY;
+  if (!key) throw new Error('ANTHROPIC_API_KEY non configurata');
+  return new Anthropic({ apiKey: key });
+};
+
+// ─── Riclassificazione automatica via regole ─────────────────────────────
+// Restituisce la categoria target in base al nome ETF. Le regole sono in
+// CASCATA (la prima che matcha vince). null = nessun match → fallback AI.
+function classificaPerRegole(name) {
+  if (!name || typeof name !== 'string') return null;
+  const n = name.toLowerCase();
+
+  // ── 1-6: Bond / Liquidità (controllo prima per evitare match azionari su bond) ──
+  // Liquidità / Monetario
+  if (/\b(overnight|money market|t-bill|liquidity|liquidità|monetario|short term cash)\b/i.test(name)) {
+    return 'Liquidità / Monetario';
+  }
+
+  // High Yield bond
+  if (/\b(high yield|hy corp|hy bond|speculative grade|sub investment grade)\b/i.test(name)) {
+    return 'Obbligazionario High Yield';
+  }
+
+  // Bond Emergenti
+  if (/\b(em hard currency|em local|em bond|emerging.*bond|em sovereign|em government|china.*bond|india.*bond|local currency)\b/i.test(name)) {
+    return 'Obbligazionario Emergenti';
+  }
+
+  // Bond Corporate
+  if (/\b(corporate bond|corp bond|corporate (eur|usd|gbp))\b/i.test(name)) {
+    return 'Obbligazionario Corporate';
+  }
+
+  // Bond Governativo (più specifico, controllo prima del bond generico)
+  if (/\b(government bond|sovereign bond|treasury|btp|bund|gilt|gov bond|govt bond|govies|government.*paris)\b/i.test(name)
+      || /\b(germany|italy|france|spain|portugal|us|uk|japan).*government\b/i.test(name)
+      || /\b(eb\.rexx|ibonds|ibond)\b/i.test(name)) {
+    return 'Obbligazionario Governativo';
+  }
+
+  // Inflation-Linked → Governativo
+  if (/\b(inflation[- ]linked|tips|index[- ]linked gilt|linker)\b/i.test(name)) {
+    return 'Obbligazionario Governativo';
+  }
+
+  // Bond generici (catch-all per bond non riconosciuti sopra)
+  if (/\b(aggregate bond|fixed income|bond ucits|bonds ucits|bond etf|bond fund|covered bond|short duration|bond.*hedge|ultrashort bond)\b/i.test(name)) {
+    return 'Obbligazionario';
+  }
+
+  // ── 7: Settori specifici (vincono sempre su geografia, da decisione utente) ──
+  if (/\b(health[- ]?care|biotech|pharmaceutical|medical)\b/i.test(name)) {
+    return 'Azionario Tematico - Salute';
+  }
+  if (/\b(information technology|infotech|tech 100|technology|semiconductor|software|internet|cloud|fintech|cybersecurity|ai sector|artificial intelligence|robotics|nasdaq.*tech)\b/i.test(name)) {
+    return 'Azionario Tematico - Tecnologia';
+  }
+  if (/\b(financials|financial services|banks|banking|insurance)\b/i.test(name)) {
+    return 'Azionario Tematico - Finanziario';
+  }
+  if (/\b(real estate|reit|property|immobil)\b/i.test(name)) {
+    return 'Azionario Tematico - Immobiliare';
+  }
+  if (/\b(defense|aerospace|defence|weapon)\b/i.test(name)) {
+    return 'Azionario Tematico - Difesa';
+  }
+  if (/\b(infrastructure|infrastrutture|utilities)\b/i.test(name)) {
+    return 'Azionario Tematico - Infrastrutture';
+  }
+  // Energy come SETTORE azionario (es. "MSCI World Energy Sector"). Distinto da Materie Prime - Energia
+  if (/\b(energy sector|energy ucits etf|s&p.*energy|msci.*energy|stoxx.*energy|world energy|usa energy|europe energy)\b/i.test(name)
+      && !/\b(crude|brent|natural gas|petroleum|oil|gas|wti)\b/i.test(name)) {
+    return 'Azionario Tematico - Energia';
+  }
+  // Settoriali generici: industrials, materials, consumer, communication, telecom
+  if (/\b(industrials|industrial goods|industrial services|materials|consumer (staples|discretionary|goods)|telecommunication|communication services|telecom|utilities sector)\b/i.test(name)) {
+    return 'Azionario Tematico - Settoriale';
+  }
+
+  // ── 8-13: Materie prime ──
+  // Crypto
+  if (/\b(bitcoin|ethereum|crypto|btc|eth|solana|polkadot|dogecoin|stellar|chainlink|cardano|ripple|altcoin)\b/i.test(name)) {
+    return 'Materie Prime - Crypto';
+  }
+  // Metalli preziosi
+  if (/\b(gold|silver|platinum|palladium|precious metals|argento|oro fisico|metalli preziosi)\b/i.test(name)) {
+    return 'Materie Prime - Metalli Preziosi';
+  }
+  // Metalli industriali
+  if (/\b(industrial metals|copper|nickel|aluminum|aluminium|zinc|tin|metalli industriali|base metals)\b/i.test(name)) {
+    return 'Materie Prime - Metalli Industriali';
+  }
+  // Energia commodity (oil, gas, ecc.)
+  if (/\b(crude oil|brent|wti|natural gas|petroleum|oil & gas|carbon|carbon credits|emissions)\b/i.test(name)) {
+    return 'Materie Prime - Energia';
+  }
+  // Agricoltura
+  if (/\b(agriculture|agricultural|cotton|wheat|soybean|soy|sugar|coffee|cattle|grain|livestock|corn|cocoa)\b/i.test(name)) {
+    return 'Materie Prime - Agricoltura';
+  }
+  // Commodities generiche
+  if (/\b(commodities|commodity|bcom|bloomberg commodity|broad commodit|enhanced roll)\b/i.test(name)) {
+    return 'Materie Prime - Commodities';
+  }
+
+  // ── 14: Smart Beta (vince su geografia, da decisione utente) ──
+  if (/\b(value factor|momentum factor|quality factor|low volatility|min volatility|minimum vol|multifactor|multi[- ]factor|alphadex|equal weight|fundamental|prime value|select factor|factor mix)\b/i.test(name)) {
+    return 'Azionario - Smart Beta';
+  }
+  if (/\b(value ucits etf|value etf$|momentum ucits|quality ucits)\b/i.test(name)) {
+    return 'Azionario - Smart Beta';
+  }
+
+  // ── 15: Dividend ──
+  if (/\b(dividend|yield aristocrat|high yield equity|dividend select|div dax|divdax)\b/i.test(name)
+      && !/\b(bond|corporate|govies|government|treasury)\b/i.test(name)) {
+    return 'Azionario - Dividend';
+  }
+
+  // ── 16: Small/Mid Cap ──
+  if (/\b(small cap|mid cap|small\/mid|smid|sdax|midcap|mdax)\b/i.test(name)) {
+    return 'Azionario - Small/Mid Cap';
+  }
+
+  // ── 17: ESG/Green/Climate ──
+  if (/\b(esg|sri|climate|paris[- ]aligned|sustainable|green|net zero|low carbon|socially responsible|ethical|ctb|enhanced ctb)\b/i.test(name)) {
+    return 'Azionario Tematico - ESG/Green';
+  }
+
+  // ── 18: Geografia (ultimo step) ──
+  // Emergenti (controlla prima di Globale, perché "MSCI Emerging" potrebbe matchare "MSCI" generico)
+  if (/\b(emerging markets|emerging mkt|em ucits|msci em |india|china|brazil|brasile|korea|mexico|mexicano|turkey|russia|chinese|indiano)\b/i.test(name)) {
+    return 'Azionario Emergenti';
+  }
+  // World ex / Globale
+  if (/\b(world ex|msci world ex|acwi|all country world|world equity|msci world|ftse all-world|all-world|ftse global|world ucits|world index)\b/i.test(name)) {
+    return 'Azionario Globale';
+  }
+  // USA
+  if (/\b(s&p ?500|sp500|nasdaq 100|nasdaq-100|russell|dow jones (industrial|us)|msci usa|us equity|usa equity|north america|american|americano)\b/i.test(name)) {
+    return 'Azionario USA';
+  }
+  // Pacifico
+  if (/\b(japan|nikkei|topix|jpx|pacific|asia ex japan|asia[- ]pacific|asean|far east|asia)\b/i.test(name)) {
+    return 'Azionario Pacifico';
+  }
+  // Europa (per ultimo perché molti tematici settoriali hanno "europe" nel nome — ma se sono arrivati qui, non sono tematici)
+  if (/\b(europe|european|emu|eurozone|stoxx|msci europe|ftse 100|dax|cac 40|mib|italy equity|germany equity|france equity|uk equity|ftse europe)\b/i.test(name)) {
+    return 'Azionario Europa';
+  }
+  // Globale generico (catch-all per "global", "world" senza specifiche)
+  if (/\b(global|world)\b/i.test(name)) {
+    return 'Azionario Globale';
+  }
+
+  // Nessun match → fallback AI
+  return null;
+}
 
 // Anno nascita fallback (non in etf_catalog)
 const ETF_ANNO_MAP = {
@@ -310,6 +471,186 @@ module.exports = (pool, fetchETF) => {
     } catch (e) {
       res.status(500).json({ error: e.message });
     }
+  });
+
+  // Riclassificazione automatica delle categorie ETF basata su pattern del nome.
+  // Per gli ETF che non matchano nessuna regola, usa fallback AI (Haiku 4.5 in batch).
+  // Body opzionale: { dryRun: bool, useAi: bool, limit: number }
+  router.post('/admin/riclassifica', authMiddleware, async (req, res) => {
+    const { dryRun = true, useAi = true, limit = 5000 } = req.body || {};
+
+    const { rows: etfs } = await pool.query(
+      `SELECT isin, name, categoria FROM etf_catalog
+       WHERE active = 1 AND name IS NOT NULL AND name != ''
+       ORDER BY isin
+       LIMIT $1`,
+      [Math.min(parseInt(limit) || 5000, 5000)]
+    );
+
+    res.json({
+      message: `Riclassificazione avviata: ${etfs.length} ETF (dryRun=${dryRun}, useAi=${useAi}). Vedi log per progresso. Risultato finale via /admin/riclassifica-result.`,
+      etfDaProcessare: etfs.length,
+    });
+
+    // Esecuzione in background
+    (async () => {
+      const start = Date.now();
+      const propostiPerRegole = [];
+      const senzaMatch = [];
+
+      console.log(`\n[riclassifica] Inizio: ${etfs.length} ETF (dryRun=${dryRun}, useAi=${useAi})`);
+
+      // ─── Step 1: applica regole ───
+      for (const etf of etfs) {
+        const cat = classificaPerRegole(etf.name);
+        if (cat) {
+          if (cat !== etf.categoria) propostiPerRegole.push({ ...etf, nuovaCategoria: cat, fonte: 'regole' });
+        } else {
+          senzaMatch.push(etf);
+        }
+      }
+      console.log(`[riclassifica] Regole: ${propostiPerRegole.length} riclassificati, ${senzaMatch.length} senza match`);
+
+      // ─── Step 2: fallback AI per i senza match ───
+      const propostiPerAi = [];
+      if (useAi && senzaMatch.length > 0) {
+        const BATCH = 30;
+        const categorie = [
+          'Azionario Globale','Azionario USA','Azionario Europa','Azionario Emergenti','Azionario Pacifico',
+          'Azionario - Smart Beta','Azionario - Dividend','Azionario - Small/Mid Cap',
+          'Azionario Tematico - Salute','Azionario Tematico - Tecnologia','Azionario Tematico - Finanziario',
+          'Azionario Tematico - Energia','Azionario Tematico - Settoriale','Azionario Tematico - Immobiliare',
+          'Azionario Tematico - Difesa','Azionario Tematico - Infrastrutture','Azionario Tematico - Consumi',
+          'Azionario Tematico - ESG/Green',
+          'Obbligazionario','Obbligazionario Governativo','Obbligazionario Corporate',
+          'Obbligazionario High Yield','Obbligazionario Emergenti',
+          'Materie Prime - Commodities','Materie Prime - Metalli Preziosi','Materie Prime - Metalli Industriali',
+          'Materie Prime - Energia','Materie Prime - Crypto','Materie Prime - Agricoltura',
+          'Liquidità / Monetario',
+        ];
+
+        for (let i = 0; i < senzaMatch.length; i += BATCH) {
+          const chunk = senzaMatch.slice(i, i + BATCH);
+          const lista = chunk.map((e, j) => `${j+1}. ${e.isin} | ${e.name} | attuale: ${e.categoria || 'N/D'}`).join('\n');
+          const prompt = `Classifica i seguenti ETF nella categoria più adatta. Le categorie possibili sono SOLO queste (non inventarne):
+
+${categorie.join(', ')}
+
+REGOLE:
+- Settori (Tech, Health, Energy, Financials, ecc.) hanno PRIORITÀ sulla geografia → "Azionario Tematico - X"
+- Smart Beta (Value, Momentum, Quality, Low Vol) ha PRIORITÀ sulla geografia → "Azionario - Smart Beta"
+- ETF obbligazionari sempre in famiglia "Obbligazionario *"
+- Ultima istanza: classificazione geografica ("Azionario USA/Europa/Emergenti/Pacifico/Globale")
+- Se l'ETF è cross (es. cinese su S&P USA), prevale la geografia del fondo (cinese → Emergenti)
+
+ETF DA CLASSIFICARE:
+${lista}
+
+Risposta in JSON puro, formato:
+[
+  { "isin": "IE00...", "categoria": "Azionario Globale" },
+  ...
+]
+Una riga per ogni ETF. Niente testo extra prima o dopo il JSON.`;
+
+          try {
+            const message = await getAnthropic().messages.create({
+              model: 'claude-haiku-4-5-20251001',
+              max_tokens: 2000,
+              messages: [{ role: 'user', content: prompt }],
+            });
+            const testo = message.content?.[0]?.text || '';
+            const matches = [...testo.matchAll(/\[([\s\S]*?)\]/g)];
+            for (let k = matches.length - 1; k >= 0; k--) {
+              try {
+                const parsed = JSON.parse('[' + matches[k][1] + ']');
+                if (Array.isArray(parsed) && parsed[0]?.isin && parsed[0]?.categoria) {
+                  for (const r of parsed) {
+                    const orig = chunk.find(e => e.isin === r.isin);
+                    if (orig && categorie.includes(r.categoria) && r.categoria !== orig.categoria) {
+                      propostiPerAi.push({ ...orig, nuovaCategoria: r.categoria, fonte: 'ai' });
+                    }
+                  }
+                  break;
+                }
+              } catch {}
+            }
+            console.log(`[riclassifica] AI batch ${Math.floor(i/BATCH)+1}/${Math.ceil(senzaMatch.length/BATCH)} processato`);
+          } catch (e) {
+            console.log(`[riclassifica] AI batch ${i/BATCH} errore: ${e.message}`);
+          }
+          await new Promise(r => setTimeout(r, 500));
+        }
+      }
+
+      const tutteProposte = [...propostiPerRegole, ...propostiPerAi];
+      console.log(`[riclassifica] Totale modifiche proposte: ${tutteProposte.length} (${propostiPerRegole.length} da regole + ${propostiPerAi.length} da AI)`);
+
+      // ─── Step 3: applica modifiche (se non dryRun) ───
+      let applicate = 0;
+      if (!dryRun && tutteProposte.length > 0) {
+        for (const p of tutteProposte) {
+          try {
+            await pool.query('UPDATE etf_catalog SET categoria = $1 WHERE isin = $2', [p.nuovaCategoria, p.isin]);
+            applicate += 1;
+          } catch (e) {
+            console.log(`[riclassifica] errore update ${p.isin}: ${e.message}`);
+          }
+        }
+      }
+
+      const stats = {
+        totaleProcessati: etfs.length,
+        riclassificate: tutteProposte.length,
+        daRegole: propostiPerRegole.length,
+        daAi: propostiPerAi.length,
+        senzaMatch: senzaMatch.length - propostiPerAi.length,
+        applicate,
+        dryRun,
+        durata_s: Math.round((Date.now() - start) / 1000),
+        // Salviamo le proposte in memoria globale per essere recuperate via altra route
+        proposte: tutteProposte,
+      };
+      // Salva in variabile globale dell'app per recupero successivo
+      global.__lastRiclassificaResult = stats;
+
+      console.log(`[riclassifica] Completato in ${stats.durata_s}s: ${tutteProposte.length} riclassificate, ${applicate} applicate al DB`);
+      log(EVENTI.AGGIORNA_PREZZI_SELETTIVO, {
+        ok: applicate,
+        err: tutteProposte.length - applicate,
+        totale: etfs.length,
+        motivo: `riclassifica${dryRun ? '-dryrun' : ''}`,
+      }).catch(() => {});
+    })().catch(e => console.error('[riclassifica] Errore fatale:', e.message));
+  });
+
+  // Recupera l'ultimo risultato di riclassifica come CSV scaricabile
+  router.get('/admin/riclassifica-result', authMiddleware, async (req, res) => {
+    const last = global.__lastRiclassificaResult;
+    if (!last) {
+      return res.status(404).json({ error: 'Nessun risultato disponibile. Lancia prima POST /admin/riclassifica.' });
+    }
+
+    const headers = ['isin', 'name', 'categoria_attuale', 'nuova_categoria', 'fonte'];
+    const escape = v => {
+      if (v == null) return '';
+      const s = String(v);
+      return /[",;\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+    };
+    const csv = '\ufeff' + headers.join(';') + '\n' +
+      last.proposte.map(p => [
+        escape(p.isin),
+        escape(p.name),
+        escape(p.categoria),
+        escape(p.nuovaCategoria),
+        escape(p.fonte),
+      ].join(';')).join('\n') +
+      `\n\n--- STATISTICHE ---\nTotale processati;${last.totaleProcessati}\nRiclassificate;${last.riclassificate}\nDa regole;${last.daRegole}\nDa AI;${last.daAi}\nSenza match;${last.senzaMatch}\nApplicate al DB;${last.applicate}\ndryRun;${last.dryRun}\nDurata (s);${last.durata_s}`;
+
+    const fileName = `riclassifica_${new Date().toISOString().slice(0,10)}.csv`;
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+    res.send(csv);
   });
 
   // Fix ticker senza suffisso di exchange (es. "QDV4" → "QDV4.DE")
