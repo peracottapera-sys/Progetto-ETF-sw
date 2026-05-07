@@ -134,6 +134,103 @@ const ETF_ANNO_MAP = {
   'IE0031442068':2002,'IE0005042456':2000,
 };
 
+// ─── Scraper iShares ────────────────────────────────────────────────────
+// Scarica la lista completa degli ETF iShares dal search ufficiale e ne
+// estrae per ciascuno: provider_id, AUM, TER, country/sector breakdown.
+// API pubblica BlackRock — niente auth richiesta.
+const axios = require('axios');
+
+async function fetchIsharesIndex() {
+  // Endpoint search prodotti iShares Italia
+  // Restituisce JSON con ~1000+ ETF iShares disponibili in Europa
+  const url = 'https://www.ishares.com/it/investitore-privato/it/api/products/search?fundFamily=ishares&country=it&segment=all&product=etf&page=1&pageSize=2000&dataType=fund';
+  const headers = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'Accept': 'application/json',
+  };
+  try {
+    const { data } = await axios.get(url, { headers, timeout: 30000 });
+    // Il response è un oggetto con chiavi che sono ID dei prodotti
+    // Lo trasformiamo in array uniforme
+    if (data && typeof data === 'object') {
+      return Object.values(data).filter(p => p && p.isin);
+    }
+    return [];
+  } catch (e) {
+    console.log(`[ishares] Errore fetch index: ${e.message}`);
+    return [];
+  }
+}
+
+async function fetchIsharesProductDetail(productPath) {
+  // Per dettagli avanzati: country/sector breakdown via endpoint specifici
+  // productPath è il "fundDetail" relativo, es. /it/investitore-privato/it/prodotti/253743/...
+  const baseUrl = 'https://www.ishares.com';
+  const detailUrl = `${baseUrl}${productPath}`;
+  // Per ora torna la URL del prodotto (le breakdown sono nello stesso JSON dell'index)
+  return detailUrl;
+}
+
+function parseIsharesProduct(p) {
+  // Mappa risposta iShares → struttura DB
+  const result = {
+    isin: p.isin,
+    provider: 'ishares',
+    provider_id: p.fundId || p.id || null,
+    provider_url: p.productPageUrl ? `https://www.ishares.com${p.productPageUrl}` : null,
+    name: p.fundName || p.localExchangeTicker || null,
+    ter: null,
+    aum_mln: null,
+    index_name: null,
+    country_breakdown: null,
+    sector_breakdown: null,
+  };
+
+  // TER (totalNetExpense)
+  if (p.totalNetExpense != null) {
+    const ter = parseFloat(p.totalNetExpense);
+    if (!isNaN(ter)) result.ter = ter;
+  } else if (p.feeReturn != null) {
+    const ter = parseFloat(p.feeReturn);
+    if (!isNaN(ter)) result.ter = ter;
+  }
+
+  // AUM (totalNetAssets in EUR/USD, varia)
+  if (p.totalFundSize != null) {
+    const aum = parseFloat(p.totalFundSize);
+    if (!isNaN(aum)) result.aum_mln = Math.round(aum / 1e6); // converti in milioni
+  } else if (p.aladdinPortfolioValue != null) {
+    const aum = parseFloat(p.aladdinPortfolioValue);
+    if (!isNaN(aum)) result.aum_mln = Math.round(aum / 1e6);
+  }
+
+  // Indice di riferimento
+  if (p.indexName) result.index_name = p.indexName;
+  else if (p.benchmarkIndex) result.index_name = p.benchmarkIndex;
+
+  // Country breakdown (potrebbe essere in countriesAllocation o simili)
+  if (Array.isArray(p.countriesAllocation)) {
+    result.country_breakdown = {};
+    for (const c of p.countriesAllocation) {
+      if (c.name && c.weight != null) {
+        result.country_breakdown[c.name] = parseFloat(c.weight);
+      }
+    }
+  }
+
+  // Sector breakdown
+  if (Array.isArray(p.sectorsAllocation)) {
+    result.sector_breakdown = {};
+    for (const s of p.sectorsAllocation) {
+      if (s.name && s.weight != null) {
+        result.sector_breakdown[s.name] = parseFloat(s.weight);
+      }
+    }
+  }
+
+  return result;
+}
+
 module.exports = (pool, fetchETF) => {
   const router = express.Router();
 
@@ -631,6 +728,118 @@ Una riga per ogni ETF. Niente testo extra prima o dopo il JSON.`;
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
     res.send(csv);
+  });
+
+  // Sync con API iShares: scarica AUM, TER, breakdown per gli ETF iShares
+  // del catalogo. Body opzionale: { dryRun: bool, limit: number }.
+  // Risponde subito, esecuzione in background.
+  router.post('/admin/sync-ishares', authMiddleware, async (req, res) => {
+    const { dryRun = true, limit = 9999 } = req.body || {};
+
+    res.json({ message: `Sync iShares avviato (dryRun=${dryRun}). Vedi log per progresso.` });
+
+    (async () => {
+      const start = Date.now();
+      const stats = { trovati: 0, aggiornati: 0, non_in_catalogo: 0, errors: 0, sample: [] };
+
+      console.log(`\n[ishares] Inizio sync (dryRun=${dryRun})`);
+
+      // Step 1: scarica index iShares
+      const products = await fetchIsharesIndex();
+      console.log(`[ishares] Index scaricato: ${products.length} prodotti totali`);
+
+      if (products.length === 0) {
+        console.log('[ishares] ⚠ Nessun prodotto restituito. Verifica connettività o struttura API.');
+        return;
+      }
+
+      // Step 2: per ognuno, verifica se è nel nostro catalogo e aggiorna
+      let count = 0;
+      for (const p of products) {
+        if (count >= limit) break;
+        if (!p.isin) continue;
+
+        const parsed = parseIsharesProduct(p);
+
+        // Verifica esistenza nel catalogo
+        const { rows } = await pool.query(
+          'SELECT isin, name, ter, aum_mln FROM etf_catalog WHERE isin = $1 AND active = 1',
+          [parsed.isin]
+        );
+
+        if (rows.length === 0) {
+          stats.non_in_catalogo += 1;
+          continue;
+        }
+
+        const esistente = rows[0];
+        stats.trovati += 1;
+
+        // Costruisci UPDATE: sovrascrivi AUM, TER, breakdown — NON il prezzo
+        const updates = [];
+        const params = [];
+        let i = 1;
+
+        if (parsed.ter != null) { updates.push(`ter = $${i++}`); params.push(parsed.ter); }
+        if (parsed.aum_mln != null) { updates.push(`aum_mln = $${i++}`); params.push(parsed.aum_mln); }
+        if (parsed.index_name) { updates.push(`index_name = $${i++}`); params.push(parsed.index_name); }
+        if (parsed.country_breakdown && Object.keys(parsed.country_breakdown).length > 0) {
+          updates.push(`country_breakdown = $${i++}::jsonb`); params.push(JSON.stringify(parsed.country_breakdown));
+        }
+        if (parsed.sector_breakdown && Object.keys(parsed.sector_breakdown).length > 0) {
+          updates.push(`sector_breakdown = $${i++}::jsonb`); params.push(JSON.stringify(parsed.sector_breakdown));
+        }
+        updates.push(`provider = $${i++}`); params.push('ishares');
+        if (parsed.provider_id) { updates.push(`provider_id = $${i++}`); params.push(String(parsed.provider_id)); }
+        if (parsed.provider_url) { updates.push(`provider_url = $${i++}`); params.push(parsed.provider_url); }
+        updates.push(`last_provider_fetch = NOW()`);
+        updates.push(`provider_fetch_status = 'ok'`);
+
+        if (!dryRun && updates.length > 0) {
+          params.push(parsed.isin);
+          try {
+            await pool.query(`UPDATE etf_catalog SET ${updates.join(', ')} WHERE isin = $${i}`, params);
+            stats.aggiornati += 1;
+          } catch (e) {
+            stats.errors += 1;
+            console.log(`[ishares] errore UPDATE ${parsed.isin}: ${e.message}`);
+          }
+        } else if (dryRun) {
+          stats.aggiornati += 1; // simulato
+        }
+
+        // Sample dei primi 10 per log
+        if (stats.sample.length < 10) {
+          stats.sample.push({
+            isin: parsed.isin,
+            name: esistente.name?.slice(0, 50),
+            ter_old: esistente.ter, ter_new: parsed.ter,
+            aum_old: esistente.aum_mln, aum_new: parsed.aum_mln,
+            country: parsed.country_breakdown ? Object.keys(parsed.country_breakdown).length + ' country' : 'no breakdown',
+          });
+        }
+
+        count++;
+      }
+
+      console.log(`[ishares] Completato in ${Math.round((Date.now() - start) / 1000)}s`);
+      console.log(`[ishares] Trovati: ${stats.trovati} | Aggiornati: ${stats.aggiornati} | Non in catalogo: ${stats.non_in_catalogo} | Errori: ${stats.errors}`);
+      console.log(`[ishares] Sample primi 10 aggiornamenti:`, JSON.stringify(stats.sample, null, 2));
+
+      global.__lastIsharesSyncResult = { ...stats, dryRun, durata_s: Math.round((Date.now() - start) / 1000) };
+      log(EVENTI.AGGIORNA_PREZZI_SELETTIVO, {
+        ok: stats.aggiornati, err: stats.errors, totale: stats.trovati,
+        motivo: `sync-ishares${dryRun ? '-dryrun' : ''}`,
+      }).catch(() => {});
+    })().catch(e => console.error('[ishares] Errore fatale:', e.message));
+  });
+
+  // Recupera l'ultimo risultato sync iShares
+  router.get('/admin/sync-ishares-result', authMiddleware, async (req, res) => {
+    if (!global.__lastIsharesSyncResult) {
+      return res.status(404).json({ error: 'Nessun sync iShares precedente. Lancia POST /admin/sync-ishares.' });
+    }
+    res.json(global.__lastIsharesSyncResult);
   });
 
   // Fix ticker senza suffisso di exchange (es. "QDV4" → "QDV4.DE")
