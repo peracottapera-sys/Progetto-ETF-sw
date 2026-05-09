@@ -609,10 +609,10 @@ router.post('/analisi', async (req, res) => {
   const etfSelezionatiRaw = portfolio.etfs.filter(e => e.selected);
   const etfNonSelezionati = portfolio.etfs.filter(e => !e.selected);
 
-  // Arricchisci con dati reali da etf_catalog (maxdd1y, vol1y potrebbero essere 0 lato client)
+  // Arricchisci con dati reali da etf_catalog (maxdd1y, vol1y, breakdowns potrebbero essere null lato client)
   const isinList = etfSelezionatiRaw.map(e => `'${e.isin}'`).join(',');
   const catalogRows = isinList.length > 2
-    ? (await db.query(`SELECT isin, maxdd1y, vol1y, aum_mln, smart_beta_factor FROM etf_catalog WHERE isin IN (${isinList})`)).rows
+    ? (await db.query(`SELECT isin, maxdd1y, vol1y, aum_mln, smart_beta_factor, area_geografica, index_name, country_breakdown, sector_breakdown FROM etf_catalog WHERE isin IN (${isinList})`)).rows
     : [];
   const catalogMap = new Map(catalogRows.map(r => [r.isin, r]));
 
@@ -624,6 +624,10 @@ router.post('/analisi', async (req, res) => {
       variabilita: (cat?.vol1y != null ? cat.vol1y : (e.variabilita || null)),
       smartBeta: cat?.smart_beta_factor || e.smartBeta || null,
       capitalizzazione: (cat?.aum_mln != null ? cat.aum_mln : (e.capitalizzazione || null)),
+      area_geografica: cat?.area_geografica || e.area_geografica || null,
+      indexName: cat?.index_name || e.index_name || null,
+      countryBreakdown: cat?.country_breakdown || e.country_breakdown || null,
+      sectorBreakdown: cat?.sector_breakdown || e.sector_breakdown || null,
     };
   });
 
@@ -713,7 +717,16 @@ Peso contesto macro: ${regole.pesoMacro || 'MEDIO'}
 ${etfSelezionati.map(e => {
     const dd = e.maxDrawdown && e.maxDrawdown !== 0 ? e.maxDrawdown+'%' : 'N/D(non disponibile)';
     const vol = e.variabilita && e.variabilita !== 0 ? e.variabilita+'%' : 'N/D(non disponibile)';
-    return `- ${e.name} (${e.isin}) | ${e.categoria||'N/D'}${e.smartBeta ? ' ['+e.smartBeta+']' : ''} | TER:${e.ter}% | Vol1A:${vol} | MaxDD1A:${dd} | Perf1A:${e.perf1y||0}% | Perf5A:${e.perf5y||0}% | AUM:${e.capitalizzazione||'N/D'}M€`;
+    let line = `- ${e.name} (${e.isin}) | ${e.categoria||'N/D'}${e.area_geografica ? ' · '+e.area_geografica : ''}${e.smartBeta ? ' ['+e.smartBeta+']' : ''}${e.indexName ? ' · Idx:'+e.indexName.slice(0,30) : ''} | TER:${e.ter}% | Vol1A:${vol} | MaxDD1A:${dd} | Perf1A:${e.perf1y||0}% | Perf5A:${e.perf5y||0}% | AUM:${e.capitalizzazione||'N/D'}M€`;
+    const geo = topNBreakdown(e.countryBreakdown, 3);
+    const sec = topNBreakdown(e.sectorBreakdown, 3);
+    if (geo || sec) {
+      const subParts = [];
+      if (geo) subParts.push(`Geo: ${geo}`);
+      if (sec) subParts.push(`Sect: ${sec}`);
+      line += `\n  ${subParts.join(' | ')}`;
+    }
+    return line;
   }).join('\n')}
 
 ## ETF NEL PORTAFOGLIO MA NON SELEZIONATI (${etfNonSelezionati.length}):
