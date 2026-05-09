@@ -375,6 +375,41 @@ async function getAIConfig(db) {
 module.exports = (db, fetchETF, ETF_INFO_MAP) => {
   const router = express.Router();
 
+// Helper: dato un object {key: peso} restituisce stringa "key1 N%, key2 N%, key3 N%" con i top 3
+function topNBreakdown(obj, n = 3) {
+  if (!obj || typeof obj !== 'object') return null;
+  const sorted = Object.entries(obj)
+    .filter(([, v]) => typeof v === 'number' && v > 0)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, n);
+  if (sorted.length === 0) return null;
+  return sorted.map(([k, v]) => `${k} ${Math.round(v)}%`).join(', ');
+}
+
+// Helper: formatta una riga ETF arricchita per il prompt AI.
+// Aggiunge index_name, top 3 country, top 3 sector quando disponibili.
+function formattaEtfArricchito(e, opts = {}) {
+  const { mostraQuotazione = false, mostraPerf = true } = opts;
+  const parti = [`- ${e.name} (${e.isin})`];
+  parti.push(`${e.categoria || 'N/D'}${e.area_geografica ? ' · '+e.area_geografica : ''}${e.smartBeta ? ' ['+e.smartBeta+']' : ''}`);
+  if (e.indexName) parti.push(`Idx:${e.indexName.slice(0, 30)}`);
+  parti.push(`TER:${e.ter ?? 0}%`);
+  if (mostraQuotazione) parti.push(`Quotaz:€${e.quotazione || 0}`);
+  parti.push(`Vol1A:${e.variabilita ?? 'N/D'}%`);
+  if (mostraPerf) parti.push(`Perf1A:${e.perf1y ?? 0}%`);
+  let line = parti.join(' | ');
+  // Riga aggiuntiva con breakdowns top 3 (solo se almeno uno presente)
+  const geo = topNBreakdown(e.countryBreakdown, 3);
+  const sec = topNBreakdown(e.sectorBreakdown, 3);
+  if (geo || sec) {
+    const subParts = [];
+    if (geo) subParts.push(`Geo: ${geo}`);
+    if (sec) subParts.push(`Sect: ${sec}`);
+    line += `\n  ${subParts.join(' | ')}`;
+  }
+  return line;
+}
+
 // ─── Helper: validazione modifiche AI contro il catalogo ──────────────────
 // Per ogni modifica `aggiungi`/`seleziona`:
 //  - se ISIN nel catalogo + prezzo OK → arricchisce con dati reali, logga differenze
@@ -630,7 +665,7 @@ Profilo: ${portfolio.riskProfile} | Orizzonte: ${portfolio.orizzonteAnni || 'N/D
 ETF selezionati: ${etfSelezionati.length} (min: ${regole.minETF}, max: ${regole.maxETF}) | TER ponderato: ${terPonderato.toFixed(2)}% | Quota azionaria: ${percAzionario}%
 Valore investito: €${totInvestito.toLocaleString('it-IT',{maximumFractionDigits:0})} | Valore attuale: €${totAttuale.toLocaleString('it-IT',{maximumFractionDigits:0})} | P&L: ${totInvestito>0?((totAttuale-totInvestito)/totInvestito*100).toFixed(2):'N/D'}%
 
-NOTA SU ESPOSIZIONE USA EFFETTIVA: gli ETF Azionario Globale (MSCI World, FTSE All-World, ACWI, MSCI ACWI IMI) contengono tipicamente il 65-75% di titoli USA al loro interno per via della capitalizzazione di mercato. Quando valuti l'esposizione USA effettiva del portafoglio o suggerisci modifiche, ricorda: un MSCI World al 50% del portafoglio = circa 35% di esposizione USA reale. Se segnali violazioni del Max USA o suggerisci diversificazione geografica, tieni conto di questa regola.
+NOTA SU ESPOSIZIONE USA EFFETTIVA: per ogni ETF candidato troverai (quando disponibile) una riga "Geo: ..." che mostra la composizione geografica reale dell'ETF. Quando valuti l'esposizione USA del portafoglio, somma per ogni ETF (peso_ETF × USA_breakdown). Se "Geo:" non è disponibile, usa percentuali tipiche: MSCI World ≈ 70% USA, FTSE All-World ≈ 65% USA, S&P 500 = 100%, MSCI World ex-USA / Emerging = 0% USA. Esempio: MSCI World al 50% del portafoglio = ~35% di esposizione USA reale. Tieni conto di questa regola quando segnali violazioni del Max USA o suggerisci modifiche.
 ${giorniVita < 7 ? `⚠️ PORTAFOGLIO CREATO ${giorniVita} GIORNI FA: è molto recente, l'AI ha già selezionato gli ETF ottimali. Non suggerire di deselezionare più di 1 ETF per violazione hard limit. Evita suggerimenti puramente stilistici.` : ''}
 
 ## ORIZZONTE TEMPORALE: ${portfolio.orizzonteAnni || 'N/D'} anni
@@ -685,7 +720,7 @@ ${etfSelezionati.map(e => {
 ${etfNonSelezionati.slice(0,20).map(e => `- ${e.name} (${e.isin}) | ${e.categoria||'N/D'} | TER:${e.ter}% | Vol1A:${e.variabilita||'N/D'}% | Perf1A:${e.perf1y||0}%`).join('\n') || 'Nessuno'}
 
 ## ETF DAL CATALOGO COMPATIBILI COL PROFILO (puoi suggerire "aggiungi"):
-${etfCatalogo.map(e => `- ${e.name} (${e.isin}) | ${e.categoria}${e.area_geografica ? ' · '+e.area_geografica : ''}${e.smartBeta ? ' ['+e.smartBeta+']' : ''} | TER:${e.ter}% | Quotaz:€${e.quotazione||0} | Vol1A:${e.variabilita||'N/D'}% | Perf1A:${e.perf1y||0}%`).join('\n')}
+${etfCatalogo.map(e => formattaEtfArricchito(e, { mostraQuotazione: true })).join('\n')}
 
 ${macroContext}
 
@@ -1431,6 +1466,7 @@ async function getEtfPerProfilo(profilo, escludiDistribuzione = false, filtriRil
            vol1y, vol3y, vol5y,
            maxdd1y, maxdd5y, maxdd_max,
            distribuzione, categoria, area_geografica, smart_beta_factor,
+           index_name, country_breakdown, sector_breakdown,
            data_lancio, partecipazioni, sostenibile
     FROM etf_catalog
     WHERE active = 1
@@ -1454,6 +1490,9 @@ async function getEtfPerProfilo(profilo, escludiDistribuzione = false, filtriRil
     name:             e.name,
     categoria:        e.categoria || 'N/D',
     area_geografica:  e.area_geografica || null,
+    indexName:        e.index_name || null,
+    countryBreakdown: e.country_breakdown || null,
+    sectorBreakdown:  e.sector_breakdown || null,
     emittente:        e.name.split(' ')[0],
     ter:              e.ter ?? 0,
     tassazione:       26,
@@ -1624,8 +1663,19 @@ ${etfDisponibili.map(e => {
     e.dataLancio ? `Anno:${e.dataLancio}` : null,
     e.partecipazioni ? `Titoli:${e.partecipazioni}` : null,
     e.sostenibile ? 'ESG' : null,
+    e.indexName ? `Idx:${e.indexName.slice(0, 30)}` : null,
   ].filter(Boolean).join(' ');
-  return `- ${e.name} (${e.isin}) | Cat:${e.categoria}${e.area_geografica ? ' · Area:'+e.area_geografica : ''} | TER:${e.ter}% | ${vol} | ${dd} | ${perf} | AUM:${e.capitalizzazione}M€${extra ? ' | '+extra : ''}`;
+  let line = `- ${e.name} (${e.isin}) | Cat:${e.categoria}${e.area_geografica ? ' · Area:'+e.area_geografica : ''} | TER:${e.ter}% | ${vol} | ${dd} | ${perf} | AUM:${e.capitalizzazione}M€${extra ? ' | '+extra : ''}`;
+  // Breakdowns top 3 quando disponibili
+  const geo = topNBreakdown(e.countryBreakdown, 3);
+  const sec = topNBreakdown(e.sectorBreakdown, 3);
+  if (geo || sec) {
+    const subParts = [];
+    if (geo) subParts.push(`Geo: ${geo}`);
+    if (sec) subParts.push(`Sect: ${sec}`);
+    line += `\n  ${subParts.join(' | ')}`;
+  }
+  return line;
 }).join('\n')}
 
 ## VINCOLI AGGIUNTIVI OBBLIGATORI:
@@ -1636,8 +1686,14 @@ ${profilo === 'Aggressivo' ? `- ⚠️ DIVERSIFICAZIONE AGGRESSIVO: NON costruir
 ${hasBuckets ? `- 🚫 LIMITE OB AGGRESSIVO CON BUCKET: il bucket BREVE (${bucketBreve.pct}%) è già obbligazionario per definizione. Il bucket LUNGO NON deve contenere ETF obbligazionari salvo eccezioni (inflation-linked max 5%). La quota OB del bucket BREVE NON conta verso il limite OB del profilo — il limite OB 0-20% si applica SOLO agli ETF obbligazionari nel bucket LUNGO.` : '- 🚫 LIMITE OB AGGRESSIVO: la quota obbligazionaria totale deve restare tra 0% e 20%. Se superi 20% elimina ETF obbligazionari o sostituiscili con azionario/commodity.'}` : ''}
 ${profilo === 'Bilanciato' ? `- ⚠️ VINCOLO OB BILANCIATO: la quota obbligazionaria totale deve essere tra il 25% e il 45%. Se superi il 45% sposta peso verso azionario. Se sei sotto il 25% aggiungi un ETF obbligazionario.${hasBuckets ? ` Con bucket BREVE attivo (${bucketBreve.pct}%): la quota OB del bucket BREVE NON conta verso questo limite — il limite 25-45% si applica solo agli ETF OB nel bucket LUNGO.` : ''}
 - ⚠️ STABILITÀ BILANCIATO: per il nucleo del portafoglio privilegia ETF con AUM > 1B€ e storia > 5 anni. Usa ETF più piccoli o specializzati solo come satellite con peso max 15% ciascuno.` : ''}
-${maxUSA && maxUSA !== 'No max' ? `- ⚠️ VINCOLO TASSATIVO MAX USA: la somma dei pesi degli ETF con esposizione prevalente agli USA (categoria "Azionario USA" o ETF S&P500/Nasdaq/Russell) NON deve superare ${maxUSA} del portafoglio totale.
-  IMPORTANTE: gli ETF Azionario Globale (MSCI World, FTSE All-World, ACWI, MSCI ACWI IMI) contengono tipicamente il 65-75% di titoli USA al loro interno. Quando calcoli l'esposizione USA effettiva, considera questo: un MSCI World con peso 50% nel portafoglio implica circa il 35% di esposizione USA reale. Se l'utente ha vincolo Max USA stretto, valuta MSCI World ex-USA o EAFE come alternativa per la quota globale.
+${maxUSA && maxUSA !== 'No max' ? `- ⚠️ VINCOLO TASSATIVO MAX USA EFFETTIVO: la somma ponderata dell'esposizione USA reale del portafoglio NON deve superare ${maxUSA}.
+  CALCOLO: per ogni ETF, somma (peso_ETF% × USA_breakdown%) usando il valore "Geo: United States X%" mostrato sotto ogni ETF candidato. Per gli ETF SENZA breakdown disponibile, usa queste percentuali tipiche:
+    • S&P 500, Nasdaq, MSCI USA, Russell, Dow Jones US → 100% USA
+    • MSCI World, FTSE Developed World → 70% USA
+    • MSCI ACWI, FTSE All-World → 65% USA
+    • MSCI World ex-USA, EAFE, MSCI Europe, MSCI Emerging Markets → 0% USA
+  Esempio: MSCI World al 50% (Geo: United States 67%) → 50 × 0.67 = 33.5% USA reale.
+  Se il vincolo è stretto e con il portafoglio supereresti ${maxUSA}, valuta MSCI World ex-USA o EAFE.
   Questo è un hard limit — NON può essere ignorato per nessun motivo.` : `- Esposizione USA: nessun limite. Nota informativa: ETF Globali (MSCI World, FTSE All-World) contengono tipicamente 65-75% USA, da tenere a mente per la diversificazione effettiva.`}
 - ⚠️ VINCOLO CATEGORIA UNICA: per ciascuna categoria del catalogo (es. "Obbligazionario Corporate", "Obbligazionario Governativo", "Azionario Globale", "Azionario USA", "Azionario Emergenti", "Liquidità / Monetario", ecc.) seleziona AL MASSIMO UN ETF. Due ETF della stessa categoria sono ridondanti: stessa esposizione, doppio TER, slot sprecato. UNICA ECCEZIONE consentita: nel caso "Obbligazionario Governativo" puoi avere DUE ETF se e solo se sono uno a duration BREVE (1-3y) e uno a duration LUNGA (10y+) — in quel caso indica esplicitamente nel motivo "duration breve" e "duration lunga". Per tutte le altre categorie il vincolo è assoluto.
 - Le performance passate NON sono garanzia di rendimenti futuri: usa perf1y/5y solo per confronto relativo, NON come stima di rendimento futuro
