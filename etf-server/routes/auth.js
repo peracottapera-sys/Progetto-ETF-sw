@@ -48,5 +48,21 @@ module.exports = (pool) => {
     res.json({ user: rows[0] });
   });
 
+  // Reset password (PROVVISORIO INSICURO — solo per uso pilota).
+  // Riceve {username, newPassword} senza auth e aggiorna direttamente la password.
+  // ⚠ TODO: in futuro proteggere con: vecchia password OPPURE email link OPPURE admin token.
+  router.post('/reset-password', async (req, res) => {
+    const { username, newPassword } = req.body;
+    if (!username || !newPassword) return res.status(400).json({ error: 'Username e nuova password richiesti' });
+    if (newPassword.length < 6) return res.status(400).json({ error: 'La password deve essere almeno 6 caratteri' });
+    const { rows } = await pool.query('SELECT id FROM users WHERE username = $1', [username]);
+    if (rows.length === 0) return res.status(404).json({ error: 'Utente non trovato' });
+    const hash = bcrypt.hashSync(newPassword, 10);
+    await pool.query('UPDATE users SET password = $1 WHERE username = $2', [hash, username]);
+    console.log(`[${new Date().toLocaleTimeString()}] Reset password: ${username}`);
+    log(EVENTI.LOGIN, { username, action: 'reset-password' }, username).catch(() => {});
+    res.json({ ok: true });
+  });
+
   return router;
 };

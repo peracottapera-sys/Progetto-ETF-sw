@@ -30,11 +30,30 @@ const handleLogin = async () => {
     if (!res.ok) setError(res.error);
   };
 
-  const handleReset = () => {
+  const handleReset = async () => {
     setError(''); setInfo('');
     if (!form.username || !form.newPwd) { setError('Inserisci username e nuova password'); return; }
-    setInfo('Password aggiornata! Accedi ora.');
-    setMode('login');
+    if (form.newPwd.length < 6) { setError('La password deve essere almeno 6 caratteri'); return; }
+    setLoading(true);
+    try {
+      const res = await fetch('/api/auth/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: form.username, newPassword: form.newPwd }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || 'Errore durante il reset');
+      } else {
+        setInfo('Password aggiornata! Accedi ora.');
+        setForm(f => ({ ...f, password: '', newPwd: '' }));
+        setMode('login');
+      }
+    } catch (e) {
+      setError('Errore di rete: ' + e.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -137,8 +156,8 @@ const handleLogin = async () => {
                 <label className="form-label">Nuova Password</label>
                 <input className="input" type="password" placeholder="Nuova password" value={form.newPwd} onChange={e => set('newPwd', e.target.value)} />
               </div>
-              <button className="btn btn-primary" style={{ width: '100%', justifyContent: 'center', padding: 12, marginTop: 8 }} onClick={handleReset}>
-                Imposta Nuova Password
+              <button className="btn btn-primary" style={{ width: '100%', justifyContent: 'center', padding: 12, marginTop: 8 }} onClick={handleReset} disabled={loading}>
+                {loading ? '⏳ Aggiornamento...' : 'Imposta Nuova Password'}
               </button>
             </>
           )}
