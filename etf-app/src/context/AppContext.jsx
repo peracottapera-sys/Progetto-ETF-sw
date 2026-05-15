@@ -114,6 +114,9 @@ function mergeEtfs(selections, acquisti) {
         ? sel.quotazione
         : (master?.quotazione ?? 0);
 
+      // anno: priorità a data_lancio dal backend (es. "2024-03-06T00:00:00.000Z"), fallback su ETF_MASTER
+      const annoDaDataLancio = sel.data_lancio ? new Date(sel.data_lancio).getFullYear() : null;
+
       return {
         isin:             sel.isin,
         // nome: server embedded > ETF_MASTER > ISIN
@@ -122,7 +125,8 @@ function mergeEtfs(selections, acquisti) {
         ter:              master?.ter              ?? sel.ter              ?? 0,
         tassazione:       master?.tassazione       ?? 26,
         quotazione,
-        annoNascita:      master?.annoNascita       ?? sel.annoNascita      ?? null,
+        annoNascita:      annoDaDataLancio          ?? master?.annoNascita  ?? null,
+        data_lancio:      sel.data_lancio          || null,
         capitalizzazione: master?.capitalizzazione ?? sel.capitalizzazione ?? 0,
         variabilita:      master?.variabilita      ?? sel.variabilita      ?? 0,
         maxDrawdown:      master?.maxDrawdown      ?? sel.maxDrawdown      ?? 0,
