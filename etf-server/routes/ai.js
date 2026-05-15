@@ -669,7 +669,14 @@ Profilo: ${portfolio.riskProfile} | Orizzonte: ${portfolio.orizzonteAnni || 'N/D
 ETF selezionati: ${etfSelezionati.length} (min: ${regole.minETF}, max: ${regole.maxETF}) | TER ponderato: ${terPonderato.toFixed(2)}% | Quota azionaria: ${percAzionario}%
 Valore investito: €${totInvestito.toLocaleString('it-IT',{maximumFractionDigits:0})} | Valore attuale: €${totAttuale.toLocaleString('it-IT',{maximumFractionDigits:0})} | P&L: ${totInvestito>0?((totAttuale-totInvestito)/totInvestito*100).toFixed(2):'N/D'}%
 
-NOTA SU ESPOSIZIONE USA EFFETTIVA: per ogni ETF candidato troverai (quando disponibile) una riga "Geo: ..." che mostra la composizione geografica reale dell'ETF. Quando valuti l'esposizione USA del portafoglio, somma per ogni ETF (peso_ETF × USA_breakdown). Se "Geo:" non è disponibile, usa percentuali tipiche: MSCI World ≈ 70% USA, FTSE All-World ≈ 65% USA, S&P 500 = 100%, MSCI World ex-USA / Emerging = 0% USA. Esempio: MSCI World al 50% del portafoglio = ~35% di esposizione USA reale. Tieni conto di questa regola quando segnali violazioni del Max USA o suggerisci modifiche.
+NOTA SU ESPOSIZIONE USA EFFETTIVA: per ogni ETF candidato troverai (quando disponibile) una riga "Geo: ..." che mostra la composizione geografica reale dell'ETF. Quando valuti l'esposizione USA del portafoglio, somma per ogni ETF (peso_ETF × USA_breakdown). Se "Geo:" non è disponibile, usa queste percentuali tipiche per indice di riferimento:
+• 100% USA: S&P 500, S&P 500 Equal Weight, Nasdaq 100, Russell 1000, Russell 2000, MSCI USA, Dow Jones Industrial Average, S&P 500 EUR Hedged, MSCI USA EUR Hedged
+• 70% USA: MSCI World, FTSE Developed World, FTSE Developed
+• 65% USA: MSCI ACWI, MSCI ACWI IMI, FTSE All-World
+• 0% USA: MSCI World ex-USA, MSCI EAFE, MSCI Europe, MSCI Europe IMI, MSCI EMU, EURO STOXX 50, STOXX Europe 600, FTSE 100, DAX, CAC 40, FTSE MIB, MSCI Emerging Markets, MSCI EM IMI, MSCI EM ex-China, MSCI India, MSCI China, MSCI Japan, Nikkei 225, TOPIX, MSCI Pacific ex-Japan, MSCI Korea
+• 0% USA (asset reali): Gold, Silver, Platinum, Bloomberg Commodity, Bitcoin, Ethereum, ogni crypto, ogni ETF su commodity fisica
+• Bond: per gov/corp bond europei (BTP, Bund, EUR Corporate, Euro Aggregate, Italy/Germany/France Government Bond) = 0% USA. Per Global Aggregate Bond ≈ 40% USA. Per US Treasury / USD Corporate = 100% USA.
+Esempio: MSCI World al 50% del portafoglio = ~35% di esposizione USA reale; Nasdaq 100 al 20% = 20% USA reale. Tieni conto di questa regola quando segnali violazioni del Max USA o suggerisci modifiche.
 ${giorniVita < 7 ? `⚠️ PORTAFOGLIO CREATO ${giorniVita} GIORNI FA: è molto recente, l'AI ha già selezionato gli ETF ottimali. Non suggerire di deselezionare più di 1 ETF per violazione hard limit. Evita suggerimenti puramente stilistici.` : ''}
 
 ## ORIZZONTE TEMPORALE: ${portfolio.orizzonteAnni || 'N/D'} anni
@@ -1700,12 +1707,14 @@ ${hasBuckets ? `- 🚫 LIMITE OB AGGRESSIVO CON BUCKET: il bucket BREVE (${bucke
 ${profilo === 'Bilanciato' ? `- ⚠️ VINCOLO OB BILANCIATO: la quota obbligazionaria totale deve essere tra il 25% e il 45%. Se superi il 45% sposta peso verso azionario. Se sei sotto il 25% aggiungi un ETF obbligazionario.${hasBuckets ? ` Con bucket BREVE attivo (${bucketBreve.pct}%): la quota OB del bucket BREVE NON conta verso questo limite — il limite 25-45% si applica solo agli ETF OB nel bucket LUNGO.` : ''}
 - ⚠️ STABILITÀ BILANCIATO: per il nucleo del portafoglio privilegia ETF con AUM > 1B€ e storia > 5 anni. Usa ETF più piccoli o specializzati solo come satellite con peso max 15% ciascuno.` : ''}
 ${maxUSA && maxUSA !== 'No max' ? `- ⚠️ VINCOLO TASSATIVO MAX USA EFFETTIVO: la somma ponderata dell'esposizione USA reale del portafoglio NON deve superare ${maxUSA}.
-  CALCOLO: per ogni ETF, somma (peso_ETF% × USA_breakdown%) usando il valore "Geo: United States X%" mostrato sotto ogni ETF candidato. Per gli ETF SENZA breakdown disponibile, usa queste percentuali tipiche:
-    • S&P 500, Nasdaq, MSCI USA, Russell, Dow Jones US → 100% USA
-    • MSCI World, FTSE Developed World → 70% USA
-    • MSCI ACWI, FTSE All-World → 65% USA
-    • MSCI World ex-USA, EAFE, MSCI Europe, MSCI Emerging Markets → 0% USA
-  Esempio: MSCI World al 50% (Geo: United States 67%) → 50 × 0.67 = 33.5% USA reale.
+  CALCOLO: per ogni ETF, somma (peso_ETF% × USA_breakdown%) usando il valore "Geo: United States X%" mostrato sotto ogni ETF candidato. Per gli ETF SENZA breakdown disponibile, usa queste percentuali tipiche per indice di riferimento (Idx):
+    • 100% USA: S&P 500, S&P 500 Equal Weight, Nasdaq 100, Russell 1000, Russell 2000, MSCI USA, Dow Jones Industrial Average, S&P 500 EUR Hedged, MSCI USA EUR Hedged
+    • 70% USA: MSCI World, FTSE Developed World, FTSE Developed
+    • 65% USA: MSCI ACWI, MSCI ACWI IMI, FTSE All-World
+    • 0% USA: MSCI World ex-USA, MSCI EAFE, MSCI Europe, MSCI Europe IMI, MSCI EMU, EURO STOXX 50, STOXX Europe 600, FTSE 100, DAX, CAC 40, FTSE MIB, MSCI Emerging Markets, MSCI EM IMI, MSCI EM ex-China, MSCI India, MSCI China, MSCI Japan, Nikkei 225, TOPIX, MSCI Pacific ex-Japan, MSCI Korea
+    • 0% USA (asset reali): Gold, Silver, Platinum, Bloomberg Commodity, Bitcoin, Ethereum, ogni crypto, ogni ETF su commodity fisica
+    • Bond: per gov/corp bond europei (BTP, Bund, EUR Corporate, Euro Aggregate, Italy/Germany/France Government Bond) = 0% USA. Per Global Aggregate Bond ≈ 40% USA. Per US Treasury / USD Corporate = 100% USA.
+  Esempio: MSCI World al 50% (Geo: United States 67%) → 50 × 0.67 = 33.5% USA reale. Nasdaq 100 al 20% = 20% USA reale.
   Se il vincolo è stretto e con il portafoglio supereresti ${maxUSA}, valuta MSCI World ex-USA o EAFE.
   Questo è un hard limit — NON può essere ignorato per nessun motivo.` : `- Esposizione USA: nessun limite. Nota informativa: ETF Globali (MSCI World, FTSE All-World) contengono tipicamente 65-75% USA, da tenere a mente per la diversificazione effettiva.`}
 - ⚠️ VINCOLO CATEGORIA UNICA: per ciascuna categoria del catalogo (es. "Obbligazionario Corporate", "Obbligazionario Governativo", "Azionario Globale", "Azionario USA", "Azionario Emergenti", "Liquidità / Monetario", ecc.) seleziona AL MASSIMO UN ETF. Due ETF della stessa categoria sono ridondanti: stessa esposizione, doppio TER, slot sprecato. UNICA ECCEZIONE consentita: nel caso "Obbligazionario Governativo" puoi avere DUE ETF se e solo se sono uno a duration BREVE (1-3y) e uno a duration LUNGA (10y+) — in quel caso indica esplicitamente nel motivo "duration breve" e "duration lunga". Per tutte le altre categorie il vincolo è assoluto.
