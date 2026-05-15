@@ -1216,6 +1216,7 @@ function parseJustetfHtml(html) {
   const result = {
     ter: null, aum: null, indice: null,
     distribuzione: null, replica: null, vol1y: null,
+    data_lancio: null,
     countryBreakdown: {}, sectorBreakdown: {}, topHoldings: [],
   };
 
@@ -1246,6 +1247,23 @@ function parseJustetfHtml(html) {
   if (vStr) {
     const m = vStr.match(/([\d.,]+)\s*%/);
     if (m) result.vol1y = parseEnNumber(m[1]);
+  }
+
+  // Data di lancio (Inception) — JustETF lo restituisce in formato "25 September 2009"
+  // La convertiamo in formato YYYY-MM-DD per il campo PostgreSQL DATE
+  const inceptionStr = byTestId('etf-profile-header_inception-date-value') || byTestId('tl_etf-basics_value_launch-date');
+  if (inceptionStr) {
+    const months = {
+      january: '01', february: '02', march: '03', april: '04', may: '05', june: '06',
+      july: '07', august: '08', september: '09', october: '10', november: '11', december: '12',
+    };
+    const m = inceptionStr.match(/(\d{1,2})\s+(\w+)\s+(\d{4})/);
+    if (m) {
+      const day = m[1].padStart(2, '0');
+      const month = months[m[2].toLowerCase()];
+      const year = m[3];
+      if (month && year) result.data_lancio = `${year}-${month}-${day}`;
+    }
   }
 
   $('h2, h3').each((_, el) => {
@@ -1360,6 +1378,7 @@ async function syncJustetfBatch(pool, batchSize = JUSTETF_BATCH_SIZE, motivo = '
           if (parsed.distribuzione) { updates.push(`distribuzione = $${n++}`); params.push(parsed.distribuzione); }
           if (parsed.replica) { updates.push(`replica = $${n++}`); params.push(parsed.replica); }
           if (parsed.vol1y != null) { updates.push(`vol1y = $${n++}`); params.push(parsed.vol1y); }
+          if (parsed.data_lancio) { updates.push(`data_lancio = $${n++}`); params.push(parsed.data_lancio); }
           if (Object.keys(parsed.countryBreakdown).length > 0) {
             updates.push(`country_breakdown = $${n++}::jsonb`);
             params.push(JSON.stringify(parsed.countryBreakdown));
