@@ -448,7 +448,7 @@ export default function Dashboard({ setActiveTab }) {
                   <td style={{ fontSize: 14 }}>
                     {etf.capitalizzazione >= 1000 ? `${(etf.capitalizzazione / 1000).toFixed(1)}B€` : `${etf.capitalizzazione}M€`}
                   </td>
-                  <td style={{ fontSize: 14, color: 'var(--text-secondary)' }}>{etf.annoNascita}</td>
+                  <td style={{ fontSize: 14, color: 'var(--text-secondary)' }}>{etf.data_lancio ? new Date(etf.data_lancio).getFullYear() : (etf.annoNascita || '—')}</td>
                   <td>
                     {etf.tipo === 'venduto' ? (
                       <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 4, background: 'rgba(239,68,68,0.15)', color: 'var(--accent-red)', border: '1px solid var(--accent-red)' }}>
