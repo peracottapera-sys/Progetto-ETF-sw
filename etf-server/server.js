@@ -333,7 +333,7 @@ app.get('/api/macro/context', async (req, res) => {
 });
 
 // ── Scheduler aggiornamento prezzi 18:00 ──────────────────────────────────
-const { schedulaAggiornamento18 } = require('./routes/catalog');
+const { schedulaAggiornamento18, schedulaJustetfSync } = require('./routes/catalog');
 
 // ── Serve frontend build ──────────────────────────────────────────────────
 // Ricerca robusta: prova vari path possibili e logga cosa vede sul filesystem
@@ -403,6 +403,7 @@ initDB().then(() => {
   log(EVENTI.SERVER_START, { porta: PORT, env: process.env.NODE_ENV || 'production' });
 
   schedulaAggiornamento18(pool, fetchETF);
+  schedulaJustetfSync(pool);
   app.listen(PORT, () => {
     console.log(`\n🚀 ETF Server avviato su http://localhost:${PORT}`);
     console.log(`🗄️  Database: PostgreSQL`);

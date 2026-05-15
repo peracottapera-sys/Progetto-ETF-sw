@@ -842,6 +842,25 @@ Una riga per ogni ETF. Niente testo extra prima o dopo il JSON.`;
     res.json(global.__lastIsharesSyncResult);
   });
 
+  // JustETF incremental sync — kick-off manuale.
+  // Body opzionale: { batchSize: number }. Default 90.
+  // Risposta immediata, elaborazione in background. Stesso codice del cron 03:00.
+  router.post('/admin/sync-justetf-incremental', authMiddleware, async (req, res) => {
+    const batchSize = Math.min(parseInt(req.body?.batchSize) || JUSTETF_BATCH_SIZE, 500);
+    res.json({ message: `JustETF sync avviato (batchSize=${batchSize}). Vedi log per progresso.`, batchSize });
+    syncJustetfBatch(pool, batchSize, 'manual').then(stats => {
+      global.__lastJustetfSyncResult = { ...stats, durata_completata_at: new Date().toISOString() };
+    }).catch(e => console.error('[justetf-sync] Errore fatale:', e.message));
+  });
+
+  // Recupera l'ultimo risultato sync JustETF
+  router.get('/admin/sync-justetf-result', authMiddleware, async (req, res) => {
+    if (!global.__lastJustetfSyncResult) {
+      return res.status(404).json({ error: 'Nessun sync JustETF precedente. Lancia POST /admin/sync-justetf-incremental.' });
+    }
+    res.json(global.__lastJustetfSyncResult);
+  });
+
   // Fix ticker senza suffisso di exchange (es. "QDV4" → "QDV4.DE")
   // Prova i 9 exchange comuni e salva il primo che risponde con prezzo valido.
   // Risposta immediata, elaborazione in background con log su console.
@@ -1156,5 +1175,260 @@ async function schedulaAggiornamento18(pool, fetchETF) {
   }, msAlle18);
 }
 
+// ─── JustETF incremental sync ─────────────────────────────────────────────
+// Scaglione notturno: rinfresca i 90 ETF con last_provider_fetch più vecchio.
+// Su un ciclo di 30 giorni copre tutto il catalogo (~2700 ETF).
+// Rate limit 8-15 secondi tra richieste, durata ~15-25 minuti.
+
+const JUSTETF_BATCH_SIZE = 90;
+const JUSTETF_SLEEP_MIN_MS = 8000;
+const JUSTETF_SLEEP_MAX_MS = 15000;
+
+const justetfHeaders = {
+  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+  'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+  'Accept-Language': 'it-IT,it;q=0.9,en;q=0.8',
+  'Accept-Encoding': 'gzip, deflate, br',
+  'DNT': '1',
+  'Connection': 'keep-alive',
+  'Upgrade-Insecure-Requests': '1',
+};
+
+const justetfSleep = () => new Promise(r =>
+  setTimeout(r, JUSTETF_SLEEP_MIN_MS + Math.random() * (JUSTETF_SLEEP_MAX_MS - JUSTETF_SLEEP_MIN_MS))
+);
+
+function parseJustetfHtml(html) {
+  // Carico cheerio lazy (non sempre installato in tutti gli ambienti)
+  const cheerio = require('cheerio');
+  const $ = cheerio.load(html);
+  const byTestId = (id) => {
+    const el = $(`[data-testid="${id}"]`).first();
+    return el.length ? el.text().trim() : null;
+  };
+  const parseEnNumber = (s) => {
+    if (!s) return null;
+    const cleaned = s.replace(/[^\d.,\-]/g, '').replace(/,/g, '');
+    const n = parseFloat(cleaned);
+    return isNaN(n) ? null : n;
+  };
+
+  const result = {
+    ter: null, aum: null, indice: null,
+    distribuzione: null, replica: null, vol1y: null,
+    countryBreakdown: {}, sectorBreakdown: {}, topHoldings: [],
+  };
+
+  const terStr = byTestId('etf-profile-header_ter-value') || byTestId('tl_etf-basics_value_ter');
+  if (terStr) {
+    const m = terStr.match(/([\d.,]+)\s*%/);
+    if (m) result.ter = parseEnNumber(m[1]);
+  }
+
+  result.distribuzione = byTestId('etf-profile-header_distribution-policy-value') || byTestId('tl_etf-basics_value_distribution-policy');
+  result.replica = byTestId('etf-profile-header_replication-value') || byTestId('tl_etf-basics_value_replication');
+
+  const fsWrap = $('[data-testid="etf-profile-header_fund-size-value-wrapper"]').first();
+  if (fsWrap.length) {
+    const raw = fsWrap.text().trim().replace(/\s+/g, ' ');
+    const m = raw.match(/(EUR|USD|GBP|CHF|JPY)\s*([\d.,]+)\s*(m|bn|million|billion)?/i);
+    if (m) {
+      let n = parseEnNumber(m[2]);
+      if (n != null) {
+        if (m[3] && /bn|billion/i.test(m[3])) n *= 1000;
+        result.aum = Math.round(n);
+      }
+    }
+  }
+
+  result.indice = byTestId('tl_etf-basics_value_index-name');
+  const vStr = byTestId('tl_etf-basics_value_volatility');
+  if (vStr) {
+    const m = vStr.match(/([\d.,]+)\s*%/);
+    if (m) result.vol1y = parseEnNumber(m[1]);
+  }
+
+  $('h2, h3').each((_, el) => {
+    const $el = $(el);
+    const heading = $el.text().trim().toLowerCase();
+    if (heading.includes('countries') || heading.includes('country') || heading.includes('geographic')) {
+      const $table = $el.next('table').length ? $el.next('table') : $el.nextAll('table').first();
+      if ($table.length) {
+        $table.find('tr').each((_, row) => {
+          const $cells = $(row).find('td');
+          if ($cells.length >= 2) {
+            const c = $cells.eq(0).text().trim();
+            const w = parseEnNumber($cells.eq(1).text());
+            if (c && w != null) result.countryBreakdown[c] = w;
+          }
+        });
+      }
+    }
+    if (heading.includes('sectors') || heading.includes('industry')) {
+      const $table = $el.next('table').length ? $el.next('table') : $el.nextAll('table').first();
+      if ($table.length) {
+        $table.find('tr').each((_, row) => {
+          const $cells = $(row).find('td');
+          if ($cells.length >= 2) {
+            const s = $cells.eq(0).text().trim();
+            const w = parseEnNumber($cells.eq(1).text());
+            if (s && w != null) result.sectorBreakdown[s] = w;
+          }
+        });
+      }
+    }
+    if (heading.includes('top 10') || heading.includes('largest holdings')) {
+      const $table = $el.next('table').length ? $el.next('table') : $el.nextAll('table').first();
+      if ($table.length) {
+        $table.find('tr').slice(0, 10).each((_, row) => {
+          const $cells = $(row).find('td');
+          if ($cells.length >= 2) {
+            const n = $cells.eq(0).text().trim();
+            const w = parseEnNumber($cells.eq(1).text());
+            if (n && w != null) result.topHoldings.push({ name: n, weight: w });
+          }
+        });
+      }
+    }
+  });
+
+  return result;
+}
+
+async function syncJustetfBatch(pool, batchSize = JUSTETF_BATCH_SIZE, motivo = 'scheduled') {
+  const axios = require('axios');
+  const start = Date.now();
+
+  // Seleziona ETF da refresh: priorità a quelli con last_provider_fetch più vecchio.
+  // Esclude i not_found (sono ETF non presenti su JustETF, inutile riprovare ogni mese).
+  // Include gli error:* (probabilmente errori network transitori, vale riprovare).
+  const { rows } = await pool.query(`
+    SELECT isin, name FROM etf_catalog
+    WHERE active = 1
+      AND name IS NOT NULL AND name != ''
+      AND (provider_fetch_status IS NULL OR provider_fetch_status NOT LIKE 'not_found%')
+    ORDER BY last_provider_fetch ASC NULLS FIRST
+    LIMIT $1
+  `, [batchSize]);
+
+  if (rows.length === 0) {
+    console.log(`[justetf-sync] Nessun ETF da processare (motivo=${motivo})`);
+    return { ok: 0, not_found: 0, errors: 0, totale: 0, motivo };
+  }
+
+  console.log(`[justetf-sync] Inizio batch ${rows.length} ETF (motivo=${motivo})`);
+  const stats = { ok: 0, not_found: 0, errors: 0, totale: rows.length, motivo };
+
+  for (let i = 0; i < rows.length; i++) {
+    const { isin, name } = rows[i];
+    const url = `https://www.justetf.com/en/etf-profile.html?isin=${isin}`;
+
+    try {
+      const { status, data: html } = await axios.get(url, {
+        headers: justetfHeaders, timeout: 30000, decompress: true,
+        validateStatus: () => true,
+      });
+
+      if (status === 403 || status === 429) {
+        console.log(`[justetf-sync] 🛑 BLOCCATO status ${status} su ${isin}. Interrompo.`);
+        await pool.query(
+          `UPDATE etf_catalog SET provider_fetch_status = $1, last_provider_fetch = NOW() WHERE isin = $2`,
+          [`error:blocked_${status}`, isin]
+        );
+        break;
+      } else if (status === 404 || (status === 200 && (html.length < 50000 || !html.includes('etf-profile')))) {
+        await pool.query(
+          `UPDATE etf_catalog SET provider_fetch_status = 'not_found', last_provider_fetch = NOW() WHERE isin = $1`,
+          [isin]
+        );
+        stats.not_found += 1;
+      } else if (status === 200) {
+        const parsed = parseJustetfHtml(html);
+        if (!parsed.ter && !parsed.aum && Object.keys(parsed.countryBreakdown).length === 0) {
+          await pool.query(
+            `UPDATE etf_catalog SET provider_fetch_status = 'not_found', last_provider_fetch = NOW() WHERE isin = $1`,
+            [isin]
+          );
+          stats.not_found += 1;
+        } else {
+          const updates = [];
+          const params = [];
+          let n = 1;
+          if (parsed.ter != null) { updates.push(`ter = $${n++}`); params.push(parsed.ter); }
+          if (parsed.aum != null) { updates.push(`aum_mln = $${n++}`); params.push(parsed.aum); }
+          if (parsed.indice) { updates.push(`index_name = $${n++}`); params.push(parsed.indice); }
+          if (parsed.distribuzione) { updates.push(`distribuzione = $${n++}`); params.push(parsed.distribuzione); }
+          if (parsed.replica) { updates.push(`replica = $${n++}`); params.push(parsed.replica); }
+          if (parsed.vol1y != null) { updates.push(`vol1y = $${n++}`); params.push(parsed.vol1y); }
+          if (Object.keys(parsed.countryBreakdown).length > 0) {
+            updates.push(`country_breakdown = $${n++}::jsonb`);
+            params.push(JSON.stringify(parsed.countryBreakdown));
+          }
+          if (Object.keys(parsed.sectorBreakdown).length > 0) {
+            updates.push(`sector_breakdown = $${n++}::jsonb`);
+            params.push(JSON.stringify(parsed.sectorBreakdown));
+          }
+          if (parsed.topHoldings.length > 0) {
+            updates.push(`top_holdings = $${n++}::jsonb`);
+            params.push(JSON.stringify(parsed.topHoldings));
+          }
+          updates.push(`provider = 'justetf'`);
+          updates.push(`provider_url = $${n++}`); params.push(url);
+          updates.push(`last_provider_fetch = NOW()`);
+          updates.push(`provider_fetch_status = 'ok'`);
+          params.push(isin);
+          await pool.query(`UPDATE etf_catalog SET ${updates.join(', ')} WHERE isin = $${n}`, params);
+          stats.ok += 1;
+        }
+      } else {
+        await pool.query(
+          `UPDATE etf_catalog SET provider_fetch_status = $1, last_provider_fetch = NOW() WHERE isin = $2`,
+          [`error:status_${status}`, isin]
+        );
+        stats.errors += 1;
+      }
+    } catch (e) {
+      stats.errors += 1;
+      await pool.query(
+        `UPDATE etf_catalog SET provider_fetch_status = $1, last_provider_fetch = NOW() WHERE isin = $2`,
+        [`error:${e.message.slice(0, 80)}`, isin]
+      ).catch(() => {});
+    }
+
+    // Sleep tra richieste (non aspettare dopo l'ultima)
+    if (i < rows.length - 1) await justetfSleep();
+  }
+
+  const durata_min = Math.round((Date.now() - start) / 60000);
+  console.log(`[justetf-sync] Completato ${motivo} in ${durata_min}min | ok:${stats.ok} not_found:${stats.not_found} errors:${stats.errors}`);
+  log(EVENTI.AGGIORNA_PREZZI_SELETTIVO, {
+    ok: stats.ok, err: stats.errors, totale: stats.totale,
+    motivo: `justetf-sync-${motivo}`,
+  }).catch(() => {});
+
+  return stats;
+}
+
+// Scheduler 03:00 — chiama il syncJustetfBatch ogni notte sui 90 ETF più vecchi
+async function schedulaJustetfSync(pool) {
+  const ora = new Date();
+  const prossime3 = new Date(ora);
+  prossime3.setHours(3, 0, 0, 0);
+  if (prossime3 <= ora) prossime3.setDate(prossime3.getDate() + 1);
+  const msAlle3 = prossime3 - ora;
+  console.log(`[scheduler] Prossimo JustETF sync: ${prossime3.toLocaleString('it-IT')} (tra ${Math.round(msAlle3/1000/60)} min)`);
+
+  setTimeout(async () => {
+    try {
+      await syncJustetfBatch(pool, JUSTETF_BATCH_SIZE, 'scheduled-03:00');
+    } catch (e) {
+      console.error('[scheduler] Errore JustETF sync:', e.message);
+    }
+    schedulaJustetfSync(pool); // riprogramma per domani
+  }, msAlle3);
+}
+
 module.exports.schedulaAggiornamento18 = schedulaAggiornamento18;
 module.exports.aggiornaPrezziCompleto = aggiornaPrezziCompleto;
+module.exports.syncJustetfBatch = syncJustetfBatch;
+module.exports.schedulaJustetfSync = schedulaJustetfSync;
