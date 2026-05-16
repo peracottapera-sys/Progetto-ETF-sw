@@ -769,7 +769,14 @@ PUNTI_CHIAVE:
 - punto 4 (max 4 punti)
 
 ANALISI_DETTAGLIATA:
-[Analisi completa per il PDF — 400-600 parole, NO tabelle markdown con |, usa elenchi puntati e paragrafi. Valuta: composizione, rischio, costi, performance attesa, contesto macro, confronto con regole profilo]
+[Analisi completa per il PDF — 400-600 parole, NO tabelle markdown con |, usa elenchi puntati e paragrafi. Valuta: composizione, rischio, costi, performance attesa, contesto macro, confronto con regole profilo.
+
+LINEE GUIDA per la sezione "Analisi dei costi":
+- Mostra il TER ponderato del portafoglio (es. "0.16%") spiegandolo in una riga: "media dei TER pesata per la quota di ciascun ETF — rappresenta il costo annuo reale sul capitale investito"
+- Verifica conformità: la soglia preferibile è ${regole.terPreferito}%, la massima è ${regole.terMax}%
+- Nomina l'ETF più costoso e quello/i più economici del portafoglio, citandone i TER. NON dare giudizi su "caro/conveniente vs mercato" — solo riportare i fatti
+- Esempio formulazione: "L'ETF più costoso è X (TER 0.35%), i più economici sono Y e Z (TER 0.09%). Tutti contribuiscono alla media ponderata di 0.16%."
+- Mantieni la sezione concisa (3-5 righe), senza paragrafi di valutazione qualitativa]
 
 MODIFICHE_JSON:
 [{"azione":"seleziona"|"deseleziona"|"aggiungi"|"ribilancia","isin":"ISIN","motivo":"motivo max 100 car","name":"nome ETF (solo aggiungi)","quotazione":0.0,"ter":0.0,"categoria":"cat (solo aggiungi)","nuovaPct":0}]
