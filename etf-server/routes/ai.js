@@ -781,6 +781,12 @@ LINEE GUIDA per la sezione "Analisi dei costi":
 MODIFICHE_JSON:
 [{"azione":"seleziona"|"deseleziona"|"aggiungi"|"ribilancia","isin":"ISIN","motivo":"motivo max 100 car","name":"nome ETF (solo aggiungi)","quotazione":0.0,"ter":0.0,"categoria":"cat (solo aggiungi)","nuovaPct":0}]
 
+IMPORTANTE sul campo nuovaPct:
+- Per "ribilancia": nuovaPct = nuova quota target dell'ETF nel portafoglio (es. 20 per il 20%). OBBLIGATORIO.
+- Per "aggiungi" o "seleziona": nuovaPct = quota target che il nuovo ETF avrà nel portafoglio (es. 8 per l'8%). OBBLIGATORIO, MAI metterlo a 0. Valore tipico tra 5% e 25%. Non superare 30%.
+- Per "deseleziona": nuovaPct non richiesto (lo ometti o metti 0).
+- ATTENZIONE: nuovaPct = 0 per un'azione "aggiungi" è un ERRORE. Significherebbe "compra ma con 0% di peso", che non ha senso. Se davvero non sai quale peso assegnare, metti 10 (default conservativo).
+
 REGOLE ASSOLUTE per MODIFICHE_JSON — LEGGILE TUTTE PRIMA DI RISPONDERE:
 
 R1 — PORTAFOGLIO RECENTE: questo portafoglio ha ${giorniVita} giorni.
@@ -983,8 +989,19 @@ router.post('/genera-pdf', authMiddleware, (req, res) => {
         // Il capitale per l'acquisto viene dal capitale liberato dalle vendite + reinvestimento
         const prezzoAcq2 = parseFloat(m.quotazione || prezzoAtt) || 0;
         if (prezzoAcq2 > 0) {
-          // Quantità stimata: distribuzione in base alla nuovaPct se presente, altrimenti quota media
-          const pctTarget = parseFloat(m.nuovaPct || (100 / ((modifiche.filter(x => x.azione === 'aggiungi' || x.azione === 'seleziona').length) || 1)));
+          // Quantità target: serve un peso percentuale sensato.
+          // Se l'AI manda nuovaPct valido (>0 e <50), lo usiamo.
+          // Altrimenti fallback: dividere equamente UN PEZZO del portafoglio (max 20% per AGGIUNGI)
+          // tra tutte le aggiunte. NON usare 100% perché significherebbe sostituire tutto il portafoglio.
+          const aggIscritte = modifiche.filter(x => x.azione === 'aggiungi' || x.azione === 'seleziona').length || 1;
+          const nuovaPctRaw = parseFloat(m.nuovaPct);
+          let pctTarget;
+          if (!isNaN(nuovaPctRaw) && nuovaPctRaw > 0 && nuovaPctRaw <= 50) {
+            pctTarget = nuovaPctRaw;
+          } else {
+            // Fallback prudente: 10% del portafoglio diviso per il numero di aggiunte (max 10% ognuna)
+            pctTarget = Math.min(10, 20 / aggIscritte);
+          }
           const valoreTarget = (pctTarget / 100) * totInvestito;
           qDaComprare = Math.round((valoreTarget / prezzoAcq2) * 10000) / 10000;
           prezzoComprare = prezzoAcq2;
