@@ -888,6 +888,12 @@ R8 — CRITICO: JSON valido e COMPLETO. Non troncare.`;
 
     console.log(`  ✓ Analisi OK | semafori:${Object.keys(semafori).length} | punti:${puntiChiave.length} | modifiche:${modifiche.length}${rendAttesoLordo != null ? ` | rend:${rendAttesoLordo}%` : ''}`);
 
+    // DEBUG TEMP: dump sempre della risposta AI per debug parsing
+    console.log(`  [analisi DEBUG] Risposta AI prime 2000 char:`);
+    console.log(testo.slice(0, 2000));
+    console.log(`  [analisi DEBUG] ===== ultime 600 char =====`);
+    console.log(testo.slice(-600));
+
     // ── Validazione modifiche AI contro il catalogo ────────────────────────
     let stats = { totali: 0, arricchite: 0, stale: 0, inventati: 0 };
     if (modifiche.length > 0) {
