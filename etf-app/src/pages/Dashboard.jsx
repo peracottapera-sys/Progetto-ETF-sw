@@ -190,6 +190,47 @@ export default function Dashboard({ setActiveTab }) {
   const avgPerf1y = calcPonderata('perf1y');
   const avgPerf5y = calcPonderata('perf5y');
 
+  // Aggregato country / sector ponderato per valore acquistato (o pesi uguali se senza acquisti)
+  const aggregaBreakdown = (campo) => {
+    if (selectedEtfs.length === 0) return [];
+    const usaAcquisti = totValorePerPeso > 0 && etfConAcquisto.length > 0;
+    const acc = {};
+    const etfList = usaAcquisti ? etfConAcquisto : selectedEtfs;
+    etfList.forEach(e => {
+      const breakdown = e[campo];
+      if (!breakdown || typeof breakdown !== 'object') return;
+      const peso = usaAcquisti
+        ? (e.acquisto.quantita * e.acquisto.quotazioneAcquisto) / totValorePerPeso
+        : 1 / selectedEtfs.length;
+      Object.entries(breakdown).forEach(([key, val]) => {
+        if (typeof val !== 'number' || val <= 0) return;
+        // saltiamo "Other" perché è un raggruppamento residuo non informativo
+        if (key.toLowerCase() === 'other') return;
+        acc[key] = (acc[key] || 0) + val * peso;
+      });
+    });
+    return Object.entries(acc)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([k, v]) => ({ key: k, value: v }));
+  };
+  const topCountries = aggregaBreakdown('country_breakdown');
+  const topSectors = aggregaBreakdown('sector_breakdown');
+
+  const renderBreakdown = (items) => {
+    if (!items || items.length === 0) return <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>—</span>;
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 2, fontSize: 13 }}>
+        {items.map(({ key, value }) => (
+          <div key={key} style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+            <span style={{ color: 'var(--text-secondary)' }}>{key}</span>
+            <span style={{ color: 'var(--text-primary)', fontWeight: 500 }}>{Math.round(value)}%</span>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
   const perf = (v) => (
     <span style={{ color: v > 0 ? 'var(--accent-green)' : v < 0 ? 'var(--accent-red)' : 'var(--text-secondary)', fontWeight: 500, fontSize: 14 }}>
       {v > 0 ? '+' : ''}{v.toFixed(2)}%
@@ -226,6 +267,16 @@ export default function Dashboard({ setActiveTab }) {
       nota: rendAtteso != null ? 'Proiezione su stor. 20-30A · non garantito' : '',
     },
     { label: 'Valore Acquistato', value: `€ ${valoreAcquistato.toLocaleString('it-IT', { maximumFractionDigits: 0 })}`, valueColor: 'var(--text-primary)', sub: 'valore di carico' },
+    {
+      label: 'Geo Top 3',
+      customContent: renderBreakdown(topCountries),
+      sub: topCountries.length > 0 ? 'ponderata · escluso "Other"' : 'nessun dato disponibile',
+    },
+    {
+      label: 'Settori Top 3',
+      customContent: renderBreakdown(topSectors),
+      sub: topSectors.length > 0 ? 'ponderata · escluso "Other"' : 'nessun dato disponibile',
+    },
   ];
 
   return (
@@ -299,7 +350,11 @@ export default function Dashboard({ setActiveTab }) {
           {stats.map((s, i) => (
             <div key={i} style={{ flex: 1, minWidth: 130, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 16px' }}>
               <div style={{ fontSize: 10, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 3 }}>{s.label}</div>
-              <div style={{ fontFamily: 'DM Serif Display, serif', fontSize: 18, color: s.valueColor, lineHeight: 1.2 }}>{s.value}</div>
+              {s.customContent ? (
+                <div style={{ marginTop: 4, marginBottom: 4 }}>{s.customContent}</div>
+              ) : (
+                <div style={{ fontFamily: 'DM Serif Display, serif', fontSize: 18, color: s.valueColor, lineHeight: 1.2 }}>{s.value}</div>
+              )}
               <div style={{ fontSize: 10, color: 'var(--text-secondary)', marginTop: 2 }}>{s.sub}</div>
               {s.nota && <div style={{ fontSize: 9, color: 'var(--text-muted)', marginTop: 3, fontStyle: 'italic' }}>{s.nota}</div>}
             </div>
@@ -406,7 +461,28 @@ export default function Dashboard({ setActiveTab }) {
                   onMouseLeave={e => e.currentTarget.querySelector('.azioni-cell')?.style && (e.currentTarget.querySelector('.azioni-cell').style.opacity = '0')}>
                   <td><div className="checkbox-cell"><input type="checkbox" checked={!!etf.selected} onChange={() => toggleEtfSelection(portfolioId, etf.isin)} /></div></td>
                   <td>
-                    <div style={{ fontWeight: 500, fontSize: 14, maxWidth: 220, whiteSpace: 'normal', lineHeight: 1.4 }}>{etf.name}</div>
+                    {(() => {
+                      // Costruzione tooltip: index + top 3 country + top 3 sector
+                      const top3 = (obj) => {
+                        if (!obj || typeof obj !== 'object') return null;
+                        return Object.entries(obj)
+                          .filter(([k, v]) => typeof v === 'number' && v > 0 && k.toLowerCase() !== 'other')
+                          .sort((a, b) => b[1] - a[1])
+                          .slice(0, 3)
+                          .map(([k, v]) => `${k} ${Math.round(v)}%`)
+                          .join(' · ');
+                      };
+                      const geo = top3(etf.country_breakdown);
+                      const sec = top3(etf.sector_breakdown);
+                      const lines = [];
+                      if (etf.index_name) lines.push(`Indice: ${etf.index_name}`);
+                      if (geo) lines.push(`Geo: ${geo}`);
+                      if (sec) lines.push(`Sett: ${sec}`);
+                      const tip = lines.length > 0 ? `${etf.name}\n${lines.join('\n')}` : etf.name;
+                      return (
+                        <div title={tip} style={{ fontWeight: 500, fontSize: 14, maxWidth: 220, whiteSpace: 'normal', lineHeight: 1.4, cursor: 'help' }}>{etf.name}</div>
+                      );
+                    })()}
                     <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{etf.emittente}</div>
                     <div style={{ display: 'flex', gap: 4, alignItems: 'center', marginTop: 2, flexWrap: 'wrap' }}>
                       <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
