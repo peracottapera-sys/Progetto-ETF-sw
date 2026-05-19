@@ -649,6 +649,71 @@ router.post('/analisi', async (req, res) => {
   const catAzionarie = ['Azionario Globale','Azionario USA','Azionario Europa','Azionario Emergenti','Azionario Tematico','Azionario Pacifico'];
   const valAzionario = etfConAcquisto.filter(e => catAzionarie.some(c => (e.categoria||'').includes(c.replace('Azionario ','')))).reduce((s,e) => s + e.acquisto.quantita * e.acquisto.quotazioneAcquisto, 0);
   const percAzionario = totValore > 0 ? (valAzionario / totValore * 100).toFixed(1) : 'N/D';
+
+  // ── CALCOLO ESPOSIZIONE USA EFFETTIVA ─────────────────────────────────
+  // Per ogni ETF: peso_portafoglio × USA_breakdown%. Somma = USA reale del portafoglio.
+  // Fallback per ETF senza country_breakdown: usa stima per index_name o categoria.
+  function stimaUsaPctPerIndice(indexName, categoria) {
+    const idx = (indexName || '').toLowerCase();
+    const cat = (categoria || '').toLowerCase();
+    // 100% USA
+    if (/s&p 500|nasdaq|russell|dow jones industrial|msci usa/.test(idx)) return 100;
+    // 70% USA (World developed)
+    if (/msci world(?!.*ex)|ftse developed world|ftse developed(?!.*emerging)/.test(idx)) return 70;
+    // 65% USA (ACWI)
+    if (/acwi|ftse all-world|all world/.test(idx)) return 65;
+    // 0% USA espliciti
+    if (/world ex.?usa|eafe|msci europe|euro stoxx|stoxx europe|emu|ftse 100|dax|cac|ftse mib|msci em|emerging market|msci japan|nikkei|topix|pacific ex.?japan|msci korea|msci india|msci china/.test(idx)) return 0;
+    // Bond europei
+    if (/eur sovereigns|euro government|btp|bund|eur corporate|euro corporate|eur aggregate|euro aggregate|inflation.linked.*euro/.test(idx)) return 0;
+    // Global Aggregate Bond ≈ 40% USA
+    if (/global aggregate|bloomberg global/.test(idx)) return 40;
+    // US Treasury / USD bond = 100% USA
+    if (/us treasury|usd corporate|usd treasury/.test(idx)) return 100;
+    // Crypto / Commodity / Gold = 0% USA
+    if (/gold|silver|platinum|palladium|bitcoin|ethereum|bloomberg commodity/.test(idx)) return 0;
+    // Fallback per categoria
+    if (/azionario usa|us large|us small/.test(cat)) return 95;
+    if (/azionario globale|smart beta/.test(cat)) return 60;
+    if (/azionario europa|azionario emergenti|azionario pacifico/.test(cat)) return 0;
+    if (/materie prime|commodit|crypto|liquidità|monetario/.test(cat)) return 0;
+    if (/obbligazionario/.test(cat)) return 0; // bond di default conservativo
+    return null; // sconosciuto
+  }
+
+  const expoUsaDettaglio = [];
+  let expoUsaTotale = 0;
+  let pesoTotPerUsa = 0;
+  if (etfConAcquisto.length > 0 && totValore > 0) {
+    for (const e of etfConAcquisto) {
+      const peso = (e.acquisto.quantita * e.acquisto.quotazioneAcquisto) / totValore * 100;
+      let usaPct = null;
+      let fonte = '';
+      if (e.countryBreakdown && typeof e.countryBreakdown === 'object') {
+        const us = e.countryBreakdown['United States'] || e.countryBreakdown['USA'] || e.countryBreakdown['Stati Uniti'] || null;
+        if (typeof us === 'number') { usaPct = us; fonte = 'breakdown'; }
+      }
+      if (usaPct == null) {
+        const stima = stimaUsaPctPerIndice(e.indexName, e.categoria);
+        if (stima != null) { usaPct = stima; fonte = 'stima'; }
+      }
+      if (usaPct != null) {
+        const contributo = peso * usaPct / 100;
+        expoUsaTotale += contributo;
+        pesoTotPerUsa += peso;
+        expoUsaDettaglio.push({
+          isin: e.isin, name: e.name?.slice(0, 50), peso: peso.toFixed(1),
+          usaPct: usaPct.toFixed(1), contributo: contributo.toFixed(2), fonte,
+        });
+      }
+    }
+  }
+  const expoUsaPct = pesoTotPerUsa > 0 ? expoUsaTotale.toFixed(1) : null;
+  const maxUsaStr = portfolio.maxUSA || 'No max';
+  const maxUsaNum = maxUsaStr && maxUsaStr !== 'No max'
+    ? parseFloat(maxUsaStr.toString().replace(/[^\d.]/g, ''))
+    : null;
+  const violazioneUsa = expoUsaPct != null && maxUsaNum != null && parseFloat(expoUsaPct) > maxUsaNum;
   
   const etfCatalogoRaw = await getEtfPerProfilo(portfolio.riskProfile, false, false);
 
@@ -669,14 +734,15 @@ Profilo: ${portfolio.riskProfile} | Orizzonte: ${portfolio.orizzonteAnni || 'N/D
 ETF selezionati: ${etfSelezionati.length} (min: ${regole.minETF}, max: ${regole.maxETF}) | TER ponderato: ${terPonderato.toFixed(2)}% | Quota azionaria: ${percAzionario}%
 Valore investito: €${totInvestito.toLocaleString('it-IT',{maximumFractionDigits:0})} | Valore attuale: €${totAttuale.toLocaleString('it-IT',{maximumFractionDigits:0})} | P&L: ${totInvestito>0?((totAttuale-totInvestito)/totInvestito*100).toFixed(2):'N/D'}%
 
-NOTA SU ESPOSIZIONE USA EFFETTIVA: per ogni ETF candidato troverai (quando disponibile) una riga "Geo: ..." che mostra la composizione geografica reale dell'ETF. Quando valuti l'esposizione USA del portafoglio, somma per ogni ETF (peso_ETF × USA_breakdown). Se "Geo:" non è disponibile, usa queste percentuali tipiche per indice di riferimento:
-• 100% USA: S&P 500, S&P 500 Equal Weight, Nasdaq 100, Russell 1000, Russell 2000, MSCI USA, Dow Jones Industrial Average, S&P 500 EUR Hedged, MSCI USA EUR Hedged
-• 70% USA: MSCI World, FTSE Developed World, FTSE Developed
-• 65% USA: MSCI ACWI, MSCI ACWI IMI, FTSE All-World
-• 0% USA: MSCI World ex-USA, MSCI EAFE, MSCI Europe, MSCI Europe IMI, MSCI EMU, EURO STOXX 50, STOXX Europe 600, FTSE 100, DAX, CAC 40, FTSE MIB, MSCI Emerging Markets, MSCI EM IMI, MSCI EM ex-China, MSCI India, MSCI China, MSCI Japan, Nikkei 225, TOPIX, MSCI Pacific ex-Japan, MSCI Korea
-• 0% USA (asset reali): Gold, Silver, Platinum, Bloomberg Commodity, Bitcoin, Ethereum, ogni crypto, ogni ETF su commodity fisica
-• Bond: per gov/corp bond europei (BTP, Bund, EUR Corporate, Euro Aggregate, Italy/Germany/France Government Bond) = 0% USA. Per Global Aggregate Bond ≈ 40% USA. Per US Treasury / USD Corporate = 100% USA.
-Esempio: MSCI World al 50% del portafoglio = ~35% di esposizione USA reale; Nasdaq 100 al 20% = 20% USA reale. Tieni conto di questa regola quando segnali violazioni del Max USA o suggerisci modifiche.
+## ESPOSIZIONE USA EFFETTIVA — DATO GIÀ CALCOLATO DAL SISTEMA (NON RICALCOLARE)
+${expoUsaPct != null
+  ? `Esposizione USA reale del portafoglio: **${expoUsaPct}%**${maxUsaNum != null ? ` | Vincolo Max USA: ${maxUsaNum}%${violazioneUsa ? ` | ⚠️ VIOLAZIONE: supera di ${(parseFloat(expoUsaPct) - maxUsaNum).toFixed(1)} punti percentuali` : ` | ✓ Vincolo rispettato (margine ${(maxUsaNum - parseFloat(expoUsaPct)).toFixed(1)} punti)`}` : ''}
+
+Dettaglio del calcolo (peso_ETF% × USA_breakdown% = contributo):
+${expoUsaDettaglio.map(d => `• ${d.name} (${d.isin}): peso ${d.peso}% × USA ${d.usaPct}% = ${d.contributo}% ${d.fonte === 'stima' ? '[stima da indice]' : '[breakdown reale]'}`).join('\n')}
+
+ISTRUZIONE OBBLIGATORIA: usa questo dato precalcolato (**${expoUsaPct}%**) nell'analisi. Non ricalcolare l'esposizione USA — il calcolo è stato già fatto con precisione aritmetica dal backend. ${violazioneUsa ? `Poiché c'è violazione del vincolo Max USA, è OBBLIGATORIO: (a) impostare il semaforo "usa" su ROSSO; (b) inserire la violazione tra i Punti Chiave principali; (c) proporre modifiche concrete per ridurre l'USA sotto ${maxUsaNum}% — tipicamente ribilanciando DOWN gli ETF con alto USA% (es. MSCI World, S&P 500) e UP gli ETF a 0% USA (World ex-USA, Europe, EM).` : `Conferma il vincolo come rispettato nei semafori e nei Punti Chiave (se rilevante).`}`
+  : `Dato non calcolabile (mancano acquisti registrati o breakdown). Stima manualmente se serve.`}
 ${giorniVita < 7 ? `⚠️ PORTAFOGLIO CREATO ${giorniVita} GIORNI FA: è molto recente, l'AI ha già selezionato gli ETF ottimali. Non suggerire di deselezionare più di 1 ETF per violazione hard limit. Evita suggerimenti puramente stilistici.` : ''}
 
 ## ORIZZONTE TEMPORALE: ${portfolio.orizzonteAnni || 'N/D'} anni
@@ -752,7 +818,8 @@ correlazione:VERDE|GIALLO|ROSSO:commento breve (max 80 caratteri) — VERDE se m
 volatilita:VERDE|GIALLO|ROSSO:commento breve
 drawdown:VERDE|GIALLO|ROSSO:commento breve
 ter:VERDE|GIALLO|ROSSO:commento breve
-azionario:VERDE|GIALLO|ROSSO:commento breve
+azionario:VERDE|GIALLO|ROSSO:commento breve${maxUsaNum != null ? `
+usa:VERDE|GIALLO|ROSSO:commento breve — usa ESATTAMENTE il valore precalcolato ${expoUsaPct != null ? expoUsaPct+'%' : 'N/D'} vs limite ${maxUsaNum}%. ROSSO se supera il limite, GIALLO se entro 5 punti percentuali dal limite, VERDE altrimenti.` : ''}
 
 METRICHE:
 rend_lordo:X.X%
