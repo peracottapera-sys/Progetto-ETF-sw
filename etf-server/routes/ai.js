@@ -1125,6 +1125,7 @@ router.post('/genera-pdf', authMiddleware, (req, res) => {
           prezzoAcq, prezzoVen: prezzoAtt,
           plusLorda, minusUsata, imponibile, tasse, minusGen,
           tipoAzione: m.azione,
+          motivo: m.motivo || '',
         });
       }
       if (qDaComprare > 0 && prezzoComprare > 0) {
@@ -1135,6 +1136,7 @@ router.post('/genera-pdf', authMiddleware, (req, res) => {
           prezzo: prezzoComprare,
           controvalore: qDaComprare * prezzoComprare,
           tipoAzione: m.azione,
+          motivo: m.motivo || '',
         });
       }
     }
@@ -1205,6 +1207,7 @@ router.post('/genera-pdf', authMiddleware, (req, res) => {
           prezzoVen: prezzo,
           plusLorda, minusUsata, imponibile, tasse, minusGen,
           tipoAzione: 'ribil_proporzionale',
+          motivo: 'Vendita automatica per coprire il fabbisogno di cassa degli acquisti suggeriti (ordine: plusvalenza latente più bassa)',
         });
         daCoprire -= (controv - tasse);
       }
@@ -1230,6 +1233,7 @@ router.post('/genera-pdf', authMiddleware, (req, res) => {
             prezzo,
             controvalore: qAggiuntive * prezzo,
             tipoAzione: 'ridistribuzione',
+            motivo: 'Acquisto automatico per ridistribuire la liquidità residua dalle vendite (proporzionale al peso attuale)',
           });
         }
       });
@@ -1342,20 +1346,15 @@ ${analisiDettagliata
   }).join('')}
 </table>
 
-${modifiche && modifiche.length > 0 ? `
-<h2>Modifiche Consigliate</h2>
-${modifiche.map(m=>{
-  const badge = m.azione==='aggiungi'||m.azione==='seleziona' ? 'badge-add' : m.azione==='ribilancia' ? 'badge-reb' : 'badge-rem';
-  const label = m.azione==='aggiungi'?'AGGIUNGI':m.azione==='seleziona'?'ATTIVA':m.azione==='ribilancia'?`RIBILANCIA ${m.nuovaPct||''}%`:'RIMUOVI';
-  return `<div class="modifiche-item"><span class="badge ${badge}">${label}</span><div><strong>${m.isin}</strong> — ${m.motivo||''}</div></div>`;
-}).join('')}` : '<p style="color:#22c55e;font-weight:600">✓ Il portafoglio è già conforme alle regole del profilo.</p>'}
+${modifiche && modifiche.length > 0 ? '' : '<p style="color:#22c55e;font-weight:600">✓ Il portafoglio è già conforme alle regole del profilo.</p>'}
 
 ${simulazione ? `
-<h2>Simulazione Fiscale — se applichi le modifiche al prezzo attuale</h2>
+<h2>Azioni da eseguire sul broker</h2>
 <p style="font-size:10pt;color:#444;margin:0 0 10px">
-  Le vendite sotto sono calcolate usando le quotazioni aggiornate al ${data}.
-  La tassazione è al 26% sulla plusvalenza al netto delle minusvalenze compensabili disponibili
-  (metodo FIFO). Questa è una simulazione: il portafoglio non viene modificato.
+  Tabella unica delle operazioni da compiere per applicare le modifiche AI.
+  Quote, prezzi e controvalore sono calcolati sulle quotazioni del ${data}.
+  Le tasse sono al 26% sulla plusvalenza al netto delle minusvalenze compensabili (metodo FIFO).
+  Questa è una simulazione: il portafoglio non viene modificato.
 </p>
 
 <div class="sim-saldo-grid">
@@ -1369,76 +1368,46 @@ ${simulazione ? `
   </div>
 </div>
 
-${simulazione.vendite.length > 0 ? `
-<h3>Vendite simulate</h3>
-<p style="font-size:9pt;color:#666;margin:-4px 0 8px">
-  Include le vendite esplicite dalle modifiche AI (RIMUOVI, RIBIL. ↓) e le vendite aggiuntive
-  generate automaticamente per coprire ribilanciature al rialzo senza contropartita (RIBIL. PROP.).
-  Quest'ultime sono prelevate dagli ETF non toccati dalle modifiche, in ordine di plusvalenza
-  latente crescente per minimizzare il carico fiscale.
-</p>
-<table>
+${(simulazione.vendite.length > 0 || simulazione.acquisti.length > 0) ? `
+<table style="margin-top:10px">
   <tr>
-    <th>ETF</th><th>Azione</th><th style="text-align:right">Quote</th>
-    <th style="text-align:right">Prz.Acq</th><th style="text-align:right">Prz.Ven</th>
-    <th style="text-align:right">Plus/Minus</th><th style="text-align:right">Minus comp.</th>
-    <th style="text-align:right">Imponibile</th><th style="text-align:right">Tasse 26%</th>
-  </tr>
-  ${simulazione.vendite.map(v=>`
-    <tr>
-      <td>${v.name}<br><span style="font-family:monospace;font-size:8pt;color:#666">${v.isin}</span></td>
-      <td><span class="badge ${v.tipoAzione==='deseleziona'?'badge-rem':'badge-reb'}">${
-        v.tipoAzione==='deseleziona'?'RIMUOVI':
-        v.tipoAzione==='ribil_proporzionale'?'RIBIL. PROP.':'RIBIL. ↓'
-      }</span></td>
-      <td class="num">${v.quantita.toLocaleString('it-IT',{maximumFractionDigits:2})}</td>
-      <td class="num">€${fmt(v.prezzoAcq)}</td>
-      <td class="num">€${fmt(v.prezzoVen)}</td>
-      <td class="num ${v.plusLorda>=0?'pos':'neg'}">${v.plusLorda>=0?'+':''}€${fmt(v.plusLorda)}</td>
-      <td class="num">${v.minusUsata>0?'−€'+fmt(v.minusUsata):'—'}</td>
-      <td class="num">${v.imponibile>0?'€'+fmt(v.imponibile):'—'}</td>
-      <td class="num ${v.tasse>0?'neg':''}">${v.tasse>0?'€'+fmt(v.tasse):'—'}</td>
-    </tr>
-  `).join('')}
-  <tr style="background:#fef3c7;font-weight:700">
-    <td colspan="5" style="text-align:right">TOTALI</td>
-    <td class="num ${simulazione.plusLordaTot - simulazione.minusGenerateTot >= 0 ? 'pos' : 'neg'}">
-      ${simulazione.plusLordaTot - simulazione.minusGenerateTot >= 0 ? '+' : ''}€${fmt(simulazione.plusLordaTot - simulazione.minusGenerateTot)}
-    </td>
-    <td class="num">${simulazione.plusCompensataTot > 0 ? '−€'+fmt(simulazione.plusCompensataTot) : '—'}</td>
-    <td class="num">€${fmt(simulazione.imponibileTot)}</td>
-    <td class="num neg">€${fmt(simulazione.tasseTot)}</td>
-  </tr>
-</table>
-` : '<p><em>Nessuna vendita prevista dalle modifiche proposte.</em></p>'}
-
-${simulazione.acquisti.length > 0 ? `
-<h3>Acquisti simulati (da eseguire sul broker)</h3>
-<p style="font-size:9pt;color:#666;margin:-4px 0 8px">
-  Include le ribilanciature esplicite suggerite dall'AI e la ridistribuzione automatica
-  del capitale residuo (vendite al netto delle tasse, meno acquisti espliciti) sugli ETF
-  rimasti non toccati dalle modifiche, in proporzione al loro peso attuale.
-</p>
-<table>
-  <tr>
-    <th>ETF</th><th>Azione</th>
+    <th style="width:70px">Azione</th>
+    <th>ETF</th>
     <th style="text-align:right">Quote</th>
     <th style="text-align:right">Prezzo</th>
     <th style="text-align:right">Controvalore</th>
+    <th style="text-align:right">Tasse</th>
   </tr>
+  ${simulazione.vendite.map(v=>`
+    <tr>
+      <td><span class="badge badge-rem" style="background:#fee2e2;color:#991b1b">VENDI</span></td>
+      <td>
+        <strong>${v.name}</strong>
+        <br><span style="font-family:monospace;font-size:8pt;color:#666">${v.isin}</span>
+        ${v.motivo ? `<br><span style="font-size:9pt;color:#555;font-style:italic">${v.motivo}</span>` : ''}
+      </td>
+      <td class="num">${v.quantita.toLocaleString('it-IT',{maximumFractionDigits:2})}</td>
+      <td class="num">€${fmt(v.prezzoVen)}</td>
+      <td class="num ${v.plusLorda>=0?'pos':'neg'}">+€${fmt(v.quantita * v.prezzoVen)}</td>
+      <td class="num ${v.tasse>0?'neg':''}">${v.tasse>0?'€'+fmt(v.tasse):'—'}</td>
+    </tr>
+  `).join('')}
   ${simulazione.acquisti.map(a=>`
     <tr>
-      <td>${a.name}<br><span style="font-family:monospace;font-size:8pt;color:#666">${a.isin}</span></td>
-      <td><span class="badge ${a.tipoAzione==='ribilancia'||a.tipoAzione==='ridistribuzione'?'badge-reb':'badge-add'}">
-        ${a.tipoAzione==='aggiungi'?'AGGIUNGI':a.tipoAzione==='seleziona'?'ATTIVA':a.tipoAzione==='ridistribuzione'?'RIDISTRIB.':'RIBIL. ↑'}
-      </span></td>
+      <td><span class="badge badge-add" style="background:#dcfce7;color:#166534">COMPRA</span></td>
+      <td>
+        <strong>${a.name}</strong>
+        <br><span style="font-family:monospace;font-size:8pt;color:#666">${a.isin}</span>
+        ${a.motivo ? `<br><span style="font-size:9pt;color:#555;font-style:italic">${a.motivo}</span>` : ''}
+      </td>
       <td class="num">${a.quantita.toLocaleString('it-IT',{maximumFractionDigits:2})}</td>
       <td class="num">€${fmt(a.prezzo)}</td>
-      <td class="num">€${fmt(a.controvalore)}</td>
+      <td class="num neg">−€${fmt(a.controvalore)}</td>
+      <td class="num">—</td>
     </tr>
   `).join('')}
 </table>
-` : ''}
+` : '<p><em>Nessuna operazione necessaria.</em></p>'}
 
 ${simulazione.modificheNonSimulate && simulazione.modificheNonSimulate.length > 0 ? `
 <div style="background:#fef2f2; border:1px solid #fca5a5; border-left:4px solid #dc2626; border-radius:0 6px 6px 0; padding:12px 16px; margin-top:14px; font-size:10pt">
