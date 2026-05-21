@@ -640,10 +640,15 @@ router.post('/analisi', async (req, res) => {
     : (etfSelezionati.reduce((s,e) => s + e.ter, 0) / (etfSelezionati.length || 1));
   const regoleBase = REGOLE_PROFILO[portfolio.riskProfile] || REGOLE_PROFILO.Bilanciato;
   const regole = modulaRegolePerOrizzonte(regoleBase, portfolio.orizzonteAnni || 5);
-  const maxDDabs = regole.maxDrawdownAbs || Math.abs(regole.maxDrawdown || 18);
+  // Se le regole esplicitamente NON impongono limite (Aggressivo: maxDrawdown=null), allora nessun controllo.
+  const maxDDabs = regole.maxDrawdownAbs != null
+    ? regole.maxDrawdownAbs
+    : (regole.maxDrawdown != null ? Math.abs(regole.maxDrawdown) : null);
   // Conta quanti ETF hanno maxDrawdown reale (≠0) che viola il limite
   const etfConDatiDD = etfSelezionati.filter(e => e.maxDrawdown && e.maxDrawdown !== 0);
-  const etfViolanoDD = etfConDatiDD.filter(e => Math.abs(e.maxDrawdown) > maxDDabs);
+  const etfViolanoDD = maxDDabs != null
+    ? etfConDatiDD.filter(e => Math.abs(e.maxDrawdown) > maxDDabs)
+    : [];
 
   // Calcola azionario attuale
   const catAzionarie = ['Azionario Globale','Azionario USA','Azionario Europa','Azionario Emergenti','Azionario Tematico','Azionario Pacifico'];
@@ -778,8 +783,8 @@ Peso contesto macro: ${regole.pesoMacro || 'MEDIO'}
 
 ## REGOLE VINCOLANTI PROFILO ${portfolio.riskProfile.toUpperCase()} — MODULATE PER ORIZZONTE (NON modificarle nell'analisi):
 - Quota azionaria: ${regole.azionarioTarget}% target, range ammesso ${regole.azionarioTarget-regole.azionarioRange}%–${regole.azionarioTarget+regole.azionarioRange}%
-- Volatilità media PONDERATA portafoglio: ≤${regole.volatilita}% annuo
-- Max drawdown singolo ETF (1y): ≤${maxDDabs}% in valore assoluto
+- Volatilità media PONDERATA portafoglio: ${regole.volatilita != null ? `≤${regole.volatilita}% annuo` : 'NESSUN LIMITE per questo profilo'}
+- Max drawdown singolo ETF (1y): ${maxDDabs != null ? `≤${maxDDabs}% in valore assoluto` : 'NESSUN LIMITE per questo profilo (Aggressivo accetta drawdown elevati come parte della filosofia di massimizzazione)'}
 - Numero ETF: MINIMO ${regole.minETF}, MASSIMO ${regole.maxETF}
 - TER ponderato: preferibile <${regole.terPreferito}%, massimo ${regole.terMax}%
 - Capitalizzazione minima: ${regole.capMin}M€
@@ -816,7 +821,7 @@ SEMAFORI:
 diversificazione:VERDE|GIALLO|ROSSO:commento breve (max 80 caratteri)
 correlazione:VERDE|GIALLO|ROSSO:commento breve (max 80 caratteri) — VERDE se max correlazione stimata <0.5, GIALLO 0.5-0.7, ROSSO >0.7
 volatilita:VERDE|GIALLO|ROSSO:commento breve
-drawdown:VERDE|GIALLO|ROSSO:commento breve
+drawdown:VERDE|GIALLO|ROSSO:commento breve${maxDDabs != null ? ` — confronta MaxDD1A degli ETF con il limite di ${maxDDabs}%. ROSSO se almeno un ETF lo supera, VERDE altrimenti.` : ` — questo profilo non ha limite di drawdown: usa VERDE con commento "nessun limite di drawdown previsto dal profilo".`}
 ter:VERDE|GIALLO|ROSSO:commento breve
 azionario:VERDE|GIALLO|ROSSO:commento breve${maxUsaNum != null ? `
 usa:VERDE|GIALLO|ROSSO:commento breve — usa ESATTAMENTE il valore precalcolato ${expoUsaPct != null ? expoUsaPct+'%' : 'N/D'} vs limite ${maxUsaNum}%. ROSSO se supera il limite, GIALLO se entro 5 punti percentuali dal limite, VERDE altrimenti.` : ''}
@@ -853,6 +858,7 @@ IMPORTANTE sul campo nuovaPct:
 - Per "aggiungi" o "seleziona": nuovaPct = quota target che il nuovo ETF avrà nel portafoglio (es. 8 per l'8%). OBBLIGATORIO, MAI metterlo a 0. Valore tipico tra 5% e 25%. Non superare 30%.
 - Per "deseleziona": nuovaPct non richiesto (lo ometti o metti 0).
 - ATTENZIONE: nuovaPct = 0 per un'azione "aggiungi" è un ERRORE. Significherebbe "compra ma con 0% di peso", che non ha senso. Se davvero non sai quale peso assegnare, metti 10 (default conservativo).
+- SOMMA PESI DEVE ESSERE 100%: la somma di TUTTI i pesi finali nel portafoglio (= ${etfSelezionati.length} ETF dopo le modifiche) deve essere ESATTAMENTE 100% (tolleranza ±0.5). Considera ogni ETF: se è in "ribilancia" usa nuovaPct, se in "aggiungi/seleziona" usa nuovaPct, se in "deseleziona" usa 0, se NON è in modifiche mantiene il peso attuale (riportato in "ETF SELEZIONATI" sopra come "valoreCarico / totale"). Prima di rispondere fai la somma a mente o esplicitamente: deve dare ~100. Se non torna, aggiusta i ribilanci finché torna.
 
 REGOLE ASSOLUTE per MODIFICHE_JSON — LEGGILE TUTTE PRIMA DI RISPONDERE:
 
@@ -882,10 +888,13 @@ Se i valori sono dentro queste tolerance band allargate → scrivi [].
 
 R4 — HARD LIMITS per "deseleziona" (UNICO motivo valido):
 ⚠️ USA SOLO i dati MaxDD1A forniti nella lista ETF sopra. NON usare la tua conoscenza di training sui drawdown storici degli ETF — quei valori potrebbero riferirsi a periodi diversi o non essere aggiornati. Se il dato non è nei dati che ti ho fornito, non puoi usarlo.
-- Puoi proporre "deseleziona" SOLO se MaxDD1A è esplicitamente fornito come valore numerico ≠0 nella lista ETF sopra E supera ${maxDDabs}% in valore assoluto.
-- Se MaxDD1A è "N/D(non disponibile)" o 0 nella lista: il dato non è nel nostro DB → NON è una violazione → non proporre deseleziona per quel motivo.
+${maxDDabs != null
+  ? `- Puoi proporre "deseleziona" SOLO se MaxDD1A è esplicitamente fornito come valore numerico ≠0 nella lista ETF sopra E supera ${maxDDabs}% in valore assoluto.
+- Se MaxDD1A è "N/D(non disponibile)" o 0 nella lista: il dato non è nel nostro DB → NON è una violazione → non proporre deseleziona per quel motivo.`
+  : `- Il profilo ${portfolio.riskProfile} NON ha limite di drawdown: NON proporre "deseleziona" per MaxDD elevato. Solo violazioni di altri vincoli (AUM, TER) possono giustificare un deseleziona.`
+}
 - AUM < ${Math.round(regole.capMin/2)}M€ (questo puoi verificarlo dai dati forniti)
-- ETF con MaxDD REALMENTE violato secondo i dati forniti: ${etfViolanoDD.length > 0 ? etfViolanoDD.map(e=>`${e.isin}(${e.maxDrawdown}%)`).join(', ') : 'NESSUNO — non proporre deseleziona per MaxDD'}
+- ETF con MaxDD REALMENTE violato secondo i dati forniti: ${maxDDabs != null && etfViolanoDD.length > 0 ? etfViolanoDD.map(e=>`${e.isin}(${e.maxDrawdown}%)`).join(', ') : 'NESSUNO — non proporre deseleziona per MaxDD'}
 
 R4b — CORRELAZIONE (soft):
 Stima correlazione tra coppie di ETF. Se trovi coppia con correlazione >0.6:
@@ -941,7 +950,10 @@ R8 — CRITICO: JSON valido e COMPLETO. Non troncare.`;
 
     // Punti chiave
     const puntiRaw = getSection('PUNTI_CHIAVE', 'ANALISI_DETTAGLIATA');
-    const puntiChiave = puntiRaw.split('\n').filter(r => r.trim().startsWith('-')).map(r => r.replace(/^-\s*/, '').trim());
+    const puntiChiave = puntiRaw.split('\n')
+      .filter(r => r.trim().startsWith('-'))
+      .map(r => r.replace(/^-\s*/, '').trim())
+      .filter(r => r.length > 0 && !/^-+$/.test(r));  // scarta righe vuote o "---"
 
     // Analisi dettagliata
     const analisiDettagliata = getSection('ANALISI_DETTAGLIATA', 'MODIFICHE_JSON');
@@ -1009,6 +1021,7 @@ R8 — CRITICO: JSON valido e COMPLETO. Non troncare.`;
       .replace(/MODIFICHE_JSON\s*:[\s\S]*$/i, '')
       .replace(/^\s*\[[\s\S]*?\]\s*$/gm, '')
       .replace(/^---+\s*$/gm, '')
+      .replace(/^##+\s*$/gm, '')                       // ## isolato senza testo
       .replace(/\n{3,}/g, '\n\n')
       .trim();
 
@@ -1360,62 +1373,108 @@ ${analisiDettagliata
   }
 </div>
 
-<h2>Composizione Portafoglio</h2>
+<h2>Composizione Portafoglio — Prima/Dopo modifiche AI</h2>
 <p style="font-size:9.5pt;color:#555;margin:-2px 0 8px">
-  Peso attuale = quota corrente di ogni ETF nel portafoglio. Peso post = quota target dopo le modifiche AI applicate (in grigio dove invariato).
+  Confronto tra composizione attuale e composizione post-modifiche AI. I valori € post sono stime basate sui target % proposti applicati al valore investito totale.
 </p>
 <table>
-  <tr><th>ETF</th><th>ISIN</th><th>Categoria</th><th>TER%</th><th style="text-align:right">Peso attuale</th><th style="text-align:right">Peso post</th></tr>
+  <tr>
+    <th>ETF</th>
+    <th>ISIN</th>
+    <th style="text-align:right">Peso attuale</th>
+    <th style="text-align:right">€ attuale</th>
+    <th style="text-align:right">Peso post</th>
+    <th style="text-align:right">€ post</th>
+  </tr>
   ${(() => {
-    // Mappa per ISIN delle modifiche per accesso rapido
     const modifichePerIsin = {};
     (modifiche || []).forEach(m => { modifichePerIsin[m.isin] = m; });
-    // Calcolo pesi attuali (sul valore di carico)
-    const pesoAttuale = (e) => {
-      const val = e.acquisto ? (e.acquisto.quantita * e.acquisto.quotazioneAcquisto) : 0;
-      return totInvestito > 0 ? (val / totInvestito * 100) : 0;
-    };
-    // Pesi post-modifica: per ribilancia/deseleziona usa nuovaPct, altrimenti mantiene il peso attuale
+    const valAttuale = (e) => e.acquisto ? (e.acquisto.quantita * e.acquisto.quotazioneAcquisto) : 0;
+    const pesoAttuale = (e) => totInvestito > 0 ? (valAttuale(e) / totInvestito * 100) : 0;
+
     const righeEsistenti = etfSelezionati.map(e => {
       const pA = pesoAttuale(e);
+      const vA = valAttuale(e);
       const m = modifichePerIsin[e.isin];
       let pPost;
       let cambio = '';
       if (m) {
         if (m.azione === 'deseleziona') { pPost = 0; cambio = 'rimosso'; }
         else if (m.azione === 'ribilancia') { pPost = parseFloat(m.nuovaPct || 0); cambio = (pPost > pA ? 'su' : pPost < pA ? 'giù' : 'invariato'); }
-        else { pPost = pA; }
+        else { pPost = pA; cambio = 'invariato'; }
       } else {
         pPost = pA;
         cambio = 'invariato';
       }
-      return { e, pA, pPost, cambio, isNew: false };
+      return { e, pA, pPost, vA, cambio, isNew: false };
     });
-    // Aggiunte nuove dal MODIFICHE_JSON
     const aggiunteNew = (modifiche || [])
       .filter(m => (m.azione === 'aggiungi' || m.azione === 'seleziona') && !etfSelezionati.some(e => e.isin === m.isin))
       .map(m => ({
-        e: { isin: m.isin, name: m.name || m.isin, categoria: m.categoria || '—', ter: m.ter || 0 },
+        e: { isin: m.isin, name: m.name || m.isin },
         pA: 0,
+        vA: 0,
         pPost: parseFloat(m.nuovaPct || 0),
         cambio: 'nuovo',
         isNew: true,
       }));
     const tutte = [...righeEsistenti, ...aggiunteNew];
-    return tutte.map(r => {
+
+    // Calcola totali
+    let sumPA = 0, sumPPost = 0, sumVA = 0, sumVPost = 0;
+    const rows = tutte.map(r => {
+      const vPost = (r.pPost / 100) * totInvestito;
+      sumPA += r.pA;
+      sumPPost += r.pPost;
+      sumVA += r.vA;
+      sumVPost += vPost;
       const colorePost = r.pPost === 0 ? '#991b1b' : r.cambio === 'nuovo' ? '#166534' : r.cambio === 'su' ? '#0e7490' : r.cambio === 'giù' ? '#b45309' : '#666';
       const stilePost = r.cambio === 'invariato' ? 'color:#999' : `color:${colorePost};font-weight:600`;
+      const tagPost = r.isNew ? ' <span style="font-size:8pt;font-weight:400">(nuovo)</span>' : r.cambio === 'rimosso' ? ' <span style="font-size:8pt;font-weight:400">(rimosso)</span>' : '';
       return `<tr${r.isNew ? ' style="background:#f0fdf4"' : ''}>
-        <td>${r.e.name || r.e.isin}</td>
+        <td style="max-width:200px">${r.e.name || r.e.isin}</td>
         <td style="font-family:monospace;font-size:8.5pt">${r.e.isin}</td>
-        <td>${r.e.categoria || '—'}</td>
-        <td>${(r.e.ter || 0).toFixed(2)}%</td>
         <td class="num">${r.pA.toFixed(1)}%</td>
-        <td class="num" style="${stilePost}">${r.pPost.toFixed(1)}%${r.isNew ? ' <span style="font-size:8pt;font-weight:400">(nuovo)</span>' : r.cambio === 'rimosso' ? ' <span style="font-size:8pt;font-weight:400">(rimosso)</span>' : ''}</td>
+        <td class="num">${r.vA > 0 ? '€'+fmt0(r.vA) : '—'}</td>
+        <td class="num" style="${stilePost}">${r.pPost.toFixed(1)}%${tagPost}</td>
+        <td class="num" style="${stilePost}">${vPost > 0 ? '€'+fmt0(vPost) : '—'}</td>
       </tr>`;
     }).join('');
+
+    // Riga TOTALE
+    const sommaPostOk = Math.abs(sumPPost - 100) < 0.5;
+    const totaleRow = `<tr style="background:#fef3c7;font-weight:700;border-top:2px solid #d4b95a">
+      <td colspan="2">TOTALE</td>
+      <td class="num">${sumPA.toFixed(1)}%</td>
+      <td class="num">€${fmt0(sumVA)}</td>
+      <td class="num" style="${sommaPostOk ? '' : 'color:#b45309'}">${sumPPost.toFixed(1)}%${sommaPostOk ? '' : ' ⚠'}</td>
+      <td class="num">€${fmt0(sumVPost)}</td>
+    </tr>`;
+
+    return rows + totaleRow;
   })()}
 </table>
+${(() => {
+  // Verifica somma pesi post
+  let sumPost = 0;
+  (modifiche || []).forEach(m => {
+    if (m.azione === 'ribilancia' || m.azione === 'aggiungi' || m.azione === 'seleziona') {
+      sumPost += parseFloat(m.nuovaPct || 0);
+    }
+  });
+  // Aggiungi pesi degli ETF non toccati
+  etfSelezionati.forEach(e => {
+    const m = (modifiche || []).find(x => x.isin === e.isin);
+    if (!m) {
+      const v = e.acquisto ? (e.acquisto.quantita * e.acquisto.quotazioneAcquisto) : 0;
+      const p = totInvestito > 0 ? (v / totInvestito * 100) : 0;
+      sumPost += p;
+    }
+  });
+  return Math.abs(sumPost - 100) > 0.5
+    ? `<p style="font-size:9.5pt;color:#b45309;margin:6px 0 0">⚠️ La somma dei pesi post-modifiche è ${sumPost.toFixed(1)}% (non 100%). Le proposte AI potrebbero richiedere un aggiustamento manuale prima dell'esecuzione.</p>`
+    : '';
+})()}
 
 ${modifiche && modifiche.length > 0 ? '' : '<p style="color:#22c55e;font-weight:600">✓ Il portafoglio è già conforme alle regole del profilo.</p>'}
 
