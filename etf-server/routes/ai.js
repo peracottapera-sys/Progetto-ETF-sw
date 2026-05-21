@@ -920,12 +920,18 @@ R8 — CRITICO: JSON valido e COMPLETO. Non troncare.`;
       return (testo.match(re)?.[1] || '').trim();
     };
 
-    // Semafori
+    // Semafori — chiavi attese (escludi tutto il resto, es. righe JSON sfuggite)
+    const SEMAFORI_VALIDI = ['diversificazione','correlazione','volatilita','drawdown','ter','azionario','usa'];
     const semaforiRaw = getSection('SEMAFORI', 'METRICHE');
     const semafori = {};
     semaforiRaw.split('\n').forEach(r => {
       const p = r.trim().split(':');
-      if (p.length >= 3) semafori[p[0]] = { stato: p[1], commento: p.slice(2).join(':') };
+      if (p.length >= 3) {
+        const chiave = p[0].toLowerCase().trim().replace(/['"]/g, '');
+        if (SEMAFORI_VALIDI.includes(chiave)) {
+          semafori[chiave] = { stato: p[1].trim(), commento: p.slice(2).join(':').trim() };
+        }
+      }
     });
 
     // Metriche (rendimento atteso)
@@ -996,7 +1002,17 @@ R8 — CRITICO: JSON valido e COMPLETO. Non troncare.`;
       }
     }
 
-    res.json({ semafori, puntiChiave, analisiDettagliata, modifiche, metriche: { rendAttesoLordo } });
+    // Pulizia testo analisi: rimuovi blocchi tecnici (JSON, MODIFICHE_JSON, separatori) 
+    // che possono sfuggire dal parser sezioni. Sia UI che PDF beneficiano.
+    const analisiDettagliataClean = analisiDettagliata
+      .replace(/```json[\s\S]*?```/gi, '')
+      .replace(/MODIFICHE_JSON\s*:[\s\S]*$/i, '')
+      .replace(/^\s*\[[\s\S]*?\]\s*$/gm, '')
+      .replace(/^---+\s*$/gm, '')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+
+    res.json({ semafori, puntiChiave, analisiDettagliata: analisiDettagliataClean, modifiche, metriche: { rendAttesoLordo } });
   } catch (err) {
     console.error('[analisi]', err.message);
     res.status(500).json({ error: 'Errore analisi AI: ' + err.message });
@@ -1327,6 +1343,13 @@ ${puntiChiave && puntiChiave.length > 0 ? `
 <h2>Analisi Dettagliata</h2>
 <div class="analisi-body">
 ${analisiDettagliata
+  // Pulizia: rimuovi blocchi tecnici che possono sfuggire dal parser sezioni
+  .replace(/```json[\s\S]*?```/gi, '')                 // blocchi ```json ... ```
+  .replace(/MODIFICHE_JSON\s*:[\s\S]*$/i, '')           // sezione MODIFICHE_JSON e oltre
+  .replace(/^\s*\[[\s\S]*?\]\s*$/gm, '')                // array JSON solitari
+  .replace(/^---+\s*$/gm, '')                            // separatori --- isolati
+  .replace(/^>\s*\*\*Nota[\s\S]*?(?=\n\n|\n[A-Z]|$)/gm, '') // blocchi nota tecnici opzionali
+  .trim()
   .replace(/^## (.+)$/gm,'<h3 style="color:#eab308;margin:14px 0 6px">$1</h3>')
   .replace(/^### (.+)$/gm,'<h4 style="margin:10px 0 4px">$1</h4>')
   .replace(/^\*\*(.+)\*\*$/gm,'<strong>$1</strong>')
@@ -1338,12 +1361,60 @@ ${analisiDettagliata
 </div>
 
 <h2>Composizione Portafoglio</h2>
+<p style="font-size:9.5pt;color:#555;margin:-2px 0 8px">
+  Peso attuale = quota corrente di ogni ETF nel portafoglio. Peso post = quota target dopo le modifiche AI applicate (in grigio dove invariato).
+</p>
 <table>
-  <tr><th>ETF</th><th>ISIN</th><th>Categoria</th><th>TER%</th><th>Perf.1A</th><th>Valore €</th></tr>
-  ${etfSelezionati.map(e=>{
-    const val = e.acquisto ? (e.acquisto.quantita*e.acquisto.quotazioneAcquisto) : 0;
-    return `<tr><td>${e.name||e.isin}</td><td style="font-family:monospace;font-size:8.5pt">${e.isin}</td><td>${e.categoria||'—'}</td><td>${(e.ter||0).toFixed(2)}%</td><td>${e.perf1y>0?'+':''}${(e.perf1y||0).toFixed(1)}%</td><td>${val>0?'€'+fmt0(val):'—'}</td></tr>`;
-  }).join('')}
+  <tr><th>ETF</th><th>ISIN</th><th>Categoria</th><th>TER%</th><th style="text-align:right">Peso attuale</th><th style="text-align:right">Peso post</th></tr>
+  ${(() => {
+    // Mappa per ISIN delle modifiche per accesso rapido
+    const modifichePerIsin = {};
+    (modifiche || []).forEach(m => { modifichePerIsin[m.isin] = m; });
+    // Calcolo pesi attuali (sul valore di carico)
+    const pesoAttuale = (e) => {
+      const val = e.acquisto ? (e.acquisto.quantita * e.acquisto.quotazioneAcquisto) : 0;
+      return totInvestito > 0 ? (val / totInvestito * 100) : 0;
+    };
+    // Pesi post-modifica: per ribilancia/deseleziona usa nuovaPct, altrimenti mantiene il peso attuale
+    const righeEsistenti = etfSelezionati.map(e => {
+      const pA = pesoAttuale(e);
+      const m = modifichePerIsin[e.isin];
+      let pPost;
+      let cambio = '';
+      if (m) {
+        if (m.azione === 'deseleziona') { pPost = 0; cambio = 'rimosso'; }
+        else if (m.azione === 'ribilancia') { pPost = parseFloat(m.nuovaPct || 0); cambio = (pPost > pA ? 'su' : pPost < pA ? 'giù' : 'invariato'); }
+        else { pPost = pA; }
+      } else {
+        pPost = pA;
+        cambio = 'invariato';
+      }
+      return { e, pA, pPost, cambio, isNew: false };
+    });
+    // Aggiunte nuove dal MODIFICHE_JSON
+    const aggiunteNew = (modifiche || [])
+      .filter(m => (m.azione === 'aggiungi' || m.azione === 'seleziona') && !etfSelezionati.some(e => e.isin === m.isin))
+      .map(m => ({
+        e: { isin: m.isin, name: m.name || m.isin, categoria: m.categoria || '—', ter: m.ter || 0 },
+        pA: 0,
+        pPost: parseFloat(m.nuovaPct || 0),
+        cambio: 'nuovo',
+        isNew: true,
+      }));
+    const tutte = [...righeEsistenti, ...aggiunteNew];
+    return tutte.map(r => {
+      const colorePost = r.pPost === 0 ? '#991b1b' : r.cambio === 'nuovo' ? '#166534' : r.cambio === 'su' ? '#0e7490' : r.cambio === 'giù' ? '#b45309' : '#666';
+      const stilePost = r.cambio === 'invariato' ? 'color:#999' : `color:${colorePost};font-weight:600`;
+      return `<tr${r.isNew ? ' style="background:#f0fdf4"' : ''}>
+        <td>${r.e.name || r.e.isin}</td>
+        <td style="font-family:monospace;font-size:8.5pt">${r.e.isin}</td>
+        <td>${r.e.categoria || '—'}</td>
+        <td>${(r.e.ter || 0).toFixed(2)}%</td>
+        <td class="num">${r.pA.toFixed(1)}%</td>
+        <td class="num" style="${stilePost}">${r.pPost.toFixed(1)}%${r.isNew ? ' <span style="font-size:8pt;font-weight:400">(nuovo)</span>' : r.cambio === 'rimosso' ? ' <span style="font-size:8pt;font-weight:400">(rimosso)</span>' : ''}</td>
+      </tr>`;
+    }).join('');
+  })()}
 </table>
 
 ${modifiche && modifiche.length > 0 ? '' : '<p style="color:#22c55e;font-weight:600">✓ Il portafoglio è già conforme alle regole del profilo.</p>'}
