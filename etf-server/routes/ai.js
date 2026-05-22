@@ -634,9 +634,14 @@ router.post('/analisi', async (req, res) => {
   const etfConAcquisto = etfSelezionati.filter(e => e.acquisto);
   const totInvestito = etfConAcquisto.reduce((s, e) => s + (e.acquisto.quantita * e.acquisto.quotazioneAcquisto), 0);
   const totAttuale = etfConAcquisto.reduce((s, e) => s + (e.acquisto.quantita * (e.quotazione || e.acquisto.quotazioneAcquisto)), 0);
-  const totValore = etfConAcquisto.reduce((s,e) => s + e.acquisto.quantita * e.acquisto.quotazioneAcquisto, 0);
-  const terPonderato = totValore > 0
-    ? etfConAcquisto.reduce((s,e) => s + e.ter * (e.acquisto.quantita * e.acquisto.quotazioneAcquisto) / totValore, 0)
+  const totValore = totInvestito; // alias storico (valore di carico) — usato solo per P&L e fisco
+  // Helper: valore ATTUALE di un ETF (quote × prezzo corrente). Base per TUTTE le percentuali di allocazione.
+  const valAtt = (e) => e.acquisto ? (e.acquisto.quantita * (e.quotazione || e.acquisto.quotazioneAcquisto)) : 0;
+  // Denominatore per le allocazioni: valore attuale se disponibile, altrimenti carico
+  const baseAllocazione = totAttuale > 0 ? totAttuale : totInvestito;
+  // TER ponderato sul valore ATTUALE
+  const terPonderato = baseAllocazione > 0
+    ? etfConAcquisto.reduce((s,e) => s + e.ter * valAtt(e) / baseAllocazione, 0)
     : (etfSelezionati.reduce((s,e) => s + e.ter, 0) / (etfSelezionati.length || 1));
   const regoleBase = REGOLE_PROFILO[portfolio.riskProfile] || REGOLE_PROFILO.Bilanciato;
   const regole = modulaRegolePerOrizzonte(regoleBase, portfolio.orizzonteAnni || 5);
@@ -650,10 +655,10 @@ router.post('/analisi', async (req, res) => {
     ? etfConDatiDD.filter(e => Math.abs(e.maxDrawdown) > maxDDabs)
     : [];
 
-  // Calcola azionario attuale
+  // Calcola azionario attuale (sul valore corrente)
   const catAzionarie = ['Azionario Globale','Azionario USA','Azionario Europa','Azionario Emergenti','Azionario Tematico','Azionario Pacifico'];
-  const valAzionario = etfConAcquisto.filter(e => catAzionarie.some(c => (e.categoria||'').includes(c.replace('Azionario ','')))).reduce((s,e) => s + e.acquisto.quantita * e.acquisto.quotazioneAcquisto, 0);
-  const percAzionario = totValore > 0 ? (valAzionario / totValore * 100).toFixed(1) : 'N/D';
+  const valAzionario = etfConAcquisto.filter(e => catAzionarie.some(c => (e.categoria||'').includes(c.replace('Azionario ','')))).reduce((s,e) => s + valAtt(e), 0);
+  const percAzionario = baseAllocazione > 0 ? (valAzionario / baseAllocazione * 100).toFixed(1) : 'N/D';
 
   // ── CALCOLO ESPOSIZIONE USA EFFETTIVA ─────────────────────────────────
   // Per ogni ETF: peso_portafoglio × USA_breakdown%. Somma = USA reale del portafoglio.
@@ -689,9 +694,9 @@ router.post('/analisi', async (req, res) => {
   const expoUsaDettaglio = [];
   let expoUsaTotale = 0;
   let pesoTotPerUsa = 0;
-  if (etfConAcquisto.length > 0 && totValore > 0) {
+  if (etfConAcquisto.length > 0 && baseAllocazione > 0) {
     for (const e of etfConAcquisto) {
-      const peso = (e.acquisto.quantita * e.acquisto.quotazioneAcquisto) / totValore * 100;
+      const peso = valAtt(e) / baseAllocazione * 100;
       let usaPct = null;
       let fonte = '';
       if (e.countryBreakdown && typeof e.countryBreakdown === 'object') {
@@ -792,10 +797,13 @@ Peso contesto macro: ${regole.pesoMacro || 'MEDIO'}
 - ${regole.note || ''}
 
 ## ETF SELEZIONATI (${etfSelezionati.length}):
+I pesi sono calcolati sul VALORE ATTUALE del portafoglio (quote × prezzo corrente), non sul valore di carico. Quando proponi nuovaPct, ragiona su questi pesi attuali.
 ${etfSelezionati.map(e => {
     const dd = e.maxDrawdown && e.maxDrawdown !== 0 ? e.maxDrawdown+'%' : 'N/D(non disponibile)';
     const vol = e.variabilita && e.variabilita !== 0 ? e.variabilita+'%' : 'N/D(non disponibile)';
-    let line = `- ${e.name} (${e.isin}) | ${e.categoria||'N/D'}${e.area_geografica ? ' · '+e.area_geografica : ''}${e.smartBeta ? ' ['+e.smartBeta+']' : ''}${e.indexName ? ' · Idx:'+e.indexName.slice(0,30) : ''} | TER:${e.ter}% | Vol1A:${vol} | MaxDD1A:${dd} | Perf1A:${e.perf1y||0}% | Perf5A:${e.perf5y||0}% | AUM:${e.capitalizzazione||'N/D'}M€`;
+    const pesoAtt = baseAllocazione > 0 ? (valAtt(e) / baseAllocazione * 100) : 0;
+    const pesoStr = e.acquisto ? `Peso attuale:${pesoAtt.toFixed(1)}%` : 'Peso attuale:N/D(no acquisto)';
+    let line = `- ${e.name} (${e.isin}) | ${e.categoria||'N/D'}${e.area_geografica ? ' · '+e.area_geografica : ''}${e.smartBeta ? ' ['+e.smartBeta+']' : ''}${e.indexName ? ' · Idx:'+e.indexName.slice(0,30) : ''} | ${pesoStr} | TER:${e.ter}% | Vol1A:${vol} | MaxDD1A:${dd} | Perf1A:${e.perf1y||0}% | Perf5A:${e.perf5y||0}% | AUM:${e.capitalizzazione||'N/D'}M€`;
     const geo = topNBreakdown(e.countryBreakdown, 3);
     const sec = topNBreakdown(e.sectorBreakdown, 3);
     if (geo || sec) {
@@ -839,6 +847,7 @@ PUNTI_CHIAVE:
 - punto 2
 - punto 3
 - punto 4 (max 4 punti)
+REGOLA PUNTI_CHIAVE: ogni punto è una FRASE COMPIUTA e leggibile, una conclusione per l'utente finale. VIETATO inserire calcoli aritmetici, formule, dump di numeri o passaggi di lavoro (es. NON scrivere "MSCI World: 25% × 67.3% = 16.8%" o "Totale: 90.8% → aggiusto a..."). I calcoli vanno SOLO dentro ANALISI_DETTAGLIATA come testo discorsivo, MAI nei punti chiave. Massimo 4 punti, ognuno autoconclusivo.
 
 ANALISI_DETTAGLIATA:
 [Analisi completa per il PDF — 400-600 parole, NO tabelle markdown con |, usa elenchi puntati e paragrafi. Valuta: composizione, rischio, costi, performance attesa, contesto macro, confronto con regole profilo.
@@ -858,7 +867,7 @@ IMPORTANTE sul campo nuovaPct:
 - Per "aggiungi" o "seleziona": nuovaPct = quota target che il nuovo ETF avrà nel portafoglio (es. 8 per l'8%). OBBLIGATORIO, MAI metterlo a 0. Valore tipico tra 5% e 25%. Non superare 30%.
 - Per "deseleziona": nuovaPct non richiesto (lo ometti o metti 0).
 - ATTENZIONE: nuovaPct = 0 per un'azione "aggiungi" è un ERRORE. Significherebbe "compra ma con 0% di peso", che non ha senso. Se davvero non sai quale peso assegnare, metti 10 (default conservativo).
-- SOMMA PESI DEVE ESSERE 100%: la somma di TUTTI i pesi finali nel portafoglio (= ${etfSelezionati.length} ETF dopo le modifiche) deve essere ESATTAMENTE 100% (tolleranza ±0.5). Considera ogni ETF: se è in "ribilancia" usa nuovaPct, se in "aggiungi/seleziona" usa nuovaPct, se in "deseleziona" usa 0, se NON è in modifiche mantiene il peso attuale (riportato in "ETF SELEZIONATI" sopra come "valoreCarico / totale"). Prima di rispondere fai la somma a mente o esplicitamente: deve dare ~100. Se non torna, aggiusta i ribilanci finché torna.
+- SOMMA PESI DEVE ESSERE 100%: la somma di TUTTI i pesi finali nel portafoglio (= ${etfSelezionati.length} ETF dopo le modifiche) deve essere ESATTAMENTE 100% (tolleranza ±0.5). Considera ogni ETF: se è in "ribilancia" usa nuovaPct, se in "aggiungi/seleziona" usa nuovaPct, se in "deseleziona" usa 0, se NON è in modifiche mantiene il "Peso attuale:%" riportato in "ETF SELEZIONATI" sopra. Prima di rispondere fai la somma esplicitamente: deve dare ~100. Se non torna, aggiusta i ribilanci finché torna.
 
 REGOLE ASSOLUTE per MODIFICHE_JSON — LEGGILE TUTTE PRIMA DI RISPONDERE:
 
@@ -953,7 +962,14 @@ R8 — CRITICO: JSON valido e COMPLETO. Non troncare.`;
     const puntiChiave = puntiRaw.split('\n')
       .filter(r => r.trim().startsWith('-'))
       .map(r => r.replace(/^-\s*/, '').trim())
-      .filter(r => r.length > 0 && !/^-+$/.test(r));  // scarta righe vuote o "---"
+      .filter(r => r.length > 0 && !/^-+$/.test(r))
+      // scarta righe che sono chiaramente calcoli scratch dell'AI (contengono → o = con numeri, o sono solo "X: Y%")
+      .filter(r => {
+        if (/[→=]/.test(r) && /\d/.test(r)) return false;       // "World ex-USA: 21.2% × 0% = 0%" o "Totale → aggiusto"
+        if (/^\*?\*?[A-Za-z][\w\s-]{0,30}:\s*[\d.]+%?\*?\*?$/.test(r)) return false; // "MSCI World: 25.0%"
+        if (/^\*?\*?totale/i.test(r)) return false;              // "Totale: 90.8%"
+        return true;
+      });
 
     // Analisi dettagliata
     const analisiDettagliata = getSection('ANALISI_DETTAGLIATA', 'MODIFICHE_JSON');
@@ -1044,6 +1060,8 @@ router.post('/genera-pdf', authMiddleware, (req, res) => {
 
   const etfSelezionati = (portfolio.etfs||[]).filter(e=>e.selected);
   const totInvestito = etfSelezionati.filter(e=>e.acquisto).reduce((s,e)=>s+(e.acquisto.quantita*e.acquisto.quotazioneAcquisto),0);
+  const totAttuale = etfSelezionati.filter(e=>e.acquisto).reduce((s,e)=>s+(e.acquisto.quantita*(e.quotazione||e.acquisto.quotazioneAcquisto)),0);
+  const baseAlloc = totAttuale > 0 ? totAttuale : totInvestito;
   const fmt = n => n.toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:2});
   const fmt0 = n => n.toLocaleString('it-IT',{maximumFractionDigits:0});
 
@@ -1072,8 +1090,8 @@ router.post('/genera-pdf', authMiddleware, (req, res) => {
       if (m.azione === 'deseleziona') {
         qDaVendere = qAttuale;
       } else if (m.azione === 'ribilancia' && etfCorrente) {
-        // Calcola la quantità target dalla nuova %. Base: totInvestito (simuliamo redistribuzione isocapitale)
-        const valoreTarget = (parseFloat(m.nuovaPct || 0) / 100) * totInvestito;
+        // Calcola la quantità target dalla nuova %. Base: VALORE ATTUALE (coerente con i pesi mostrati all'AI)
+        const valoreTarget = (parseFloat(m.nuovaPct || 0) / 100) * baseAlloc;
         const qTarget = prezzoAtt > 0 ? Math.round((valoreTarget / prezzoAtt) * 10000) / 10000 : 0;
         if (qTarget < qAttuale) {
           qDaVendere = Math.round((qAttuale - qTarget) * 10000) / 10000;
@@ -1098,7 +1116,7 @@ router.post('/genera-pdf', authMiddleware, (req, res) => {
             // Fallback prudente: 10% del portafoglio diviso per il numero di aggiunte (max 10% ognuna)
             pctTarget = Math.min(10, 20 / aggIscritte);
           }
-          const valoreTarget = (pctTarget / 100) * totInvestito;
+          const valoreTarget = (pctTarget / 100) * baseAlloc;
           qDaComprare = Math.round((valoreTarget / prezzoAcq2) * 10000) / 10000;
           prezzoComprare = prezzoAcq2;
         } else {
@@ -1389,8 +1407,20 @@ ${analisiDettagliata
   ${(() => {
     const modifichePerIsin = {};
     (modifiche || []).forEach(m => { modifichePerIsin[m.isin] = m; });
-    const valAttuale = (e) => e.acquisto ? (e.acquisto.quantita * e.acquisto.quotazioneAcquisto) : 0;
-    const pesoAttuale = (e) => totInvestito > 0 ? (valAttuale(e) / totInvestito * 100) : 0;
+    // Valore ATTUALE (quote × prezzo corrente) — coerente con i pesi mostrati all'AI
+    const valAttuale = (e) => e.acquisto ? (e.acquisto.quantita * (e.quotazione || e.acquisto.quotazioneAcquisto)) : 0;
+    const baseAlloc = totAttuale > 0 ? totAttuale : totInvestito;
+    const pesoAttuale = (e) => baseAlloc > 0 ? (valAttuale(e) / baseAlloc * 100) : 0;
+
+    // Mappa acquisti automatici di ridistribuzione dal simulatore (per ETF non toccati dalle modifiche AI)
+    const ridistribPerIsin = {};
+    if (simulazione && simulazione.acquisti) {
+      simulazione.acquisti.forEach(a => {
+        if (a.tipoAzione === 'ridistribuzione') {
+          ridistribPerIsin[a.isin] = (ridistribPerIsin[a.isin] || 0) + (a.controvalore || 0);
+        }
+      });
+    }
 
     const righeEsistenti = etfSelezionati.map(e => {
       const pA = pesoAttuale(e);
@@ -1403,8 +1433,11 @@ ${analisiDettagliata
         else if (m.azione === 'ribilancia') { pPost = parseFloat(m.nuovaPct || 0); cambio = (pPost > pA ? 'su' : pPost < pA ? 'giù' : 'invariato'); }
         else { pPost = pA; cambio = 'invariato'; }
       } else {
-        pPost = pA;
-        cambio = 'invariato';
+        // ETF non toccato dalle modifiche AI: peso post = peso attuale + redistribuzione automatica
+        const extra = ridistribPerIsin[e.isin] || 0;
+        const valPost = vA + extra;
+        pPost = baseAlloc > 0 ? (valPost / baseAlloc * 100) : pA;
+        cambio = extra > 1 ? 'ridistribuito' : 'invariato';
       }
       return { e, pA, pPost, vA, cambio, isNew: false };
     });
@@ -1420,15 +1453,14 @@ ${analisiDettagliata
       }));
     const tutte = [...righeEsistenti, ...aggiunteNew];
 
-    // Calcola totali
     let sumPA = 0, sumPPost = 0, sumVA = 0, sumVPost = 0;
     const rows = tutte.map(r => {
-      const vPost = (r.pPost / 100) * totInvestito;
+      const vPost = (r.pPost / 100) * baseAlloc;
       sumPA += r.pA;
       sumPPost += r.pPost;
       sumVA += r.vA;
       sumVPost += vPost;
-      const colorePost = r.pPost === 0 ? '#991b1b' : r.cambio === 'nuovo' ? '#166534' : r.cambio === 'su' ? '#0e7490' : r.cambio === 'giù' ? '#b45309' : '#666';
+      const colorePost = r.pPost === 0 ? '#991b1b' : r.cambio === 'nuovo' ? '#166534' : r.cambio === 'su' ? '#0e7490' : r.cambio === 'giù' ? '#b45309' : r.cambio === 'ridistribuito' ? '#0e7490' : '#666';
       const stilePost = r.cambio === 'invariato' ? 'color:#999' : `color:${colorePost};font-weight:600`;
       const tagPost = r.isNew ? ' <span style="font-size:8pt;font-weight:400">(nuovo)</span>' : r.cambio === 'rimosso' ? ' <span style="font-size:8pt;font-weight:400">(rimosso)</span>' : '';
       return `<tr${r.isNew ? ' style="background:#f0fdf4"' : ''}>
@@ -1441,7 +1473,6 @@ ${analisiDettagliata
       </tr>`;
     }).join('');
 
-    // Riga TOTALE
     const sommaPostOk = Math.abs(sumPPost - 100) < 0.5;
     const totaleRow = `<tr style="background:#fef3c7;font-weight:700;border-top:2px solid #d4b95a">
       <td colspan="2">TOTALE</td>
@@ -1462,12 +1493,13 @@ ${(() => {
       sumPost += parseFloat(m.nuovaPct || 0);
     }
   });
-  // Aggiungi pesi degli ETF non toccati
+  // Aggiungi pesi degli ETF non toccati (sul valore attuale)
+  const baseAllocCheck = totAttuale > 0 ? totAttuale : totInvestito;
   etfSelezionati.forEach(e => {
     const m = (modifiche || []).find(x => x.isin === e.isin);
     if (!m) {
-      const v = e.acquisto ? (e.acquisto.quantita * e.acquisto.quotazioneAcquisto) : 0;
-      const p = totInvestito > 0 ? (v / totInvestito * 100) : 0;
+      const v = e.acquisto ? (e.acquisto.quantita * (e.quotazione || e.acquisto.quotazioneAcquisto)) : 0;
+      const p = baseAllocCheck > 0 ? (v / baseAllocCheck * 100) : 0;
       sumPost += p;
     }
   });
