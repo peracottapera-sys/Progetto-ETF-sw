@@ -239,6 +239,7 @@ function AIModal({ portfolio, onClose, onApplied }) {
 
   const handlePDF = async () => {
     setPdfLoading(true);
+    console.log('[AIModal handlePDF] modifiche allo stato attuale:', modifiche.length, modifiche);
     try {
       // Aggiorna i prezzi degli ETF per avere una simulazione fiscale accurata
       let portfolioAggiornato = portfolio;

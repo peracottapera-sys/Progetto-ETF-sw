@@ -847,7 +847,10 @@ PUNTI_CHIAVE:
 - punto 2
 - punto 3
 - punto 4 (max 4 punti)
-REGOLA PUNTI_CHIAVE: ogni punto è una FRASE COMPIUTA e leggibile, una conclusione per l'utente finale. VIETATO inserire calcoli aritmetici, formule, dump di numeri o passaggi di lavoro (es. NON scrivere "MSCI World: 25% × 67.3% = 16.8%" o "Totale: 90.8% → aggiusto a..."). I calcoli vanno SOLO dentro ANALISI_DETTAGLIATA come testo discorsivo, MAI nei punti chiave. Massimo 4 punti, ognuno autoconclusivo.
+REGOLA PUNTI_CHIAVE: ogni punto è una FRASE COMPIUTA e leggibile, una conclusione/osservazione per l'utente finale. VIETATO:
+- inserire calcoli aritmetici, formule, dump di numeri (es. "MSCI World: 25% × 67.3% = 16.8%")
+- elencare le azioni operative ETF per ETF (es. "MSCI World: 32% (ribilancia da 53.7%)", "Momentum: 10% (ribilancia da 14.5%)"). Queste vanno SOLO nel MODIFICHE_JSON, MAI nei punti chiave.
+I punti chiave sono OSSERVAZIONI sintetiche (es. "Esposizione USA al 47% viola il limite del 30%"), non istruzioni operative né liste di ribilanciamenti. Massimo 4 punti, ognuno autoconclusivo. Le azioni dettagliate stanno nel JSON e nella tabella, non qui.
 
 ANALISI_DETTAGLIATA:
 [Analisi completa per il PDF — 400-600 parole, NO tabelle markdown con |, usa elenchi puntati e paragrafi. Valuta: composizione, rischio, costi, performance attesa, contesto macro, confronto con regole profilo.
@@ -871,8 +874,14 @@ IMPORTANTE sul campo nuovaPct:
 
 REGOLE ASSOLUTE per MODIFICHE_JSON — LEGGILE TUTTE PRIMA DI RISPONDERE:
 
+R0 — COERENZA TESTO/JSON: se nell'analisi testuale (ANALISI_DETTAGLIATA o PUNTI_CHIAVE) descrivi modifiche da fare (es. "ridurre MSCI World al 32%", "aumentare World ex-USA"), queste modifiche DEVONO comparire nel MODIFICHE_JSON come voci concrete. È un ERRORE GRAVE descrivere una soluzione a parole e poi lasciare il JSON vuoto. Se identifichi una violazione e proponi una correzione nel testo, formalizzala SEMPRE nel JSON.
+
 R1 — PORTAFOGLIO RECENTE: questo portafoglio ha ${giorniVita} giorni.
-${giorniVita < 7 ? 'PORTAFOGLIO NUOVO (<7gg): se rispetta tutti i vincoli fondamentali scrivi []. Suggerisci al massimo 1 "ribilancia", ZERO "deseleziona".' : ''}
+${giorniVita < 7
+  ? (violazioneUsa || (percAzionario !== 'N/D' && (parseFloat(percAzionario) < regole.azionarioTarget - regole.azionarioRange || parseFloat(percAzionario) > regole.azionarioTarget + regole.azionarioRange))
+      ? '⚠️ ECCEZIONE: il portafoglio è recente MA ha una VIOLAZIONE HARD di un vincolo fondamentale (Max USA o quota azionaria fuori range). In questo caso R1 NON si applica: DEVI proporre TUTTE le modifiche necessarie a rientrare nei vincoli, anche se sono molte (es. ridurre l\'ETF problematico + aumentarne altri). Le violazioni hard hanno priorità assoluta sulla "freschezza" del portafoglio.'
+      : 'PORTAFOGLIO NUOVO (<7gg) e SENZA violazioni hard: se rispetta i vincoli fondamentali scrivi []. Suggerisci al massimo 1 "ribilancia", ZERO "deseleziona".')
+  : ''}
 
 R2 — MINIMO ETF: dopo TUTTE le modifiche devono esserci ALMENO ${regole.minETF} ETF selezionati.
 Situazione attuale: ${etfSelezionati.length} ETF selezionati.
@@ -960,14 +969,17 @@ R8 — CRITICO: JSON valido e COMPLETO. Non troncare.`;
     // Punti chiave
     const puntiRaw = getSection('PUNTI_CHIAVE', 'ANALISI_DETTAGLIATA');
     const puntiChiave = puntiRaw.split('\n')
-      .filter(r => r.trim().startsWith('-'))
-      .map(r => r.replace(/^-\s*/, '').trim())
-      .filter(r => r.length > 0 && !/^-+$/.test(r))
-      // scarta righe che sono chiaramente calcoli scratch dell'AI (contengono → o = con numeri, o sono solo "X: Y%")
+      .filter(r => /^\s*[-*]/.test(r.trim()) || r.trim().startsWith('•'))
+      .map(r => r.replace(/^\s*[-*•]\s*/, '').trim())
+      .filter(r => r.length > 0 && !/^[-*•]+$/.test(r))
+      // Scarta righe che sono calcoli/dump operativi, non osservazioni
       .filter(r => {
-        if (/[→=]/.test(r) && /\d/.test(r)) return false;       // "World ex-USA: 21.2% × 0% = 0%" o "Totale → aggiusto"
-        if (/^\*?\*?[A-Za-z][\w\s-]{0,30}:\s*[\d.]+%?\*?\*?$/.test(r)) return false; // "MSCI World: 25.0%"
-        if (/^\*?\*?totale/i.test(r)) return false;              // "Totale: 90.8%"
+        const plain = r.replace(/\*\*/g, '').trim();
+        if (/[→=]/.test(plain) && /\d/.test(plain)) return false;          // "X = 16.8%" o "Totale → ..."
+        if (/^[A-Za-z][\w\s.-]{0,35}:\s*[\d.]+\s*%?\s*\(/.test(plain)) return false; // "MSCI World: 32% (ribilancia da 53.7%)"
+        if (/^[A-Za-z][\w\s.-]{0,35}:\s*[\d.]+\s*%?\s*$/.test(plain)) return false;   // "MSCI World: 32%"
+        if (/\(ribilanci|invariato\)|\(ribilancia da|\(rimoss|\(nuovo\)/i.test(plain)) return false; // contiene tag azione
+        if (/^totale/i.test(plain)) return false;
         return true;
       });
 
@@ -989,10 +1001,60 @@ R8 — CRITICO: JSON valido e COMPLETO. Non troncare.`;
 
     console.log(`  ✓ Analisi OK | semafori:${Object.keys(semafori).length} | punti:${puntiChiave.length} | modifiche:${modifiche.length}${rendAttesoLordo != null ? ` | rend:${rendAttesoLordo}%` : ''}`);
 
-    // DEBUG TEMP: se modifiche vuote ma il portafoglio ha violazioni, dump della parte finale della risposta
-    if (modifiche.length === 0) {
-      console.log(`  [modifiche DEBUG] Nessuna modifica parsata. Ultimi 1200 char della risposta AI:`);
-      console.log(testo.slice(-1200));
+    // ── RETRY AUTOMATICO: modifiche vuote ma violazione hard presente ──────
+    // L'AI a volte descrive la soluzione nel testo ma non produce il MODIFICHE_JSON.
+    // Se rileviamo una violazione hard (USA o azionario fuori range) senza modifiche,
+    // richiamiamo l'AI con un prompt mirato che chiede SOLO il JSON.
+    const azionarioFuoriRange = percAzionario !== 'N/D' &&
+      (parseFloat(percAzionario) < regole.azionarioTarget - regole.azionarioRange ||
+       parseFloat(percAzionario) > regole.azionarioTarget + regole.azionarioRange);
+    const violazioneHard = violazioneUsa || azionarioFuoriRange;
+
+    if (modifiche.length === 0 && violazioneHard) {
+      console.log(`  [retry-modifiche] Modifiche vuote + violazione hard (USA:${violazioneUsa} azionario:${azionarioFuoriRange}). Richiamo l'AI per il JSON.`);
+      const promptRetry = `Hai appena analizzato il portafoglio "${portfolio.name}" (profilo ${portfolio.riskProfile}) e hai prodotto questa analisi:
+
+${analisiDettagliata.slice(0, 2000)}
+
+PROBLEMA: l'analisi rileva una violazione ma NON hai prodotto il blocco MODIFICHE_JSON con le correzioni concrete.
+${violazioneUsa ? `- VIOLAZIONE USA: esposizione ${expoUsaPct}% supera il limite ${maxUsaNum}%. Devi ridurre gli ETF ad alta esposizione USA e aumentare quelli a 0% USA.` : ''}
+${azionarioFuoriRange ? `- VIOLAZIONE AZIONARIO: quota ${percAzionario}% fuori dal range ${regole.azionarioTarget-regole.azionarioRange}%-${regole.azionarioTarget+regole.azionarioRange}%.` : ''}
+
+ETF attualmente in portafoglio (con peso sul valore attuale):
+${etfSelezionati.filter(e=>e.acquisto).map(e => {
+  const peso = baseAllocazione > 0 ? (valAtt(e) / baseAllocazione * 100).toFixed(1) : '0';
+  const usa = e.countryBreakdown?.['United States'] ?? stimaUsaPctPerIndice(e.indexName, e.categoria) ?? '?';
+  return `- ${e.name} (${e.isin}): peso ${peso}%, USA ${usa}%`;
+}).join('\n')}
+
+Rispondi SOLO con il blocco JSON delle modifiche (nessun altro testo, nessuna spiegazione). Formato:
+[{"azione":"ribilancia","isin":"...","nuovaPct":NUMERO,"motivo":"max 100 car"}]
+REGOLE: la somma dei pesi finali di TUTTI gli ETF deve fare 100% (±0.5). Per ridurre l'USA: abbassa nuovaPct degli ETF con alto USA%, alza quelli a 0% USA. Includi nel JSON ogni ETF il cui peso cambia.`;
+
+      try {
+        const retryMsg = await getAnthropic().messages.create({
+          model: 'claude-sonnet-4-6',
+          max_tokens: 1500,
+          messages: [{ role: 'user', content: promptRetry }],
+        });
+        const retryTesto = retryMsg.content[0].text;
+        const retryMatches = [...retryTesto.matchAll(/\[([\s\S]*?)\]/g)];
+        for (let i = retryMatches.length - 1; i >= 0; i--) {
+          try {
+            const parsed = JSON.parse('[' + retryMatches[i][1] + ']');
+            if (Array.isArray(parsed) && parsed.length > 0 && parsed[0]?.azione) {
+              modifiche = parsed;
+              console.log(`  [retry-modifiche] ✓ Recuperate ${modifiche.length} modifiche al secondo tentativo`);
+              break;
+            }
+          } catch {}
+        }
+        if (modifiche.length === 0) {
+          console.log(`  [retry-modifiche] ⚠ Anche il retry non ha prodotto modifiche valide`);
+        }
+      } catch (e) {
+        console.error(`  [retry-modifiche] Errore: ${e.message}`);
+      }
     }
 
     // ── Validazione modifiche AI contro il catalogo ────────────────────────
