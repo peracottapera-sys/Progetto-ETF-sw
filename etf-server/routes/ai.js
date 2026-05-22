@@ -989,6 +989,12 @@ R8 — CRITICO: JSON valido e COMPLETO. Non troncare.`;
 
     console.log(`  ✓ Analisi OK | semafori:${Object.keys(semafori).length} | punti:${puntiChiave.length} | modifiche:${modifiche.length}${rendAttesoLordo != null ? ` | rend:${rendAttesoLordo}%` : ''}`);
 
+    // DEBUG TEMP: se modifiche vuote ma il portafoglio ha violazioni, dump della parte finale della risposta
+    if (modifiche.length === 0) {
+      console.log(`  [modifiche DEBUG] Nessuna modifica parsata. Ultimi 1200 char della risposta AI:`);
+      console.log(testo.slice(-1200));
+    }
+
     // ── Validazione modifiche AI contro il catalogo ────────────────────────
     let stats = { totali: 0, arricchite: 0, stale: 0, inventati: 0 };
     if (modifiche.length > 0) {
@@ -1359,7 +1365,7 @@ ${semafori && Object.keys(semafori).length > 0 ? `
 <div class="semafori-grid">
 ${Object.entries(semafori).map(([k,v])=>`
   <div class="semaforo">
-    <div class="semaforo-label">${k.charAt(0).toUpperCase()+k.slice(1)}</div>
+    <div class="semaforo-label">${k.toLowerCase()==='usa' ? 'USA' : k.toLowerCase()==='ter' ? 'TER' : k.charAt(0).toUpperCase()+k.slice(1)}</div>
     <div class="semaforo-stato" style="color:${statoColor(v.stato)}">${statoEmoji(v.stato)} ${v.stato}</div>
     <div class="semaforo-commento">${v.commento||''}</div>
   </div>`).join('')}
