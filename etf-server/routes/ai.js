@@ -1800,12 +1800,52 @@ async function getEtfPerProfilo(profilo, escludiDistribuzione = false, filtriRil
       AND (perf1y IS NOT NULL OR perf5y IS NOT NULL)
       ${escludiObblAggressivo}
     ORDER BY aum_mln DESC
-    LIMIT 300
+    LIMIT 600
   `, [f.minAum, f.maxTer, f.maxVol, f.maxDrawdown, f.maxDd5y]);
-  const rows = _rawRows
+  const rowsFiltrate = _rawRows
     .filter(e => isinConPrezzoInDB.has(e.isin))
     .filter(e => !escludiDistribuzione || e.distribuzione !== 'Distribuzione')
     .filter(e => e.perf1y !== null || e.perf5y !== null);
+
+  // Diversificazione emittenti: max N ETF per emittente tra i candidati passati all'AI.
+  // Evita che iShares (leader per AUM) saturi la rosa. I rows sono già ordinati per AUM DESC,
+  // quindi teniamo i N più grandi per ciascun emittente.
+  const normEmittente = (name) => {
+    const n = (name || '').toLowerCase();
+    if (n.includes('ishares')) return 'iShares';
+    if (n.includes('xtrackers')) return 'Xtrackers';
+    if (n.includes('amundi')) return 'Amundi';
+    if (n.includes('vanguard')) return 'Vanguard';
+    if (n.includes('invesco')) return 'Invesco';
+    if (n.includes('spdr')) return 'SPDR';
+    if (n.includes('lyxor')) return 'Lyxor';
+    if (n.includes('wisdomtree')) return 'WisdomTree';
+    if (n.includes('hsbc')) return 'HSBC';
+    if (n.includes('ubs')) return 'UBS';
+    if (n.includes('vaneck')) return 'VanEck';
+    if (n.includes('franklin')) return 'Franklin';
+    if (n.includes('fidelity')) return 'Fidelity';
+    if (n.includes('jpmorgan') || n.includes('jpm ')) return 'JPMorgan';
+    if (n.includes('state street')) return 'StateStreet';
+    return (name || '').split(' ')[0];
+  };
+  // Applica il cap; se restano troppo pochi candidati, rilassa il cap progressivamente
+  const applicaCap = (max) => {
+    const conta = {};
+    return rowsFiltrate.filter(e => {
+      const em = normEmittente(e.name);
+      conta[em] = (conta[em] || 0) + 1;
+      return conta[em] <= max;
+    });
+  };
+  const MIN_CANDIDATI = 50;
+  let cap = 5;
+  let rows = applicaCap(cap);
+  while (rows.length < MIN_CANDIDATI && cap < 30 && rows.length < rowsFiltrate.length) {
+    cap += 5;
+    rows = applicaCap(cap);
+  }
+  console.log(`[crea-portafoglio] Candidati: ${rowsFiltrate.length} grezzi → ${rows.length} dopo cap ${cap}/emittente`);
 
   return rows.map(e => ({
     isin:             e.isin,
