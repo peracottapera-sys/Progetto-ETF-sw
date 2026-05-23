@@ -942,8 +942,13 @@ R8 — CRITICO: JSON valido e COMPLETO. Non troncare.`;
 
     // Parsing robusto delle sezioni
     const getSection = (label, next) => {
-      // NOTA: in new RegExp() serve \\n e [\\s\\S] (doppio backslash)
-      const re = new RegExp(label + ':\\n([\\s\\S]*?)(?=\\n' + next + ':|$)');
+      // Tollera marker con prefissi markdown (##, ###, **) e separatori _ o spazio nel nome
+      const flex = s => s.replace(/_/g, '[_ ]');
+      const re = new RegExp(
+        '(?:^|\\n)\\s*(?:#{1,4}\\s*)?\\*{0,2}' + flex(label) + '\\*{0,2}\\s*:?\\s*\\n' +
+        '([\\s\\S]*?)' +
+        '(?=\\n\\s*(?:#{1,4}\\s*)?\\*{0,2}' + flex(next) + '\\*{0,2}\\s*:|$)'
+      );
       return (testo.match(re)?.[1] || '').trim();
     };
 
@@ -968,17 +973,24 @@ R8 — CRITICO: JSON valido e COMPLETO. Non troncare.`;
 
     // Punti chiave
     const puntiRaw = getSection('PUNTI_CHIAVE', 'ANALISI_DETTAGLIATA');
+    const TITOLI_SEZIONE = /^(composizione|violazione|quota azionaria|scenario macro|analisi (dei costi|del rischio|smart beta|fattoriale)|performance|verifica somma|contesto macro|posizionamento|diversificazione|pianificazione|esposizione|struttura|rischio e|bucket|rendimento atteso)/i;
     const puntiChiave = puntiRaw.split('\n')
       .filter(r => /^\s*[-*]/.test(r.trim()) || r.trim().startsWith('•'))
       .map(r => r.replace(/^\s*[-*•]\s*/, '').trim())
       .filter(r => r.length > 0 && !/^[-*•]+$/.test(r))
-      // Scarta righe che sono calcoli/dump operativi, non osservazioni
       .filter(r => {
-        const plain = r.replace(/\*\*/g, '').trim();
-        if (/[→=]/.test(plain) && /\d/.test(plain)) return false;          // "X = 16.8%" o "Totale → ..."
-        if (/^[A-Za-z][\w\s.-]{0,35}:\s*[\d.]+\s*%?\s*\(/.test(plain)) return false; // "MSCI World: 32% (ribilancia da 53.7%)"
-        if (/^[A-Za-z][\w\s.-]{0,35}:\s*[\d.]+\s*%?\s*$/.test(plain)) return false;   // "MSCI World: 32%"
-        if (/\(ribilanci|invariato\)|\(ribilancia da|\(rimoss|\(nuovo\)/i.test(plain)) return false; // contiene tag azione
+        const plain = r.replace(/\*\*/g, '').replace(/\*/g, '').trim();
+        // Scarta header di sezione (es. "*Composizione e struttura**", "*Analisi dei costi**")
+        if (/\*\*\s*$/.test(r.trim()) || /^\*/.test(r.trim())) {
+          // Riga che inizia o finisce con asterischi multipli = probabile titolo markdown malformato
+          if (plain.length < 60 && !/[.!?]$/.test(plain)) return false;
+        }
+        if (TITOLI_SEZIONE.test(plain) && plain.length < 55 && !/[.!?,]/.test(plain)) return false;
+        // Scarta calcoli/dump operativi
+        if (/[→=]/.test(plain) && /\d/.test(plain)) return false;
+        if (/^[A-Za-z][\w\s.-]{0,35}:\s*[\d.]+\s*%?\s*\(/.test(plain)) return false;
+        if (/^[A-Za-z][\w\s.-]{0,35}:\s*[\d.]+\s*%?\s*$/.test(plain)) return false;
+        if (/\(ribilanci|invariato\)|\(ribilancia da|\(rimoss|\(nuovo\)/i.test(plain)) return false;
         if (/^totale/i.test(plain)) return false;
         return true;
       });
