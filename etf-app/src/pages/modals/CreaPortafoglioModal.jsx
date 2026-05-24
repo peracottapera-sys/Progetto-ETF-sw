@@ -4,7 +4,7 @@ import { useApp } from '../../context/AppContext';
 const API = process.env.REACT_APP_API_URL || (window.location.hostname === 'localhost' ? 'http://localhost:3001' : '');
 
 function CreaPortafoglioModal({ portfolioId, onClose, onApplied, initialProfilo, initialData }) {
-  const { applicaPortafoglioAI, token, saveBuckets, saveAiRun } = useApp();
+  const { applicaPortafoglioAI, token, saveBuckets, saveAiRun, updatePortfolio } = useApp();
   const [form, setForm] = useState({
     profilo: initialProfilo || 'Bilanciato',
     orizzonteAnni: 'MEDIO',
@@ -170,6 +170,17 @@ function CreaPortafoglioModal({ portfolioId, onClose, onApplied, initialProfilo,
     }
 
     await applicaPortafoglioAI(portfolioId, selezioneAggiornata, capitale || 0);
+
+    // Propaga il vincolo Max USA al portafoglio (altrimenti resta al default 'No max').
+    // Il portafoglio viene creato vuoto prima dell'analisi AI, quindi il maxUSA scelto
+    // dall'utente nel form va salvato esplicitamente qui sul portafoglio.
+    if (form?.maxUSA) {
+      try {
+        await updatePortfolio(portfolioId, { maxUSA: form.maxUSA });
+      } catch (e) {
+        console.warn('[CreaPortafoglio] updatePortfolio maxUSA fallito:', e.message);
+      }
+    }
 
     // Salva i bucket se la pianificazione è attiva
     if (bucketInfo?.attivo) {
