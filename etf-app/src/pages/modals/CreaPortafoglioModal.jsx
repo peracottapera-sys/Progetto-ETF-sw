@@ -172,11 +172,11 @@ function CreaPortafoglioModal({ portfolioId, onClose, onApplied, initialProfilo,
     await applicaPortafoglioAI(portfolioId, selezioneAggiornata, capitale || 0);
 
     // Propaga il vincolo Max USA al portafoglio (altrimenti resta al default 'No max').
-    // Il portafoglio viene creato vuoto prima dell'analisi AI, quindi il maxUSA scelto
-    // dall'utente nel form va salvato esplicitamente qui sul portafoglio.
+    console.log('[CreaPortafoglio DEBUG] portfolioId:', portfolioId, '| form.maxUSA:', form?.maxUSA, '| updatePortfolio tipo:', typeof updatePortfolio);
     if (form?.maxUSA) {
       try {
-        await updatePortfolio(portfolioId, { maxUSA: form.maxUSA });
+        const r = await updatePortfolio(portfolioId, { maxUSA: form.maxUSA });
+        console.log('[CreaPortafoglio DEBUG] updatePortfolio eseguito, risultato:', r);
       } catch (e) {
         console.warn('[CreaPortafoglio] updatePortfolio maxUSA fallito:', e.message);
       }
