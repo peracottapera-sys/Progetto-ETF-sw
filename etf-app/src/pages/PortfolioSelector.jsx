@@ -22,6 +22,7 @@ export default function PortfolioSelector() {
   const defaultName = `Portafoglio_${form.riskProfile}_${String(portfolios.length + 1).padStart(3, '0')}`;
 
   const handleCreate = async () => {
+    console.log('[PortfolioSelector DEBUG] handleCreate - form.maxUSA:', form.maxUSA);
     const res = await createPortfolio(form.name || defaultName, form.riskProfile, form.maxUSA, true); // noSelect=true
     if (!res.ok) { setError(res.error); return; }
     setNewPortfolioId(res.id);
@@ -37,6 +38,7 @@ export default function PortfolioSelector() {
         body: JSON.stringify({
           portfolioId: newPortfolioId,
           profilo: form.riskProfile,
+          maxUSA: form.maxUSA,
           orizzonteAnni: aiForm.orizzonteAnni === 'BREVE' ? 3 : aiForm.orizzonteAnni === 'LUNGO' ? 15 : 7,
           bucketBreve: aiForm.usaBucket ? { pct: aiForm.pctBreve, anni: aiForm.anniBreve, targetRend: parseFloat(aiForm.rendBreve) || null } : undefined,
           bucketLungo: aiForm.usaBucket ? { pct: 100 - aiForm.pctBreve, anni: aiForm.anniLungo, targetRend: parseFloat(aiForm.rendLungo) || null } : undefined,
