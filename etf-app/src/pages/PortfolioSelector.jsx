@@ -22,7 +22,6 @@ export default function PortfolioSelector() {
   const defaultName = `Portafoglio_${form.riskProfile}_${String(portfolios.length + 1).padStart(3, '0')}`;
 
   const handleCreate = async () => {
-    console.log('[PortfolioSelector DEBUG] handleCreate - form.maxUSA:', form.maxUSA);
     const res = await createPortfolio(form.name || defaultName, form.riskProfile, form.maxUSA, true); // noSelect=true
     if (!res.ok) { setError(res.error); return; }
     setNewPortfolioId(res.id);
@@ -161,10 +160,10 @@ export default function PortfolioSelector() {
             <div className="form-group">
               <label className="form-label">Max % USA</label>
               <div className="radio-group">
-                {['Min', '30', '60', 'No max'].map(v => (
+                {['Min', '30%', '60%', 'No max'].map(v => (
                   <div key={v} className={`radio-option ${form.maxUSA === v ? 'selected' : ''}`} onClick={() => setForm(f => ({ ...f, maxUSA: v }))}>
                     <div className={`radio-dot ${form.maxUSA === v ? 'checked' : ''}`} />
-                    {v === 'Min' ? 'Minima' : v === 'No max' ? 'Nessun limite' : `Max ${v}%`}
+                    {v === 'Min' ? 'Minima' : v === 'No max' ? 'Nessun limite' : `Max ${v}`}
                   </div>
                 ))}
               </div>
