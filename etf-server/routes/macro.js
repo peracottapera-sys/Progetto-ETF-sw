@@ -247,8 +247,8 @@ async function getMacroDati() {
   const cpiUSA = cpiUSAR.value?.yoy ?? CPI_USA_FALLBACK;
   const cpiUSASource = cpiUSAR.value?.yoy != null ? 'FRED' : 'statico';
   // HICP EU: serie FRED, fallback a dato statico Trading Economics se null
-  const inflEU = cpiEUYoYR.value?.valore ?? INFL_EU_FALLBACK;
-  const inflEUSource = cpiEUYoYR.value?.valore != null ? 'FRED' : 'Trading Economics (statico)';
+  const inflEU = cpiEUYoYR.value?.yoy ?? INFL_EU_FALLBACK;
+  const inflEUSource = cpiEUYoYR.value?.yoy != null ? 'FRED' : 'Trading Economics (statico)';
   // CPI USA MoM: serie FRED già in formato % change mensile
   const cpiUSAMoM = cpiEUMoMR.value?.valore ?? null;
   const bce = bceR.value ?? null;
