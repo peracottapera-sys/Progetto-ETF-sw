@@ -1,4 +1,4 @@
-/**
+﻿/**
  * macro.js — Contesto macroeconomico per il motore AI
  * Fonti: FRED API, BCE API, Yahoo Finance
  * Cache in memoria: refresh ogni 6 ore
@@ -227,7 +227,7 @@ async function getMacroDati() {
       fetchYahoo('^STOXX50E'),      // Euro Stoxx 50
       fetchFREDLast('DFEDTARL'),    // Fed Funds Lower Limit (daily)
       fetchFREDYoY('CPIAUCSL'),     // CPI USA YoY (calcolato)
-      fetchFREDLast('CPHPLA01EZM659N'), // HICP EU YoY (già in %, diretto)
+      fetchFREDYoY('CP0000EZ19M086NEST'), // HICP EU YoY (calcolato da indice Eurostat)
       fetchFREDLast('CPALTT01USM657N'), // CPI USA MoM (% change, già calcolato da FRED)
       fetchBCE(),
       fetchFREDLast('IRLTLT01ITM156N'), // BTP 10Y
