@@ -944,6 +944,218 @@ Una riga per ogni ETF. Niente testo extra prima o dopo il JSON.`;
     })().catch(e => console.error('[fix-ticker] Errore fatale:', e.message));
   });
 
+  // ─── Discovery nuovi ETF da file Euronext ──────────────────────────────
+  // POST /api/etf-catalog/admin/discovery-euronext
+  // Body: { fileBase64: "<base64 del file xlsx>", dryRun: false, avviaBackfill: true }
+  //
+  // Flusso:
+  //   1. Decodifica il file Excel Euronext (scaricabile da euronext.com)
+  //   2. Estrae tutti gli ISIN per ETF Plus (.MI), Amsterdam (.AS), Paris (.PA)
+  //   3. Confronta con etf_catalog nel DB
+  //   4. Inserisce i nuovi ISIN con dati minimi (nome da Euronext, ticker symbol+suffisso)
+  //      e provider_fetch_status = NULL → verranno arricchiti dal backfill JustETF notturno
+  //   5. Se avviaBackfill=true, lancia subito un mini-batch JustETF sui nuovi ETF
+  //
+  // Mappatura mercati Euronext → suffisso ticker Yahoo:
+  //   "ETF Plus"              → .MI  (Borsa Italiana)
+  //   "Euronext Amsterdam"    → .AS
+  //   "Euronext Paris"        → .PA
+
+  const EURONEXT_MARKET_MAP = {
+    'ETF Plus': '.MI',
+    'Euronext Amsterdam': '.AS',
+    'Euronext Amsterdam - Multi-currency Trading': '.AS',
+    'Euronext Amsterdam, Paris': '.AS',
+    'Euronext Amsterdam, Brussels': '.AS',
+    'Euronext Paris': '.PA',
+    'Euronext Paris - Multi-currency Trading': '.PA',
+    'Euronext Paris, Amsterdam': '.PA',
+    'Euronext Dublin': '.IR',
+  };
+
+  // Estrae gli ETF dal buffer Excel Euronext.
+  // Ritorna array di { isin, name, symbol, market, suffisso, tickerYahoo }
+  function parseEuronextXlsx(buffer) {
+    const XLSX = require('xlsx');
+    const wb = XLSX.read(buffer, { type: 'buffer' });
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const raw = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null });
+
+    // Trova la riga header (quella con "ISIN")
+    let headerIdx = -1;
+    for (let i = 0; i < Math.min(raw.length, 10); i++) {
+      if (raw[i] && raw[i].some(c => typeof c === 'string' && c.trim().toUpperCase() === 'ISIN')) {
+        headerIdx = i;
+        break;
+      }
+    }
+    if (headerIdx === -1) throw new Error('Header ISIN non trovato nel file Euronext');
+
+    const headers = raw[headerIdx].map(h => (h || '').trim());
+    const colISIN = headers.findIndex(h => h.toUpperCase() === 'ISIN');
+    const colName = headers.findIndex(h => h.toUpperCase() === 'INSTRUMENT FULLNAME');
+    const colSymbol = headers.findIndex(h => h.toUpperCase() === 'SYMBOL');
+    const colMarket = headers.findIndex(h => h.toUpperCase() === 'MARKET');
+    if (colISIN === -1 || colName === -1) throw new Error('Colonne ISIN o Instrument Fullname non trovate');
+
+    const result = [];
+    for (let i = headerIdx + 1; i < raw.length; i++) {
+      const row = raw[i];
+      if (!row) continue;
+      const isin = (row[colISIN] || '').trim();
+      const name = (row[colName] || '').trim();
+      const symbol = colSymbol >= 0 ? (row[colSymbol] || '').trim() : '';
+      const market = colMarket >= 0 ? (row[colMarket] || '').trim() : '';
+      if (!isin || isin.length !== 12) continue;
+      if (!name) continue;
+
+      const suffisso = EURONEXT_MARKET_MAP[market] || null;
+      if (!suffisso) continue; // mercato non gestito (Brussels standalone, ecc.)
+
+      const tickerYahoo = symbol ? `${symbol}${suffisso}` : null;
+      result.push({ isin, name, symbol, market, suffisso, tickerYahoo });
+    }
+    return result;
+  }
+
+  router.post('/admin/discovery-euronext', authMiddleware, async (req, res) => {
+    const { fileBase64, dryRun = false, avviaBackfill = true } = req.body || {};
+    if (!fileBase64) return res.status(400).json({ error: 'Campo fileBase64 mancante' });
+
+    try {
+      // 1. Decodifica e parsa il file
+      const buffer = Buffer.from(fileBase64, 'base64');
+      let etfEuronext;
+      try {
+        etfEuronext = parseEuronextXlsx(buffer);
+      } catch (e) {
+        return res.status(400).json({ error: `Errore parsing file Euronext: ${e.message}` });
+      }
+
+      // 2. Carica tutti gli ISIN già nel DB
+      const { rows: dbRows } = await pool.query(`SELECT isin FROM etf_catalog`);
+      const isinNelDB = new Set(dbRows.map(r => r.isin));
+
+      // 3. Trova i nuovi (non ancora nel DB)
+      const nuovi = etfEuronext.filter(e => !isinNelDB.has(e.isin));
+
+      // Deduplica per ISIN (stesso ETF su più mercati → tieni il primo, preferendo .MI)
+      const nuoviDedup = [];
+      const isinVisti = new Set();
+      // Prima passa .MI, poi gli altri
+      const ordinati = [...nuovi.filter(e => e.suffisso === '.MI'), ...nuovi.filter(e => e.suffisso !== '.MI')];
+      for (const e of ordinati) {
+        if (!isinVisti.has(e.isin)) {
+          isinVisti.add(e.isin);
+          nuoviDedup.push(e);
+        }
+      }
+
+      // Risposta immediata col report
+      res.json({
+        message: dryRun
+          ? `[DRY-RUN] Trovati ${nuoviDedup.length} nuovi ETF da aggiungere. Nessuna modifica al DB.`
+          : `Discovery avviata: ${nuoviDedup.length} nuovi ETF inseriti nel DB. Backfill JustETF ${avviaBackfill ? 'avviato' : 'non avviato'}.`,
+        totaleEuronext: etfEuronext.length,
+        totaleNelDB: isinNelDB.size,
+        nuoviTrovati: nuoviDedup.length,
+        dryRun,
+        anteprima: nuoviDedup.slice(0, 20).map(e => ({
+          isin: e.isin, name: e.name.slice(0, 60), ticker: e.tickerYahoo, mercato: e.market,
+        })),
+      });
+
+      if (dryRun) return;
+
+      // 4. Inserimento in background
+      (async () => {
+        const oggi = new Date().toISOString().slice(0, 10);
+        let inseriti = 0;
+        let errori = 0;
+
+        console.log(`[discovery-euronext] Inizio inserimento ${nuoviDedup.length} nuovi ETF`);
+
+        for (const etf of nuoviDedup) {
+          // Classifica con le regole già esistenti (area, categoria)
+          const { categoria, area } = classificaPerRegole(etf.name);
+
+          try {
+            await pool.query(`
+              INSERT INTO etf_catalog
+                (isin, name, ticker_yahoo, categoria, area_geografica, active,
+                 provider_fetch_status, updated_at)
+              VALUES ($1, $2, $3, $4, $5, 1, NULL, $6)
+              ON CONFLICT (isin) DO NOTHING
+            `, [
+              etf.isin,
+              etf.name,
+              etf.tickerYahoo,
+              categoria || null,
+              area || null,
+              oggi,
+            ]);
+            inseriti++;
+            if (inseriti % 50 === 0) {
+              console.log(`[discovery-euronext] Inseriti ${inseriti}/${nuoviDedup.length}...`);
+            }
+          } catch (e) {
+            errori++;
+            console.error(`[discovery-euronext] Errore inserimento ${etf.isin}: ${e.message}`);
+          }
+        }
+
+        console.log(`[discovery-euronext] Completato: ${inseriti} inseriti, ${errori} errori`);
+
+        // 5. Mini-batch JustETF sui nuovi se richiesto
+        if (avviaBackfill && inseriti > 0) {
+          const batchSize = Math.min(inseriti, 30); // max 30 subito, il resto lo fa lo scheduler
+          console.log(`[discovery-euronext] Avvio mini-batch JustETF su ${batchSize} dei ${inseriti} nuovi ETF`);
+          try {
+            await syncJustetfBatch(pool, batchSize, 'discovery-euronext');
+          } catch (e) {
+            console.error('[discovery-euronext] Errore mini-batch JustETF:', e.message);
+          }
+        }
+
+        log(EVENTI.AGGIORNA_PREZZI_SELETTIVO, {
+          ok: inseriti, err: errori, totale: nuoviDedup.length,
+          motivo: 'discovery-euronext',
+        }).catch(() => {});
+      })().catch(e => console.error('[discovery-euronext] Errore fatale:', e.message));
+
+    } catch (e) {
+      console.error('[discovery-euronext] Errore:', e.message);
+      if (!res.headersSent) res.status(500).json({ error: e.message });
+    }
+  });
+
+  // GET /api/etf-catalog/admin/discovery-euronext-result
+  // Ritorna statistiche sui nuovi ETF aggiunti di recente (ultimi 7 giorni con provider_fetch_status NULL)
+  router.get('/admin/discovery-euronext-result', authMiddleware, async (req, res) => {
+    try {
+      const { rows: nuoviRecenti } = await pool.query(`
+        SELECT isin, name, ticker_yahoo, categoria, area_geografica, provider_fetch_status, updated_at
+        FROM etf_catalog
+        WHERE provider_fetch_status IS NULL
+           OR provider_fetch_status = 'ok'
+        ORDER BY updated_at DESC
+        LIMIT 100
+      `);
+      const { rows: stats } = await pool.query(`
+        SELECT
+          COUNT(*) FILTER (WHERE provider_fetch_status IS NULL) AS in_attesa_backfill,
+          COUNT(*) FILTER (WHERE provider_fetch_status = 'ok') AS con_dati_completi,
+          COUNT(*) FILTER (WHERE provider_fetch_status = 'not_found') AS non_trovati_su_justetf,
+          COUNT(*) FILTER (WHERE provider_fetch_status LIKE 'error%') AS con_errori,
+          COUNT(*) AS totale
+        FROM etf_catalog WHERE active = 1
+      `);
+      res.json({ stats: stats[0], ultimi100: nuoviRecenti });
+    } catch (e) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
   return router;
 };
 

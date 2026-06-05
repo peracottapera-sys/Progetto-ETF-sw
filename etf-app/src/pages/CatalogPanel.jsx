@@ -3,6 +3,16 @@ import { useApp } from '../context/AppContext';
 
 const API = process.env.REACT_APP_API_URL || (window.location.hostname === 'localhost' ? 'http://localhost:3001' : '');
 
+// ── Helper: legge un File come base64 ──────────────────────────────────────
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result.split(',')[1]);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
 
 // ── Pannello ricerca catalogo ETF ──────────────────────────────────────────
 export default function CatalogPanel() {
@@ -18,6 +28,14 @@ export default function CatalogPanel() {
   const [modalEtf, setModalEtf]   = useState(null);  // ETF selezionato per acquisto
   const [acqForm, setAcqForm]     = useState({ quantita: '', quotazione: '', data: new Date().toISOString().slice(0,10) });
   const [acqError, setAcqError]   = useState('');
+
+  // ── Discovery nuovi ETF da Euronext ────────────────────────────────────
+  const [discoveryFile, setDiscoveryFile]         = useState(null);   // File xlsx selezionato
+  const [discoveryDryRun, setDiscoveryDryRun]     = useState(true);   // default: anteprima
+  const [discoveryLoading, setDiscoveryLoading]   = useState(false);
+  const [discoveryResult, setDiscoveryResult]     = useState(null);   // risposta dal server
+  const [discoveryError, setDiscoveryError]       = useState('');
+  const fileInputRef = useRef(null);
 
   const API = process.env.REACT_APP_API_URL || (window.location.hostname === 'localhost' ? 'http://localhost:3001' : '');
 
@@ -77,6 +95,33 @@ export default function CatalogPanel() {
     });
     setAdded(a => ({ ...a, [etf.isin]: true }));
     setModalEtf(null);
+  };
+
+  // ── Handler discovery Euronext ──────────────────────────────────────────
+  const handleDiscovery = async () => {
+    if (!discoveryFile) { setDiscoveryError('Seleziona un file Excel Euronext prima di procedere.'); return; }
+    setDiscoveryLoading(true);
+    setDiscoveryError('');
+    setDiscoveryResult(null);
+    try {
+      const fileBase64 = await fileToBase64(discoveryFile);
+      const res = await fetch(`${API}/api/etf-catalog/admin/discovery-euronext`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ fileBase64, dryRun: discoveryDryRun, avviaBackfill: !discoveryDryRun }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Errore server');
+      setDiscoveryResult(data);
+      // Ricarica le stats del catalogo se abbiamo inserito davvero
+      if (!discoveryDryRun && data.nuoviTrovati > 0) {
+        fetch(`${API}/api/etf-catalog/stats`).then(r => r.json()).then(setStats).catch(() => {});
+      }
+    } catch (e) {
+      setDiscoveryError(e.message);
+    } finally {
+      setDiscoveryLoading(false);
+    }
   };
 
   const inPortfolio = (isin) => currentPortfolio?.etfs?.some(e => e.isin === isin && e.selected);
@@ -236,6 +281,150 @@ export default function CatalogPanel() {
 
       <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 12 }}>
         Fonte: JustETF · Dati aggiornati a marzo 2026 · Prezzi in tempo reale solo per ETF con ticker Yahoo verificato
+      </div>
+
+      {/* ── Sezione: Discovery nuovi ETF da Euronext ── */}
+      <div style={{ marginTop: 28, borderTop: '1px solid var(--border)', paddingTop: 20 }}>
+        <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>
+          🔎 Discovery nuovi ETF da Euronext
+        </div>
+        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 16 }}>
+          Scarica il file Excel dei Trackers da{' '}
+          <a href="https://www.euronext.com/en/products/etfs/list" target="_blank" rel="noreferrer"
+            style={{ color: 'var(--accent-blue)' }}>
+            euronext.com → ETF List → Download
+          </a>
+          , caricalo qui per rilevare nuovi ETF non ancora nel catalogo.
+          I nuovi vengono inseriti automaticamente e arricchiti dallo scheduler JustETF notturno.
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+
+          {/* Riga 1: selezione file */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".xlsx,.xls"
+              style={{ display: 'none' }}
+              onChange={e => {
+                const f = e.target.files?.[0] || null;
+                setDiscoveryFile(f);
+                setDiscoveryResult(null);
+                setDiscoveryError('');
+              }}
+            />
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              style={{ padding: '7px 14px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-secondary)', color: 'var(--text-primary)', cursor: 'pointer', fontSize: 13 }}
+            >
+              📂 {discoveryFile ? discoveryFile.name : 'Scegli file Excel Euronext…'}
+            </button>
+            {discoveryFile && (
+              <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                {(discoveryFile.size / 1024).toFixed(0)} KB
+              </span>
+            )}
+          </div>
+
+          {/* Riga 2: opzioni + bottone */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, cursor: 'pointer', userSelect: 'none' }}>
+              <input
+                type="checkbox"
+                checked={discoveryDryRun}
+                onChange={e => { setDiscoveryDryRun(e.target.checked); setDiscoveryResult(null); }}
+              />
+              Anteprima (dry-run, nessuna modifica al DB)
+            </label>
+            <button
+              onClick={handleDiscovery}
+              disabled={!discoveryFile || discoveryLoading}
+              style={{
+                padding: '7px 18px', borderRadius: 6, border: 'none', fontSize: 13, fontWeight: 600,
+                cursor: !discoveryFile || discoveryLoading ? 'not-allowed' : 'pointer',
+                background: discoveryDryRun ? 'var(--accent-amber)' : 'var(--accent-green)',
+                color: '#fff', opacity: !discoveryFile || discoveryLoading ? 0.6 : 1,
+              }}
+            >
+              {discoveryLoading
+                ? '⏳ Analisi in corso…'
+                : discoveryDryRun
+                  ? '🔍 Analizza (dry-run)'
+                  : '✅ Importa nuovi ETF'}
+            </button>
+          </div>
+
+          {/* Errore */}
+          {discoveryError && (
+            <div style={{ fontSize: 12, color: 'var(--accent-red)', background: 'rgba(239,68,68,0.08)', borderRadius: 6, padding: '8px 12px' }}>
+              ❌ {discoveryError}
+            </div>
+          )}
+
+          {/* Risultato */}
+          {discoveryResult && (
+            <div style={{ background: 'var(--bg-secondary)', borderRadius: 8, padding: '14px 16px', border: '1px solid var(--border)' }}>
+              <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 10, color: discoveryResult.dryRun ? 'var(--accent-amber)' : 'var(--accent-green)' }}>
+                {discoveryResult.dryRun ? '🔍 Risultato anteprima' : '✅ Importazione completata'}
+              </div>
+              <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 12 }}>
+                {[
+                  ['ETF nel file Euronext', discoveryResult.totaleEuronext?.toLocaleString('it-IT')],
+                  ['ETF già nel catalogo', discoveryResult.totaleNelDB?.toLocaleString('it-IT')],
+                  ['Nuovi da aggiungere', discoveryResult.nuoviTrovati?.toLocaleString('it-IT')],
+                ].map(([label, val]) => (
+                  <div key={label} style={{ background: 'var(--bg-card)', borderRadius: 6, padding: '7px 12px', border: '1px solid var(--border)', fontSize: 12 }}>
+                    <span style={{ color: 'var(--text-muted)' }}>{label}: </span>
+                    <strong style={{ color: 'var(--text-primary)' }}>{val ?? '—'}</strong>
+                  </div>
+                ))}
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8 }}>{discoveryResult.message}</div>
+
+              {discoveryResult.anteprima?.length > 0 && (
+                <>
+                  <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 6 }}>
+                    Anteprima primi {discoveryResult.anteprima.length} nuovi ETF:
+                  </div>
+                  <div style={{ maxHeight: 200, overflowY: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
+                      <thead>
+                        <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                          {['ISIN', 'Nome', 'Ticker', 'Mercato'].map(h => (
+                            <th key={h} style={{ padding: '4px 8px', textAlign: 'left', color: 'var(--text-muted)', fontWeight: 600 }}>{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {discoveryResult.anteprima.map(e => (
+                          <tr key={e.isin} style={{ borderBottom: '1px solid var(--border)' }}>
+                            <td style={{ padding: '3px 8px', fontFamily: 'monospace', fontSize: 10 }}>{e.isin}</td>
+                            <td style={{ padding: '3px 8px', maxWidth: 240, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={e.name}>{e.name}</td>
+                            <td style={{ padding: '3px 8px', fontFamily: 'monospace', fontSize: 10 }}>{e.ticker || '—'}</td>
+                            <td style={{ padding: '3px 8px', fontSize: 10, color: 'var(--text-muted)' }}>{e.mercato}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  {discoveryResult.dryRun && discoveryResult.nuoviTrovati > 0 && (
+                    <div style={{ marginTop: 12, fontSize: 12, color: 'var(--text-muted)' }}>
+                      💡 Togli la spunta da "Anteprima" e clicca <strong>Importa nuovi ETF</strong> per procedere con l'inserimento.
+                    </div>
+                  )}
+                </>
+              )}
+
+              {!discoveryResult.dryRun && discoveryResult.nuoviTrovati > 0 && (
+                <div style={{ marginTop: 10, fontSize: 12, color: 'var(--text-muted)' }}>
+                  ⏰ I dati completi (TER, AUM, breakdown) verranno popolati dallo scheduler JustETF nelle prossime notti (fino a 30 ETF/notte).
+                  I primi 30 vengono arricchiti subito in background.
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
