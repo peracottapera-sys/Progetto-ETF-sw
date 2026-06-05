@@ -1002,10 +1002,10 @@ Una riga per ogni ETF. Niente testo extra prima o dopo il JSON.`;
     for (let i = headerIdx + 1; i < raw.length; i++) {
       const row = raw[i];
       if (!row) continue;
-      const isin = (row[colISIN] || '').trim();
-      const name = (row[colName] || '').trim();
-      const symbol = colSymbol >= 0 ? (row[colSymbol] || '').trim() : '';
-      const market = colMarket >= 0 ? (row[colMarket] || '').trim() : '';
+      const isin = String(row[colISIN] || '').trim();
+      const name = String(row[colName] || '').trim();
+      const symbol = colSymbol >= 0 ? String(row[colSymbol] || '').trim() : '';
+      const market = colMarket >= 0 ? String(row[colMarket] || '').trim() : '';
       if (!isin || isin.length !== 12) continue;
       if (!name) continue;
 
