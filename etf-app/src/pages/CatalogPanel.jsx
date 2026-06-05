@@ -28,6 +28,7 @@ export default function CatalogPanel() {
   const [modalEtf, setModalEtf]   = useState(null);  // ETF selezionato per acquisto
   const [acqForm, setAcqForm]     = useState({ quantita: '', quotazione: '', data: new Date().toISOString().slice(0,10) });
   const [acqError, setAcqError]   = useState('');
+  const [mostraTutti, setMostraTutti] = useState(false); // toggle ETF senza dati
 
   // ── Discovery nuovi ETF da Euronext ────────────────────────────────────
   const [discoveryFile, setDiscoveryFile]         = useState(null);   // File xlsx selezionato
@@ -45,14 +46,15 @@ export default function CatalogPanel() {
       .then(r => r.json()).then(setStats).catch(() => {});
   }, [token]);
 
-  const search = useCallback((q) => {
+  const search = useCallback((q, tuttiFlag) => {
     if (q.length < 2) { setResults([]); return; }
     setLoading(true);
-    fetch(`${API}/api/etf-catalog/search?q=${encodeURIComponent(q)}&limit=20`)
+    const tutti = tuttiFlag !== undefined ? tuttiFlag : mostraTutti;
+    fetch(`${API}/api/etf-catalog/search?q=${encodeURIComponent(q)}&limit=20&mostraTutti=${tutti}`)
       .then(r => r.json())
       .then(data => { setResults(Array.isArray(data) ? data : []); setLoading(false); })
       .catch(() => { setResults([]); setLoading(false); });
-  }, [token]);
+  }, [token, mostraTutti]);
 
   const handleChange = (e) => {
     const v = e.target.value;
@@ -207,10 +209,24 @@ export default function CatalogPanel() {
         </div>
       )}
 
-      <div className="form-group" style={{ marginBottom: 12 }}>
+      <div className="form-group" style={{ marginBottom: 8 }}>
         <input className="input" placeholder="Cerca per nome o ISIN (es. iShares World, IE00B4L5Y983…)"
           value={query} onChange={handleChange} style={{ fontSize: 14 }} />
         {loading && <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6 }}>Ricerca in corso…</div>}
+      </div>
+      <div style={{ marginBottom: 12 }}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-muted)', cursor: 'pointer', userSelect: 'none', width: 'fit-content' }}>
+          <input
+            type="checkbox"
+            checked={mostraTutti}
+            onChange={e => {
+              const val = e.target.checked;
+              setMostraTutti(val);
+              if (query.length >= 2) search(query, val);
+            }}
+          />
+          Mostra anche ETF/ETP senza dati verificati (ETP leveraged, prodotti non su JustETF, nuovi importi in attesa di arricchimento)
+        </label>
       </div>
 
       {results.length > 0 && (

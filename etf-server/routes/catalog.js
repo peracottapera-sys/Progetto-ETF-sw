@@ -246,6 +246,9 @@ module.exports = (pool, fetchETF) => {
   router.get('/search', async (req, res) => {
     const q = (req.query.q || '').trim();
     const limit = Math.min(parseInt(req.query.limit) || 20, 50);
+    // mostraTutti=true → include ETF senza dati (not_found su JustETF, importati da Euronext non ancora arricchiti)
+    // default: false → mostra solo ETF con almeno TER o AUM popolato (dati verificati)
+    const mostraTutti = req.query.mostraTutti === 'true';
     if (q.length < 2) return res.json([]);
     try {
       // Ricerca multi-parola: ogni parola deve essere presente nel nome
@@ -261,11 +264,15 @@ module.exports = (pool, fetchETF) => {
           return `name ILIKE $${i + 1}`;
         }).join(' AND ');
       }
+      // Filtro dati: di default esclude ETF senza dati verificati da JustETF
+      // (not_found = non presente su JustETF, NULL con ter/aum nulli = importato ma non ancora arricchito)
+      const filtroConDati = mostraTutti ? '' : `AND (ter IS NOT NULL OR aum_mln IS NOT NULL)`;
       params.push(limit);
       const { rows } = await pool.query(`
         SELECT isin, name, valuta, aum_mln, ter, perf1m, perf6m, perf1y, perf3y, perf5y,
-               vol1y, maxdd1y, distribuzione, replica, ticker_yahoo, categoria, area_geografica, active, quotazione
-        FROM etf_catalog WHERE ${whereClause} AND active = 1
+               vol1y, maxdd1y, distribuzione, replica, ticker_yahoo, categoria, area_geografica, active, quotazione,
+               provider_fetch_status
+        FROM etf_catalog WHERE ${whereClause} AND active = 1 ${filtroConDati}
         ORDER BY aum_mln DESC NULLS LAST LIMIT $${params.length}
       `, params);
       // Arricchisci con prezzi_storici
