@@ -340,7 +340,7 @@ export function AppProvider({ children }) {
   };
 
   const createPortfolio = async (name, riskProfile, maxUSA, noSelect = false) => {
-    if (portfolios.length >= 3) return { ok: false, error: 'Massimo 3 portafogli per utente' };
+    if (portfolios.length >= 5) return { ok: false, error: 'Massimo 5 portafogli per utente' };
     const idx = String(portfolios.length + 1).padStart(3, '0');
     const newName = (name || `Portafoglio_${riskProfile}_${idx}`).slice(0, 30);
     if (dbMode && token) return createPortfolioDB(token, currentUser.id, newName, riskProfile, maxUSA, noSelect);
