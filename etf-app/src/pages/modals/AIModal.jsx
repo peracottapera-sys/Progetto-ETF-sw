@@ -646,7 +646,10 @@ function AIModal({ portfolio, onClose, onApplied }) {
               )}
 
               {/* ── Step 2: Suggerisci nuovi ETF ── */}
-              {!applicate && modifiche.some((m, i) => approvate[i] && m.azione === 'deseleziona') && (
+              {/* Mostra solo se ci sono deseleziona approvati MA lo Step 1 non ha già proposto aggiunte */}
+              {!applicate &&
+                modifiche.some((m, i) => approvate[i] && m.azione === 'deseleziona') &&
+                !modifiche.some(m => m.azione === 'aggiungi') && (
                 <div style={{ marginTop:16, borderTop:'1px solid var(--border)', paddingTop:14 }}>
                   <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:10 }}>
                     <div>
