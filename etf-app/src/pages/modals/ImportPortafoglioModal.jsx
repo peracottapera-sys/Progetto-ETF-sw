@@ -290,14 +290,14 @@ export default function ImportPortafoglioModal({ onClose }) {
       <div style={{ display:'flex', justifyContent:'flex-end', gap:10, marginTop:8 }}>
         <button className="btn btn-ghost" onClick={onClose}>Annulla</button>
         <button className="btn btn-primary"
-          disabled={!file || !etfsLetti.length || !form.nome.trim() || loading || portfolios.length >= 3}
+          disabled={!file || !etfsLetti.length || !form.nome.trim() || loading || portfolios.length >= 5}
           onClick={handleAnteprima}
           style={{ background:'linear-gradient(135deg, #6366f1, #8b5cf6)', border:'none' }}>
           {loading ? '⏳ Analisi...' : `Analizza ${etfsLetti.length} ETF →`}
         </button>
       </div>
-      {portfolios.length >= 3 && (
-        <div style={{ fontSize:11, color:'var(--accent-red)', textAlign:'center', marginTop:8 }}>Hai già 3 portafogli — elimina uno per continuare</div>
+      {portfolios.length >= 5 && (
+        <div style={{ fontSize:11, color:'var(--accent-red)', textAlign:'center', marginTop:8 }}>Hai già 5 portafogli — elimina uno per continuare</div>
       )}
     </div>
   );
