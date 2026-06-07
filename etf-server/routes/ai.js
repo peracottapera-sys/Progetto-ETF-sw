@@ -1700,6 +1700,152 @@ ${simulazione.modificheNonSimulate && simulazione.modificheNonSimulate.length > 
   res.send(html);
 });
 
+
+// ── POST /api/ai/suggerisci-nuovi ─────────────────────────────────────────
+// Step 2 dell'analisi AI: dopo che l'analisi ha identificato vendite,
+// cerca nuovi ETF dal catalogo per riempire i "buchi" lasciati dai deselezionati.
+//
+// Body:
+//   portfolio        – portafoglio corrente (stesso formato di /analisi)
+//   modificheStep1   – array di modifiche già prodotte dallo Step 1 (analisi)
+//   capitaleLib      – capitale liberato stimato (€) dalle vendite
+//   etfRimasti       – array {isin, name, categoria, pesoAtt} degli ETF che restano
+//   opzioni          – stesse opzioni di /analisi (maxUSA, note, ecc.)
+//
+// Risposta:
+//   suggerimenti     – array di modifiche tipo "aggiungi" con nuovaPct
+//   spiegazione      – testo breve del ragionamento AI
+
+router.post('/suggerisci-nuovi', authMiddleware, async (req, res) => {
+  const { portfolio, modificheStep1 = [], capitaleLib = 0, etfRimasti = [], opzioni = {} } = req.body;
+  if (!portfolio) return res.status(400).json({ error: 'Portfolio mancante' });
+
+  console.log(`[suggerisci-nuovi] portfolio: ${portfolio.name} | capitaleLib: €${capitaleLib} | etfRimasti: ${etfRimasti.length}`);
+
+  try {
+    const regoleBase = REGOLE_PROFILO[portfolio.riskProfile] || REGOLE_PROFILO.Bilanciato;
+    const orizzonteAnni = portfolio.orizzonteAnni || 7;
+    const regole = modulaRegolePerOrizzonte(regoleBase, orizzonteAnni);
+
+    // Carica candidati dal catalogo compatibili col profilo
+    // Escludi già presenti nel portafoglio E già aggiunti dallo Step 1
+    const isinGiaPresenti = new Set([
+      ...(portfolio.etfs || []).map(e => e.isin),
+      ...modificheStep1.filter(m => m.azione === 'aggiungi').map(m => m.isin),
+    ]);
+
+    const etfCatalogoRaw = await getEtfPerProfilo(portfolio.riskProfile, false, false);
+    const candidati = etfCatalogoRaw
+      .filter(e => !isinGiaPresenti.has(e.isin))
+      .slice(0, 50); // max 50 candidati al prompt
+
+    if (candidati.length === 0) {
+      return res.json({ suggerimenti: [], spiegazione: 'Nessun candidato disponibile nel catalogo per questo profilo.' });
+    }
+
+    // Calcola categorie già coperte dagli ETF rimasti (per diversificazione)
+    const categorieRimaste = [...new Set(etfRimasti.map(e => e.categoria).filter(Boolean))];
+    const pesoRimastoTot = etfRimasti.reduce((s, e) => s + (e.pesoAtt || 0), 0);
+    const pesoNuovoDisponibile = Math.max(0, 100 - pesoRimastoTot).toFixed(1);
+
+    // Contesto macro (opzionale, best-effort)
+    let macroContext = '';
+    try {
+      const { getMacroDati } = require('./macro');
+      const { testo } = await getMacroDati();
+      macroContext = testo ? `\n## CONTESTO MACRO\n${testo.slice(0, 600)}` : '';
+    } catch {}
+
+    const prompt = `Sei un consulente finanziario specializzato in ETF per investitori italiani.
+Il portafoglio "${portfolio.name}" (profilo: ${portfolio.riskProfile}, orizzonte: ${orizzonteAnni} anni, Max USA: ${portfolio.maxUSA || 'No max'}) ha appena subito un'analisi che ha rimosso alcuni ETF.
+
+## SITUAZIONE POST-VENDITE
+ETF rimasti nel portafoglio (${etfRimasti.length}):
+${etfRimasti.map(e => `- ${e.name} (${e.isin}) | ${e.categoria || 'N/D'} | Peso attuale: ${e.pesoAtt?.toFixed(1) || 'N/D'}%`).join('\n') || 'Nessuno'}
+
+Categorie già coperte: ${categorieRimaste.join(', ') || 'nessuna'}
+Peso totale già allocato: ${pesoRimastoTot.toFixed(1)}%
+Peso disponibile per nuovi ETF: ~${pesoNuovoDisponibile}% (capitale liberato: €${Math.round(capitaleLib).toLocaleString('it-IT')})
+
+## MODIFICHE GIÀ DECISE (Step 1 — NON riproporre questi ISIN)
+${modificheStep1.length > 0 ? modificheStep1.map(m => `- ${m.azione.toUpperCase()} ${m.isin}: ${m.motivo || ''}`).join('\n') : 'Nessuna'}
+
+## REGOLE PROFILO ${portfolio.riskProfile.toUpperCase()}
+- Quota azionaria target: ${regole.azionarioTarget}% (±${regole.azionarioRange}%)
+- TER max: ${regole.terMax}%
+- AUM min: ${regole.capMin}M€
+- Numero ETF totali (rimasti + nuovi): MIN ${regole.minETF}, MAX ${regole.maxETF}
+- Max ETF aggiungibili ora: ${Math.max(0, regole.maxETF - etfRimasti.length)}
+${opzioni.note ? `- Note utente: ${opzioni.note}` : ''}
+${macroContext}
+
+## CANDIDATI DAL CATALOGO (puoi scegliere SOLO tra questi)
+${candidati.map(e => formattaEtfArricchito(e, { mostraQuotazione: true })).join('\n')}
+
+## ISTRUZIONI
+Proponi 1-3 nuovi ETF da aggiungere per completare il portafoglio post-vendite. Scegli in base a:
+1. Categorie mancanti o sotto-rappresentate (diversificazione)
+2. Compatibilità con il profilo (TER, AUM, MaxDD, volatilità)
+3. Contesto macro attuale
+4. Non duplicare categorie già ben coperte dagli ETF rimasti
+
+Per ogni ETF proposto indica:
+- Perché colma un gap specifico nel portafoglio
+- Il peso suggerito (nuovaPct) — la somma dei pesi NUOVI deve essere ≤ ${pesoNuovoDisponibile}%
+- MAI proporre ISIN non presenti nella lista candidati sopra
+
+Rispondi ESATTAMENTE in questo formato (nessun altro testo prima o dopo):
+
+SPIEGAZIONE:
+[2-4 frasi che spiegano la logica complessiva delle scelte]
+
+SUGGERIMENTI_JSON:
+[{"azione":"aggiungi","isin":"ISIN","name":"nome ETF","ter":0.0,"categoria":"cat","quotazione":0.0,"nuovaPct":XX,"motivo":"motivo max 100 car"}]`;
+
+    const message = await getAnthropic().messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 1500,
+      messages: [{ role: 'user', content: prompt }],
+    });
+    const testo = message.content[0].text;
+
+    // Parsing spiegazione
+    const spiegMatch = testo.match(/SPIEGAZIONE:\s*\n([\s\S]*?)(?=\nSUGGERIMENTI_JSON:|$)/i);
+    const spiegazione = spiegMatch ? spiegMatch[1].trim() : '';
+
+    // Parsing JSON suggerimenti
+    let suggerimenti = [];
+    const jsonMatches = [...testo.matchAll(/\[([\s\S]*?)\]/g)];
+    for (let i = jsonMatches.length - 1; i >= 0; i--) {
+      try {
+        const parsed = JSON.parse('[' + jsonMatches[i][1] + ']');
+        if (Array.isArray(parsed) && (parsed.length === 0 || parsed[0]?.azione === 'aggiungi')) {
+          suggerimenti = parsed;
+          break;
+        }
+      } catch {}
+    }
+
+    // Valida gli ISIN suggeriti contro il catalogo (riusa validaModificheAI)
+    if (suggerimenti.length > 0) {
+      await validaModificheAI(suggerimenti, db);
+      // Rimuovi suggerimenti con ISIN inventati
+      const inventati = suggerimenti.filter(s => s._warningType === 'isin_inventato');
+      if (inventati.length > 0) {
+        console.log(`[suggerisci-nuovi] Rimossi ${inventati.length} ISIN inventati`);
+        suggerimenti = suggerimenti.filter(s => s._warningType !== 'isin_inventato');
+      }
+    }
+
+    console.log(`[suggerisci-nuovi] ✓ ${suggerimenti.length} suggerimenti validi`);
+    res.json({ suggerimenti, spiegazione });
+
+  } catch (e) {
+    console.error('[suggerisci-nuovi]', e.message);
+    res.status(500).json({ error: 'Errore Step 2 AI: ' + e.message });
+  }
+});
+
 // POST /api/ai/confronta
 router.post('/confronta', async (req, res) => {
   const { etf1, etf2 } = req.body;

@@ -52,6 +52,11 @@ function AIModal({ portfolio, onClose, onApplied }) {
   const [bucket, setBucket] = useState({ attivo: false, pctBreve: 30, anniBreve: 3 });
   const [showAnalisi, setShowAnalisi] = useState(false);
   const [showModifiche, setShowModifiche] = useState(true);
+  // Step 2: suggerimento nuovi ETF
+  const [step2Loading, setStep2Loading] = useState(false);
+  const [step2Risultato, setStep2Risultato] = useState(null); // { suggerimenti, spiegazione }
+  const [step2Approvate, setStep2Approvate] = useState({});
+  const [step2Errore, setStep2Errore] = useState('');
 
   const authHdr = { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) };
 
@@ -125,10 +130,60 @@ function AIModal({ portfolio, onClose, onApplied }) {
     }
   };
 
+  // ── Step 2: cerca nuovi ETF per il capitale liberato dalle vendite ──────
+  const avviaStep2 = async () => {
+    setStep2Loading(true);
+    setStep2Errore('');
+    setStep2Risultato(null);
+
+    // Calcola ETF rimasti dopo le modifiche approvate dello step 1
+    const modificheApprovate = modifiche.filter((_, i) => approvate[i]);
+    const deselezionati = new Set(modificheApprovate.filter(m => m.azione === 'deseleziona').map(m => m.isin));
+    const etfSelezionati = portfolio.etfs.filter(e => e.selected && !deselezionati.has(e.isin));
+    const totAttuale = etfSelezionati
+      .filter(e => e.acquisto?.quantita > 0)
+      .reduce((s, e) => s + e.acquisto.quantita * (e.quotazione || e.acquisto.quotazioneAcquisto), 0);
+    const totDeselezionati = portfolio.etfs
+      .filter(e => deselezionati.has(e.isin) && e.acquisto?.quantita > 0)
+      .reduce((s, e) => s + e.acquisto.quantita * (e.quotazione || e.acquisto.quotazioneAcquisto), 0);
+    const etfRimasti = etfSelezionati.map(e => {
+      const val = e.acquisto ? e.acquisto.quantita * (e.quotazione || e.acquisto.quotazioneAcquisto) : 0;
+      const pesoAtt = totAttuale > 0 ? (val / totAttuale * 100) : 0;
+      return { isin: e.isin, name: e.name, categoria: e.categoria, pesoAtt };
+    });
+
+    try {
+      const res = await fetch(`${API}/api/ai/suggerisci-nuovi`, {
+        method: 'POST', headers: authHdr,
+        body: JSON.stringify({
+          portfolio: { ...portfolio, orizzonteAnni: orizzonte === 'BREVE' ? 3 : orizzonte === 'LUNGO' ? 15 : 7 },
+          modificheStep1: modificheApprovate,
+          capitaleLib: totDeselezionati,
+          etfRimasti,
+          opzioni,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Errore server');
+      setStep2Risultato(data);
+      // Pre-approva tutti i suggerimenti
+      const init = {};
+      (data.suggerimenti || []).forEach((_, i) => { init[i] = true; });
+      setStep2Approvate(init);
+    } catch (e) {
+      setStep2Errore(e.message);
+    } finally {
+      setStep2Loading(false);
+    }
+  };
+
   const handleApplica = async () => {
     setApplying(true);
     const oggi = new Date().toISOString().slice(0, 10);
-    const modificheApprovate = modifiche.filter((_, i) => approvate[i]);
+    // Fonde modifiche Step 1 + suggerimenti Step 2 approvati
+    const modificheStep1App = modifiche.filter((_, i) => approvate[i]);
+    const modificheStep2App = (step2Risultato?.suggerimenti || []).filter((_, i) => step2Approvate[i]);
+    const modificheApprovate = [...modificheStep1App, ...modificheStep2App];
 
     // Step 1: applica selezioni/deseleziona/aggiungi
     const etfsAggiornati = portfolio.etfs.map(e => ({ ...e }));
@@ -589,6 +644,88 @@ function AIModal({ portfolio, onClose, onApplied }) {
               {modifiche.length === 0 && (
                 <div className="alert alert-success" style={{ marginTop:8 }}>✓ Il portafoglio rispetta tutte le regole del profilo selezionato.</div>
               )}
+
+              {/* ── Step 2: Suggerisci nuovi ETF ── */}
+              {!applicate && modifiche.some((m, i) => approvate[i] && m.azione === 'deseleziona') && (
+                <div style={{ marginTop:16, borderTop:'1px solid var(--border)', paddingTop:14 }}>
+                  <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:10 }}>
+                    <div>
+                      <div style={{ fontSize:13, fontWeight:700 }}>🔍 Cerca nuovi ETF per il capitale liberato</div>
+                      <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:2 }}>
+                        Hai rimosso degli ETF — vuoi che l'AI cerchi nuovi candidati dal catalogo per sostituirli?
+                      </div>
+                    </div>
+                    {!step2Risultato && (
+                      <button onClick={avviaStep2} disabled={step2Loading}
+                        style={{ padding:'8px 16px', borderRadius:8, border:'none', fontWeight:600, fontSize:12,
+                          background:'linear-gradient(135deg,#0ea5e9,#6366f1)', color:'#fff',
+                          cursor: step2Loading ? 'not-allowed' : 'pointer', opacity: step2Loading ? 0.7 : 1, whiteSpace:'nowrap', flexShrink:0 }}>
+                        {step2Loading ? '⏳ Analisi...' : '✨ Analizza Step 2'}
+                      </button>
+                    )}
+                  </div>
+
+                  {step2Errore && (
+                    <div style={{ fontSize:12, color:'var(--accent-red)', background:'rgba(239,68,68,0.08)', borderRadius:6, padding:'8px 12px', marginBottom:8 }}>
+                      ❌ {step2Errore}
+                    </div>
+                  )}
+
+                  {step2Risultato && (
+                    <div style={{ background:'var(--bg-secondary)', borderRadius:8, padding:'14px 16px', border:'1px solid var(--border)' }}>
+                      {step2Risultato.spiegazione && (
+                        <div style={{ fontSize:12, color:'var(--text-secondary)', marginBottom:12, lineHeight:1.5, fontStyle:'italic' }}>
+                          {step2Risultato.spiegazione}
+                        </div>
+                      )}
+                      {step2Risultato.suggerimenti?.length > 0 ? (
+                        <>
+                          <div style={{ fontSize:12, fontWeight:600, marginBottom:8 }}>
+                            Nuovi ETF suggeriti ({step2Risultato.suggerimenti.length}):
+                          </div>
+                          {step2Risultato.suggerimenti.map((s, i) => (
+                            <div key={i} style={{ display:'flex', alignItems:'flex-start', gap:12, padding:'10px 0', borderBottom: i < step2Risultato.suggerimenti.length-1 ? '1px solid var(--border)' : 'none' }}>
+                              <input type="checkbox" checked={!!step2Approvate[i]}
+                                onChange={() => setStep2Approvate(a => ({ ...a, [i]: !a[i] }))}
+                                style={{ marginTop:3, cursor:'pointer', width:15, height:15 }} />
+                              <div style={{ flex:1 }}>
+                                <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:3 }}>
+                                  <span style={{ fontSize:10, fontWeight:700, padding:'2px 7px', borderRadius:4,
+                                    background:'rgba(34,197,94,0.15)', color:'var(--accent-green)' }}>
+                                    + AGGIUNGI
+                                  </span>
+                                  <span style={{ fontSize:13, fontWeight:600 }}>{s.name || s.isin}</span>
+                                  <span style={{ fontSize:10, color:'var(--text-muted)', fontFamily:'monospace' }}>{s.isin}</span>
+                                  {s.nuovaPct > 0 && (
+                                    <span style={{ fontSize:11, color:'var(--text-muted)' }}>→ {s.nuovaPct}%</span>
+                                  )}
+                                </div>
+                                <div style={{ fontSize:12, color:'var(--text-secondary)' }}>{s.motivo}</div>
+                                <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:2 }}>
+                                  {s.categoria && <span>{s.categoria}</span>}
+                                  {s.ter > 0 && <span> · TER {s.ter}%</span>}
+                                  {s.quotazione > 0 && <span> · €{s.quotazione}</span>}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                          <div style={{ marginTop:10, display:'flex', justifyContent:'flex-end' }}>
+                            <button onClick={avviaStep2} disabled={step2Loading}
+                              style={{ fontSize:11, padding:'4px 10px', borderRadius:6, border:'1px solid var(--border)',
+                                background:'var(--bg-card)', color:'var(--text-muted)', cursor:'pointer' }}>
+                              🔄 Rigenera
+                            </button>
+                          </div>
+                        </>
+                      ) : (
+                        <div style={{ fontSize:12, color:'var(--text-muted)' }}>
+                          Nessun candidato aggiuntivo trovato per questo profilo. Il portafoglio post-vendite è già ben strutturato.
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
             </>
           )}
 
@@ -600,14 +737,21 @@ function AIModal({ portfolio, onClose, onApplied }) {
         {/* Footer */}
         <div style={{ borderTop:'1px solid var(--border)', paddingTop:14, marginTop:14, display:'flex', justifyContent:'space-between', alignItems:'center', flexShrink:0 }}>
           <div style={{ fontSize:11, color:'var(--text-muted)' }}>
-            {modifiche.length > 0 && !applicate && `${nApprovate} di ${modifiche.length} modifiche selezionate`}
+            {(modifiche.length > 0 || step2Risultato?.suggerimenti?.length > 0) && !applicate && (() => {
+              const tot = (modifiche.filter((_, i) => approvate[i]).length) + (step2Risultato?.suggerimenti?.filter((_, i) => step2Approvate[i]).length || 0);
+              return `${tot} modific${tot !== 1 ? 'he' : 'a'} selezionat${tot !== 1 ? 'e' : 'a'}`;
+            })()}
           </div>
           <div style={{ display:'flex', gap:10 }}>
             <button className="btn btn-ghost" onClick={onClose}>Chiudi</button>
-            {modifiche.length > 0 && !applicate && (
-              <button className="btn btn-primary" onClick={handleApplica} disabled={nApprovate === 0 || applying}
+            {(modifiche.length > 0 || step2Risultato?.suggerimenti?.length > 0) && !applicate && (
+              <button className="btn btn-primary" onClick={handleApplica}
+                disabled={(modifiche.filter((_, i) => approvate[i]).length + (step2Risultato?.suggerimenti?.filter((_, i) => step2Approvate[i]).length || 0)) === 0 || applying}
                 style={{ background:'linear-gradient(135deg,#6366f1,#8b5cf6)' }}>
-                {applying ? '⏳ Salvataggio...' : `✓ Applica ${nApprovate} Modifica${nApprovate !== 1 ? 'he' : ''}`}
+                {applying ? '⏳ Salvataggio...' : (() => {
+                  const tot = (modifiche.filter((_, i) => approvate[i]).length) + (step2Risultato?.suggerimenti?.filter((_, i) => step2Approvate[i]).length || 0);
+                  return `✓ Applica ${tot} Modifica${tot !== 1 ? 'he' : ''}`;
+                })()}
               </button>
             )}
           </div>
