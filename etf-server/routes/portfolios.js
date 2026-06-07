@@ -15,7 +15,7 @@ module.exports = (pool) => {
   router.post('/', authMiddleware, async (req, res) => {
     const { name, riskProfile, maxUSA } = req.body;
     const { rows: ex } = await pool.query('SELECT COUNT(*) as c FROM portfolios WHERE user_id = $1', [req.user.id]);
-    if (parseInt(ex[0].c) >= 3) return res.status(400).json({ error: 'Massimo 3 portafogli per utente' });
+    if (parseInt(ex[0].c) >= 5) return res.status(400).json({ error: 'Massimo 5 portafogli per utente' });
     const id = 'p' + Date.now();
     await pool.query('INSERT INTO portfolios (id, user_id, name, risk_profile, max_usa) VALUES ($1, $2, $3, $4, $5)',
       [id, req.user.id, name, riskProfile, maxUSA || 'No max']);
