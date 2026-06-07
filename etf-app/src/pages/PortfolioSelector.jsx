@@ -120,7 +120,7 @@ export default function PortfolioSelector() {
               </div>
             </div>
           ))}
-          {portfolios.length < 3 && (
+          {portfolios.length < 5 && (
             <div style={{ display:'flex', gap:8, marginTop:8 }}>
               <button className="btn btn-secondary" style={{ flex:1, justifyContent:'center', padding:14, borderStyle:'dashed' }} onClick={() => setStep('new')}>
                 + Nuovo Portafoglio
@@ -131,8 +131,8 @@ export default function PortfolioSelector() {
               </button>
             </div>
           )}
-          {portfolios.length >= 3 && (
-            <div className="alert alert-info" style={{ marginTop: 12 }}>Hai raggiunto il limite massimo di 3 portafogli per account.</div>
+          {portfolios.length >= 5 && (
+            <div className="alert alert-info" style={{ marginTop: 12 }}>Hai raggiunto il limite massimo di 5 portafogli per account.</div>
           )}
         </>)}
 
