@@ -729,7 +729,10 @@ router.post('/analisi', async (req, res) => {
 
   const etfCatalogo = etfCatalogoRaw
     .filter(c => !portfolio.etfs.some(e => e.isin === c.isin))
-    .slice(0, 40);
+    .slice(0, 60);
+  // Numero massimo ETF raggiungibile con aggiunte
+  const nEtfAttuali = etfSelezionati.length;
+  const slotsLiberi = Math.max(0, regole.maxETF - nEtfAttuali);
 
   // Età portafoglio in giorni (0 se data non disponibile)
   const dataCreazione = portfolio.createdAt || portfolio.created_at || null;
@@ -757,6 +760,9 @@ ${giorniVita < 7 ? `⚠️ PORTAFOGLIO CREATO ${giorniVita} GIORNI FA: è molto 
 
 ## ORIZZONTE TEMPORALE: ${portfolio.orizzonteAnni || 'N/D'} anni
 ${regole.noteOrizzonte || ''}
+${opzioni?.note ? `
+⚠️ ISTRUZIONE PRIORITARIA — PREFERENZE UTENTE: "${opzioni.note}"
+Queste preferenze DEVONO essere rispettate nelle modifiche proposte. Se suggerisci nuovi ETF dal catalogo, includi almeno 1 che soddisfi questa indicazione. Le preferenze utente hanno priorità su criteri di ottimizzazione secondari.` : ''}
 
 ## POSIZIONAMENTO TATTICO (Profilo × Orizzonte × Macro)
 ${(() => { try {
@@ -818,7 +824,16 @@ ${etfSelezionati.map(e => {
 ## ETF NEL PORTAFOGLIO MA NON SELEZIONATI (${etfNonSelezionati.length}):
 ${etfNonSelezionati.slice(0,20).map(e => `- ${e.name} (${e.isin}) | ${e.categoria||'N/D'} | TER:${e.ter}% | Vol1A:${e.variabilita||'N/D'}% | Perf1A:${e.perf1y||0}%`).join('\n') || 'Nessuno'}
 
-## ETF DAL CATALOGO COMPATIBILI COL PROFILO (puoi suggerire "aggiungi"):
+## ETF DAL CATALOGO COMPATIBILI COL PROFILO
+Slot liberi per nuovi ETF: ${slotsLiberi} (il portafoglio ha ${nEtfAttuali} ETF su ${regole.maxETF} massimi)
+
+${slotsLiberi > 0
+  ? `ISTRUZIONE ATTIVA — SOSTITUZIONE E ARRICCHIMENTO:
+Se deselezioni un ETF, DEVI proporre almeno un sostituto con azione "aggiungi" da questa lista (non limitarti a redistribuire i pesi sugli esistenti), salvo che il portafoglio sia già al massimo consentito.
+Se il portafoglio ha categorie di asset mancanti o sotto-rappresentate rispetto al profilo (es. manca copertura emergenti, oro, obbligazionario breve), proponi un "aggiungi" mirato — anche senza rimuovere nulla.
+Usa azione "aggiungi" SOLO con ISIN presenti in questa lista — MAI inventare ISIN.`
+  : `Il portafoglio è già al massimo di ETF consentiti (${regole.maxETF}). Puoi usare "seleziona" per ETF già nel portafoglio non attivi, ma NON aggiungere nuovi ISIN.`}
+
 ${etfCatalogo.map(e => formattaEtfArricchito(e, { mostraQuotazione: true })).join('\n')}
 
 ${macroContext}
@@ -926,6 +941,11 @@ R5 — AZIONI:
 "deseleziona" → solo R4/R4b, rispetta R2
 "aggiungi" → SOLO ISIN dal CATALOGO sopra, non inventare
 "ribilancia" → {"azione":"ribilancia","isin":"ISIN","nuovaPct":XX,"motivo":"..."}
+
+R5b — SOSTITUZIONE OBBLIGATORIA:
+Se proponi un "deseleziona" E il portafoglio post-modifica è SOTTO il massimo di ${regole.maxETF} ETF, DEVI includere almeno un "aggiungi" dal catalogo per coprire il gap lasciato.
+NON limitarti a ribilanciare i pesi sugli ETF rimasti — quella è redistribuzione automatica, non analisi.
+Eccezione: se il deselezionato è un ETF ridondante (alta correlazione con un altro già presente) e il portafoglio rimane ben diversificato, puoi ometterlo senza sostituto — ma spiega il motivo nel campo "motivo".
 
 R6 — NEWS: orizzonte ${portfolio.orizzonteAnni||5} anni → impatto ${(portfolio.orizzonteAnni||5)>=10?'BASSO (±5% peso)': (portfolio.orizzonteAnni||5)>=5?'MEDIO (±10% peso)':'ALTO (±15% peso)'}
 
@@ -1131,7 +1151,7 @@ REGOLE: la somma dei pesi finali di TUTTI gli ETF deve fare 100% (±0.5). Per ri
 
 // POST /api/ai/genera-pdf — restituisce HTML stampabile (browser → Stampa → Salva PDF)
 router.post('/genera-pdf', authMiddleware, (req, res) => {
-  const { portfolio, semafori, puntiChiave, analisiDettagliata, modifiche, saldoMinusAttuale } = req.body;
+  const { portfolio, semafori, puntiChiave, analisiDettagliata, modifiche, step2, saldoMinusAttuale } = req.body;
   if (!portfolio || !analisiDettagliata) return res.status(400).json({ error: 'Dati mancanti' });
 
   const data = new Date().toLocaleDateString('it-IT');
@@ -1473,7 +1493,8 @@ ${analisiDettagliata
 
 <h2>Composizione Portafoglio — Prima/Dopo modifiche AI</h2>
 <p style="font-size:9.5pt;color:#555;margin:-2px 0 8px">
-  Confronto tra composizione attuale e composizione post-modifiche AI. I valori € post sono stime basate sui target % proposti applicati al valore investito totale.
+  Confronto tra composizione attuale e composizione post-modifiche Step 1. I valori € post sono stime basate sui target % proposti applicati al valore investito totale.
+  ${step2?.suggerimenti?.length > 0 ? 'I nuovi ETF suggeriti dallo Step 2 sono riportati nella sezione successiva.' : ''}
 </p>
 <table>
   <tr>
@@ -1590,10 +1611,40 @@ ${(() => {
 
 ${modifiche && modifiche.length > 0 ? '' : '<p style="color:#22c55e;font-weight:600">✓ Il portafoglio è già conforme alle regole del profilo.</p>'}
 
+${step2 && step2.suggerimenti && step2.suggerimenti.length > 0 ? `
+<div style="background:#f0f9ff;border:1px solid #0ea5e9;border-left:4px solid #0ea5e9;border-radius:0 8px 8px 0;padding:14px 18px;margin:18px 0 0;page-break-inside:avoid">
+  <h2 style="margin:0 0 8px;font-size:13pt;color:#0369a1">🔍 Step 2 — Nuovi ETF suggeriti dall'AI</h2>
+  <p style="font-size:9.5pt;color:#444;margin:0 0 12px">
+    Dopo aver analizzato il portafoglio post-vendite, l'AI ha individuato i seguenti ETF complementari
+    per ottimizzare la composizione con il capitale liberato.
+  </p>
+  ${step2.spiegazione ? `<p style="font-size:10pt;color:#1e40af;font-style:italic;margin:0 0 12px;line-height:1.5">${step2.spiegazione}</p>` : ''}
+  <table style="margin-top:6px">
+    <tr>
+      <th>ETF Suggerito</th>
+      <th>ISIN</th>
+      <th>Categoria</th>
+      <th style="text-align:right">TER</th>
+      <th style="text-align:right">Peso suggerito</th>
+      <th>Motivazione</th>
+    </tr>
+    ${step2.suggerimenti.map(s => `
+    <tr style="background:#e0f2fe">
+      <td><strong>${s.name || s.isin}</strong></td>
+      <td style="font-family:monospace;font-size:8.5pt">${s.isin}</td>
+      <td style="font-size:9pt">${s.categoria || '—'}</td>
+      <td class="num" style="font-size:9pt">${s.ter > 0 ? s.ter.toFixed(2)+'%' : '—'}</td>
+      <td class="num" style="font-weight:700;color:#0369a1">${s.nuovaPct > 0 ? s.nuovaPct+'%' : '—'}</td>
+      <td style="font-size:9pt;color:#444">${s.motivo || ''}</td>
+    </tr>`).join('')}
+  </table>
+</div>
+` : ''}
+
 ${simulazione ? `
 <h2>Azioni da eseguire sul broker</h2>
 <p style="font-size:10pt;color:#444;margin:0 0 10px">
-  Tabella unica delle operazioni da compiere per applicare le modifiche AI.
+  Tabella unica delle operazioni da compiere per applicare tutte le modifiche AI (Step 1${step2?.suggerimenti?.length > 0 ? ' + Step 2' : ''}).
   Quote, prezzi e controvalore sono calcolati sulle quotazioni del ${data}.
   Le tasse sono al 26% sulla plusvalenza al netto delle minusvalenze compensabili (metodo FIFO).
   Questa è una simulazione: il portafoglio non viene modificato.
@@ -1634,9 +1685,16 @@ ${(simulazione.vendite.length > 0 || simulazione.acquisti.length > 0) ? `
       <td class="num ${v.tasse>0?'neg':''}">${v.tasse>0?'€'+fmt(v.tasse):'—'}</td>
     </tr>
   `).join('')}
-  ${simulazione.acquisti.map(a=>`
-    <tr>
-      <td><span class="badge badge-add" style="background:#dcfce7;color:#166534">COMPRA</span></td>
+  ${(() => {
+    const step2Isin = new Set((step2?.suggerimenti || []).map(s => s.isin));
+    return simulazione.acquisti.map(a => {
+      const isStep2 = step2Isin.has(a.isin);
+      return `
+    <tr${isStep2 ? ' style="background:#f0f9ff"' : ''}>
+      <td>
+        <span class="badge badge-add" style="background:#dcfce7;color:#166534">COMPRA</span>
+        ${isStep2 ? '<br><span style="font-size:7.5pt;color:#0369a1;font-weight:700">STEP 2</span>' : ''}
+      </td>
       <td>
         <strong>${a.name}</strong>
         <br><span style="font-family:monospace;font-size:8pt;color:#666">${a.isin}</span>
@@ -1646,8 +1704,9 @@ ${(simulazione.vendite.length > 0 || simulazione.acquisti.length > 0) ? `
       <td class="num">€${fmt(a.prezzo)}</td>
       <td class="num neg">−€${fmt(a.controvalore)}</td>
       <td class="num">—</td>
-    </tr>
-  `).join('')}
+    </tr>`;
+    }).join('');
+  })()}
 </table>
 ` : '<p><em>Nessuna operazione necessaria.</em></p>'}
 
