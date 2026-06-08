@@ -25,16 +25,51 @@ const REGOLE_PROFILO = {
     maxDrawdown: -25, maxDrawdownAbs: 25, volatilita: 16,
     hedged: 'preferire sempre prodotti hedged per valute non EUR',
     note: 'Inflazione italiana attuale ~2% — il portafoglio DEVE battere inflazione di almeno 2 punti. Privilegiare ETF obbligazionari con yield >3.5% e una quota azionaria difensiva (es. dividend, low volatility, healthcare).',
+
+    // ── ARCHITETTURA A TRE PILASTRI ─────────────────────────────────────
+    // Pesi default (somma = 100). L'utente può modificarli in futuro.
+    pilastri: {
+      difensivo:  { pct: 50, label: 'DIFENSIVO',  descrizione: 'Protezione capitale. Bond gov breve, inflation-linked, oro (max 8%). Nessun azionario.' },
+      core:       { pct: 45, label: 'CORE',        descrizione: 'Crescita stabile. Azionario difensivo (dividend, low-vol, quality), bond medio-lungo IG. Max azionario 30%.' },
+      satellite:  { pct:  5, label: 'SATELLITE',   descrizione: 'Diversificatore minimo. Solo infrastructure o REIT stabili. Nessun tematico aggressivo.' },
+    },
+    // Regole contenuto per pilastro
+    categoriePerPilastro: {
+      difensivo:  ['Obbligazionario Gov EUR Breve', 'Obbligazionario Inflation-Linked', 'Monetario', 'Oro'],
+      core:       ['Obbligazionario Gov EUR', 'Obbligazionario Corporate EUR', 'Azionario Globale', 'Azionario Europa', 'Azionario Dividend'],
+      satellite:  ['Infrastructure', 'Real Estate', 'Obbligazionario Emergenti'],
+    },
+    // Vincoli di varietà
+    categorieMinime: 3,          // min categorie distinte nel portafoglio
+    obbligazionarioVarietaMin: 2, // min sottotipi obbligazionari distinti
+    safeHavenMax: 10,             // % max oro/metalli/commodity
+    tematiciMax: 5,               // % max tematici/satellite aggressivi
   },
   Bilanciato: {
     rendimentoMin: 'inflazione +2.5%', rendimentoMax: 'inflazione +5%',
     minETF: 5, maxETF: 8, azionarioTarget: 50, azionarioRange: 10,
     terMax: 1.8, terPreferito: 1.4, capMin: 200,
-    maxDrawdown: -18,   // max drawdown 1y per singolo ETF: ≤18% in valore assoluto
-    maxDrawdownAbs: 18, // valore positivo per display nei prompt
-    volatilita: 15,     // vol media PONDERATA portafoglio ≤15%
+    maxDrawdown: -18,
+    maxDrawdownAbs: 18,
+    volatilita: 15,
     hedged: 'per max 50% degli ETF con valuta non EUR preferire hedged',
     note: 'Vol media ponderata portafoglio ≤15%. Azionario 40-60%. Max drawdown singolo ETF ≤18% (1y). Oro max 5%.',
+
+    // ── ARCHITETTURA A TRE PILASTRI ─────────────────────────────────────
+    pilastri: {
+      difensivo:  { pct: 25, label: 'DIFENSIVO',  descrizione: 'Stabilità con cedola. Bond gov breve/medio, inflation-linked, oro (max 12%), corporate IG breve duration.' },
+      core:       { pct: 60, label: 'CORE',        descrizione: 'Motore principale. Azionario globale classico, smart beta quality/value, bond medio termine, REIT. Azionario 50-70% del pilastro.' },
+      satellite:  { pct: 15, label: 'SATELLITE',   descrizione: 'Alpha controllato. Tematici grandi (salute, clean energy, infrastrutture), max 2 ETF. Nessun singolo settore ciclico.' },
+    },
+    categoriePerPilastro: {
+      difensivo:  ['Obbligazionario Gov EUR', 'Obbligazionario Gov EUR Breve', 'Obbligazionario Corporate EUR Breve', 'Obbligazionario Inflation-Linked', 'Oro', 'Monetario'],
+      core:       ['Azionario Globale', 'Azionario Europa', 'Azionario USA', 'Azionario Emergenti', 'Obbligazionario Corporate EUR', 'Obbligazionario Gov EUR', 'Real Estate'],
+      satellite:  ['Tematico Salute', 'Tematico Energia Pulita', 'Infrastructure', 'Obbligazionario High Yield', 'Materie Prime'],
+    },
+    categorieMinime: 4,
+    obbligazionarioVarietaMin: 2,
+    safeHavenMax: 15,
+    tematiciMax: 15,
   },
   Aggressivo: {
     rendimentoMin: 'inflazione +4.5%', rendimentoMax: 'inflazione +8%',
@@ -42,6 +77,22 @@ const REGOLE_PROFILO = {
     terMax: 2.5, terPreferito: 2.0, capMin: 10,
     maxDrawdown: null, volatilita: null,
     hedged: 'per max 20% degli ETF con valuta non EUR preferire hedged',
+
+    // ── ARCHITETTURA A TRE PILASTRI ─────────────────────────────────────
+    pilastri: {
+      difensivo:  { pct: 15, label: 'DIFENSIVO',  descrizione: 'Riserva minima. Bond gov breve 1-3Y, massimo 1 ETF monetario. Nessun obbligazionario lungo.' },
+      core:       { pct: 60, label: 'CORE',        descrizione: 'Motore di crescita. Azionario globale, emergenti, smart beta (momentum/value/quality). Azionario 80%+ del pilastro.' },
+      satellite:  { pct: 25, label: 'SATELLITE',   descrizione: 'Alpha aggressivo. Tematici (AI, difesa, uranio, frontier), small cap, commodity, managed futures. Fino a 3 ETF tematici.' },
+    },
+    categoriePerPilastro: {
+      difensivo:  ['Obbligazionario Gov EUR Breve', 'Monetario'],
+      core:       ['Azionario Globale', 'Azionario USA', 'Azionario Europa', 'Azionario Emergenti', 'Azionario Asia', 'Smart Beta'],
+      satellite:  ['Tematico', 'Materie Prime', 'Energia', 'Tecnologia', 'Salute', 'Difesa', 'Small Cap', 'Frontier Markets', 'Absolute Return'],
+    },
+    categorieMinime: 4,
+    obbligazionarioVarietaMin: 1,
+    safeHavenMax: 20,
+    tematiciMax: 25,
   },
 };
 
