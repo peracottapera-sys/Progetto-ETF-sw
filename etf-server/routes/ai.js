@@ -2268,6 +2268,33 @@ ${profilo === 'Prudente' ? `- 🚫 AZIONARIO MAX 35% PRUDENTE: la somma di TUTTI
 - Hedging valuta: ${regole.hedged}
 ${regole.note ? `- NOTA IMPORTANTE: ${regole.note}` : ''}
 
+## ARCHITETTURA A TRE PILASTRI — OBBLIGATORIA:
+Il portafoglio DEVE essere strutturato in tre pilastri con i pesi indicati (tolleranza ±5% per pilastro):
+
+${(() => {
+  const p = regole.pilastri;
+  const cpp = regole.categoriePerPilastro;
+  return `🛡️ PILASTRO DIFENSIVO — ${p.difensivo.pct}% del portafoglio
+${p.difensivo.descrizione}
+Categorie ammesse: ${cpp.difensivo.join(', ')}
+
+⚙️ PILASTRO CORE — ${p.core.pct}% del portafoglio
+${p.core.descrizione}
+Categorie ammesse: ${cpp.core.join(', ')}
+
+🚀 PILASTRO SATELLITE — ${p.satellite.pct}% del portafoglio
+${p.satellite.descrizione}
+Categorie ammesse: ${cpp.satellite.join(', ')}`;
+})()}
+
+Vincoli di varietà:
+- Categorie distinte minime nel portafoglio: ${regole.categorieMinime}
+- Sottotipi obbligazionari minimi (es. gov + corporate, o gov + inflation-linked): ${regole.obbligazionarioVarietaMin}
+- Safe haven (oro, metalli, commodity): max ${regole.safeHavenMax}% totale
+- Tematici/satellite aggressivi: max ${regole.tematiciMax}% totale
+
+⚠️ ISTRUZIONE PILASTRI: indica nel JSON di ogni ETF a quale pilastro appartiene (campo "pilastro": "DIFENSIVO"|"CORE"|"SATELLITE"). La somma dei pesi per pilastro DEVE rispettare i target sopra.
+
 ## CATEGORIE AZIONARIE (usale per calcolare la quota azionaria):
 Azionario Globale, Azionario USA, Azionario Europa, Azionario Emergenti, Azionario Tematico, Azionario Pacifico
 
@@ -2371,7 +2398,7 @@ limite_az: min=${hasBuckets ? Math.round((regole.azionarioTarget-regole.azionari
 🚫 BLOCCO: se quota_azionaria < ${hasBuckets ? Math.round((regole.azionarioTarget-regole.azionarioRange)*bucketLungo.pct/100) : regole.azionarioTarget-regole.azionarioRange}% → DEVI aumentarla prima di procedere. Sposta peso da OB/LIQ a azionario.
 
 PORTAFOGLIO_JSON:
-[{"isin": "ISIN", "peso": 30, "motivo": "max 80 caratteri"}]
+[{"isin": "ISIN", "peso": 30, "pilastro": "CORE", "motivo": "max 80 caratteri"}]
 
 REGOLE FORMATO:
 - Il JSON deve essere l'ULTIMA cosa che scrivi
