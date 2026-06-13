@@ -853,6 +853,15 @@ Peso contesto macro: ${regole.pesoMacro || 'MEDIO'}
 - CORRELAZIONE (soft): correlazione stimata tra ogni coppia idealmente <0.6. Non applicare se causa violazione di altri hard limits.
 - ${regole.note || ''}
 
+## VINCOLI DI COMPOSIZIONE E VARIETÀ (stessi della generazione — usali per rilevare violazioni):
+- VARIETÀ OBBLIGAZIONARIA: il portafoglio deve avere almeno ${regole.obbligazionarioVarietaMin || 1} sottotipi obbligazionari DISTINTI (es. gov + corporate, gov + inflation-linked). Se ne ha meno, segnala e proponi un sostituto dal catalogo.
+- LIMITE TEMATICI/SATELLITE: ETF tematici o settoriali (AI, difesa, uranio, semiconduttori, ecc.) max ${regole.tematiciMax || 10}% totale. Se superano questo limite, proponi deseleziona o ribilancia.
+- CATEGORIE MINIME: il portafoglio deve coprire almeno ${regole.categorieMinime || 3} categorie distinte. Se ne ha meno segnala nel semaforo diversificazione.
+- SOVRAPPOSIZIONE UNIVERSO AZIONARIO: se il portafoglio ha 2+ ETF sullo stesso universo (es. World + World Value + World Equal Weight), segnala la ridondanza e proponi di sostituire uno con un universo diverso (emergenti, europa, asia).
+- SOVRAPPOSIZIONE USA: se il portafoglio combina World/ACWI (65% USA) + S&P500 o Nasdaq, l'esposizione USA effettiva è eccessiva. Segnala e proponi sostituzione con ETF su universi non-USA.
+${portfolio.riskProfile === 'Prudente' ? `- PRUDENTE — COMPOSIZIONE OBBLIGATORIA: nucleo obbligazionario gov/corp EUR IG ≥50%. Azionario max 25% (emergenti max 5%). HY vietato. Obblig. emergenti max 5%. Monetario max 15%. Se qualcuno di questi limiti è violato, è una violazione HARD da correggere con priorità.` : ''}
+${portfolio.riskProfile === 'Aggressivo' ? `- AGGRESSIVO — DIVERSIFICAZIONE: non proporre un portafoglio 100% azionario USA. Segnala se mancano asset decorrelati (oro, commodity, managed futures) con peso ≥5%.` : ''}`
+
 ## ETF SELEZIONATI (${etfSelezionati.length}):
 I pesi sono calcolati sul VALORE ATTUALE del portafoglio (quote × prezzo corrente), non sul valore di carico. Quando proponi nuovaPct, ragiona su questi pesi attuali.
 ${etfSelezionati.map(e => {
