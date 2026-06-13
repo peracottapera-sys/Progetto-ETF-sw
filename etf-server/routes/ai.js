@@ -2246,7 +2246,7 @@ ${preferenze ? `
 ## REGOLE OBBLIGATORIE PROFILO ${profilo.toUpperCase()}:
 - Rendimento atteso: ${regole.rendimentoMin} / ${regole.rendimentoMax}
 - ⚠️ VINCOLO RENDIMENTO MINIMO: il portafoglio deve avere un rendimento lordo atteso ≥ ${rendimentoTarget ? (rendimentoTarget - 0.5).toFixed(1) : RENDIMENTO_MIN_PROFILO[profilo] || 4.0}% annuo.
-- 🎯 OBIETTIVO RENDIMENTO LORDO: ${rendimentoTarget ? `L'utente ha scelto un obiettivo di ${rendimentoTarget}% lordo annuo${hasBuckets && rendimentoTargetLungo ? ` (il bucket LUNGO da solo deve puntare a ~${rendimentoTargetLungo}% lordo per compensare il bucket BREVE)` : ''}. Costruisci il portafoglio per avvicinarti il più possibile a questo target scegliendo asset class con rendimento storico appropriato.` : `Usa il range standard del profilo.`}
+- 🎯 OBIETTIVO RENDIMENTO LORDO: ${rendimentoTarget ? (profilo === 'Prudente' ? `L'utente ha scelto un obiettivo di ${rendimentoTarget}% lordo annuo. ⚠️ PRUDENTE: questo è un TETTO MASSIMO, NON un obiettivo da inseguire a tutti i costi. I vincoli di composizione del profilo Prudente (nucleo OB gov/corp EUR ≥50%, azionario ≤25%, no emergenti >5%, no HY) hanno PRIORITÀ ASSOLUTA sul rendimento. Un portafoglio Prudente ben costruito che rende il 4-5% è preferibile a uno che rende il 6.5% violando i vincoli di profilo.` : `L'utente ha scelto un obiettivo di ${rendimentoTarget}% lordo annuo${hasBuckets && rendimentoTargetLungo ? ` (il bucket LUNGO da solo deve puntare a ~${rendimentoTargetLungo}% lordo per compensare il bucket BREVE)` : ''}. Costruisci il portafoglio per avvicinarti il più possibile a questo target scegliendo asset class con rendimento storico appropriato.`) : `Usa il range standard del profilo.`}
 - 🚫 VINCOLO RENDIMENTO MASSIMO: il rendimento lordo dichiarato NON può superare ${rendimentoTarget ? (rendimentoTarget + 1.0).toFixed(1) : {Prudente:'6.5',Bilanciato:'9.5',Aggressivo:'11.0'}[profilo] || '9.5'}% lordo annuo. Questo è un HARD LIMIT.
 - ⚠️ METODO STIMA RENDIMENTO: usa SEMPRE questi rendimenti attesi storici di lungo periodo (20-30 anni), NON perf5y:
   Azionario Globale/USA/Europa: ~7% lordo | Emergenti: ~6-7% lordo | Obblig. Gov EUR: ~2-3% lordo | Obblig. Corp EUR: ~3-4% lordo | Inflation-Linked: ~2-3% lordo | Oro/Commodity: ~4-5% lordo | Monetario EUR: ~2-3% lordo
@@ -2260,7 +2260,15 @@ ${hasBuckets ? `- 🚫 VINCOLO AZ CON BUCKET — LEGGI CON ATTENZIONE:
   Esempio con bucket BREVE ${bucketBreve.pct}%: se il LUNGO ha 80% AZ → totale portafoglio = ${Math.round(80*bucketLungo.pct/100)}% AZ ✅
   NON applicare il range ${regole.azionarioTarget-regole.azionarioRange}%-${regole.azionarioTarget+regole.azionarioRange}% al totale — sarebbe matematicamente impossibile con il bucket BREVE attivo.` : ''}
 ${profilo === 'Prudente' ? `- 🚫 AZIONARIO MAX 35% PRUDENTE: la somma di TUTTI gli ETF azionari (inclusi Tematici, ESG, Smart Beta) NON può superare 35%.
-- 🚫 OBBLIGAZIONARIO PRUDENTE — REGOLE STRETTE: il nucleo obbligazionario (≥50% del portafoglio) DEVE essere bond gov EUR o corporate EUR Investment Grade (rating ≥ BBB). Obbligazionario Emergenti: MAX 5% (sono bond ad alto rischio). High Yield: VIETATO. Inflation-linked EUR: ammesso e consigliato (max 20%). Duration media obbligazionaria: preferire 1-7 anni, evitare bond a 10+ anni.` : ''}
+- 🚫 PRUDENTE — COMPOSIZIONE OBBLIGATORIA:
+  • NUCLEO DIFENSIVO (≥50% del portafoglio): OBBLIGATORIO. Composto da bond gov EUR, corporate EUR IG, o inflation-linked EUR. Questi tre sottotipi sono gli unici ammessi come nucleo.
+  • AZIONARIO: MAX 25% totale. Preferire azionario globale low-vol o dividend. Azionario Emergenti: MAX 5% (alta volatilità, non adatto al profilo). NON includere Nasdaq, settoriali o tematici aggressivi.
+  • OBBLIGAZIONARIO EMERGENTI: MAX 5% anche se EUR hedged — il rischio paese rimane elevato.
+  • HIGH YIELD: VIETATO.
+  • MONETARIO/OVERNIGHT: ammesso come liquidità tattica, MAX 15%. NON sostituisce il nucleo obbligazionario.
+  • ORO/SAFE HAVEN: max 10%.
+  ESEMPIO CORRETTO Prudente: 50% Gov EUR + 15% Corp EUR IG + 15% World low-vol + 10% Inflation-linked + 10% Oro.
+  ESEMPIO ERRATO: 20% World + 10% Emergenti + 20% Monetario + 30% Gov EUR + 10% Obblig Emergenti + 10% Oro → troppo azionario emergente, troppo monetario, obblig emergenti sopra 5%.` : ''}
 - Numero ETF: massimo ${regole.maxETF}
 - ⚠️ VINCOLO TER: il TER medio PONDERATO del portafoglio DEVE essere < ${regole.terPreferito}%. Se un singolo ETF ha TER > ${regole.terPreferito}%, includilo SOLO se porta un contributo di diversificazione o rendimento insostituibile. MAX assoluto per singolo ETF: ${regole.terMax}%. Un ETF con TER elevato che erode il rendimento sotto soglia NON deve essere incluso.
 - Capitalizzazione minima per ETF: ${regole.capMin}M€
